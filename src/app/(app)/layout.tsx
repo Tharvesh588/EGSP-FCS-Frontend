@@ -35,12 +35,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole") as 'faculty' | 'admin' | null;
-    
-    if (!role) {
-      router.push('/login');
-      return;
-    }
+    // Bypass login and default to admin
+    const role: 'admin' | 'faculty' = 'admin';
+    localStorage.setItem("userRole", role);
 
     if (role === 'admin') {
       setUser(MOCK_ADMIN);

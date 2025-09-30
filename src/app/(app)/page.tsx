@@ -5,16 +5,10 @@ import { useEffect } from 'react';
 
 export default function AppPage() {
   useEffect(() => {
-    const storedRole = localStorage.getItem('userRole');
-    if (storedRole === 'admin') {
-      redirect('/admin/dashboard');
-    } else if (storedRole === 'faculty') {
-      redirect('/dashboard');
-    } else {
-      redirect('/login');
-    }
+    // Default to admin dashboard, mirroring the root page redirection
+    redirect('/admin/dashboard');
   }, []);
 
-  // Render nothing or a loading spinner while checking the role
+  // Render nothing or a loading spinner while redirecting
   return null;
 }

@@ -33,7 +33,7 @@ const performanceData = [
 const engagementData = [
   { name: 'Jan', value: 109 },
   { name: 'Feb', value: 21 },
-  { name 'Mar', value: 41 },
+  { name: 'Mar', value: 41 },
   { name: 'Apr', value: 93 },
   { name: 'May', value: 33 },
   { name: 'Jun', value: 101 },
