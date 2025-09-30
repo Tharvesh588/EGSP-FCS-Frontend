@@ -37,7 +37,6 @@ const adminNav = [
   { name: "Negative Remarks", href: "/admin/remarks", icon: MessageSquareWarning },
   { name: "Appeals", href: "/admin/appeals", icon: ShieldAlert },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
-  { name: "Credit Tool", href: "/admin/credit-tool", icon: BotMessageSquare },
 ];
 
 export function SidebarNav({ role }: SidebarNavProps) {
