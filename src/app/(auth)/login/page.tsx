@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,10 +18,14 @@ import { Logo } from "@/components/icons";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [email, setEmail] = useState("faculty@egspec.org");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // In a real app, you'd handle authentication here
+    // For this demo, we'll use a simple check on the email.
+    const role = email.startsWith("admin") ? "admin" : "faculty";
+    localStorage.setItem("userRole", role);
     router.push("/");
   };
 
@@ -43,7 +48,8 @@ export default function LoginPage() {
               id="email"
               type="email"
               placeholder="user@egspec.org"
-              defaultValue="faculty@egspec.org"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
@@ -62,6 +68,9 @@ export default function LoginPage() {
           <Button type="submit" className="w-full">
             Login
           </Button>
+           <p className="text-center text-xs text-muted-foreground">
+              Use <code className="font-semibold">admin@egspec.org</code> to log in as an admin.
+            </p>
         </form>
       </CardContent>
     </Card>
