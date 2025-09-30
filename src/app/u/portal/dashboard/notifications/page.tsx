@@ -1,3 +1,4 @@
+// This file is the new location for src/app/(app)/notifications/page.tsx
 "use client"
 
 import { Button } from "@/components/ui/button"

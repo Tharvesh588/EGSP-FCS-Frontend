@@ -10,14 +10,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type User = {
     name: string;
     email: string;
     avatar: string;
+    role: "faculty" | "admin";
 }
 
 export function UserNav({ user }: { user: User }) {
+  const searchParams = useSearchParams();
+  const uid = searchParams.get('uid') || '';
+
+  const settingsHref = user.role === 'admin'
+    ? `/u/portal/dashboard/admin/settings?uid=${uid}`
+    : `/u/portal/dashboard/settings?uid=${uid}`;
+  
+  const loginHref = user.role === 'admin'
+    ? '/u/portal/auth?admin'
+    : '/u/portal/auth?faculty_login';
+
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -39,19 +53,19 @@ export function UserNav({ user }: { user: User }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-            <Link href="/settings">
+            <Link href={settingsHref}>
                 <DropdownMenuItem>
                     Profile
                 </DropdownMenuItem>
             </Link>
-          <Link href="/settings">
+          <Link href={settingsHref}>
             <DropdownMenuItem>
                 Settings
             </DropdownMenuItem>
           </Link>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <Link href="/login" onClick={() => localStorage.removeItem('userRole')}>
+        <Link href={loginHref} onClick={() => localStorage.removeItem('userRole')}>
             <DropdownMenuItem>
             Log out
             </DropdownMenuItem>

@@ -5,7 +5,7 @@ import { Header } from "@/components/header";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { useState, useEffect, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 const MOCK_USER = {
@@ -33,24 +33,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Bypass login and default to admin
-    const role: 'admin' | 'faculty' = 'admin';
-    localStorage.setItem("userRole", role);
+    const role = localStorage.getItem("userRole") as 'admin' | 'faculty' | null;
+    const uid = searchParams.get('uid');
 
+    if (!role || !uid) {
+        router.replace('/u/portal/auth?admin');
+        return;
+    }
+    
     if (role === 'admin') {
       setUser(MOCK_ADMIN);
-      if (pathname === '/dashboard' || pathname === '/') {
-        router.replace('/admin/dashboard');
+      if (pathname === '/u/portal/dashboard' && !pathname.includes('/admin')) {
+        router.replace(`/u/portal/dashboard/admin?uid=${uid}`);
       }
     } else {
       setUser(MOCK_USER);
-       if (pathname.startsWith('/admin')) {
-        router.replace('/dashboard');
+       if (pathname.includes('/admin')) {
+        router.replace(`/u/portal/dashboard?uid=${uid}`);
       }
     }
-  }, [router, pathname]);
+  }, [router, pathname, searchParams]);
 
   if (!user) {
     return (

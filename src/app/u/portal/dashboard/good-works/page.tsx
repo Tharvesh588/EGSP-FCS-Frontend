@@ -1,3 +1,4 @@
+// This file is the new location for src/app/(app)/good-works/page.tsx
 "use client"
 
 import { Badge } from "@/components/ui/badge"
@@ -129,7 +130,7 @@ export default function GoodWorksPage() {
                     >
                       <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${
                         work.status === "Approved" ? "bg-green-500" :
-                        work Gorks === "Pending" ? "bg-yellow-500" :
+                        work.status === "Pending" ? "bg-yellow-500" :
                         "bg-red-500"
                       }`}></span>
                       {work.status}

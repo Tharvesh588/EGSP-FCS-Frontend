@@ -1,3 +1,4 @@
+// This file is the new location for src/app/(app)/admin/appeals/page.tsx
 "use client"
 
 import {

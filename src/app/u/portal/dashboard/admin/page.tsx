@@ -1,3 +1,4 @@
+// This file is the new location for src/app/(app)/admin/dashboard/page.tsx
 "use client";
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from "recharts";

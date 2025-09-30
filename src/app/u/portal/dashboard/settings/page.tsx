@@ -1,3 +1,4 @@
+// This file is the new location for src/app/(app)/settings/page.tsx
 "use client"
 
 import { Button } from "@/components/ui/button"

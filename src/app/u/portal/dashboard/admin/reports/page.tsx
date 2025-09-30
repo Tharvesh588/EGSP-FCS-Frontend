@@ -1,3 +1,4 @@
+// This file is the new location for src/app/(app)/admin/reports/page.tsx
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Line, LineChart, Tooltip } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Line, LineChart, Tooltip, Area } from "recharts"
 
 const barData = [
   { name: 'CSE', value: 40 },
@@ -159,9 +160,4 @@ export default function ReportsPage() {
       </div>
     </div>
   )
-}
-// Note: You might need to add an 'Area' import from recharts if it's not already there.
-// e.g. import { ... Area } from "recharts"
-function Area(props: any) {
-    return null
 }
