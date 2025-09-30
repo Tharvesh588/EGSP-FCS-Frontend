@@ -44,13 +44,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
     if (role === 'admin') {
       setUser(MOCK_ADMIN);
-      if (pathname === '/dashboard') {
-        router.push('/admin/dashboard');
+      if (pathname === '/dashboard' || pathname === '/') {
+        router.replace('/admin/dashboard');
       }
     } else {
       setUser(MOCK_USER);
        if (pathname.startsWith('/admin')) {
-        router.push('/dashboard');
+        router.replace('/dashboard');
       }
     }
   }, [router, pathname]);

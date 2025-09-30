@@ -1,111 +1,123 @@
 "use client";
 
-import { Pie, PieChart, ResponsiveContainer, Cell, Legend } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from "recharts";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { adminDashboardData } from "@/lib/mock-data";
-import { Award, ShieldAlert, Users, Sigma } from "lucide-react";
 
-const statCards = [
-    { title: "Pending Submissions", value: adminDashboardData.stats.pendingSubmissions, icon: Award, change: "+5 this week" },
-    { title: "Active Appeals", value: adminDashboardData.stats.activeAppeals, icon: ShieldAlert, change: "+1 today" },
-    { title: "Total Users", value: adminDashboardData.stats.totalUsers, icon: Users, change: "+12 this month" },
-    { title: "Total Credits Awarded", value: adminDashboardData.stats.totalCreditsAwarded, icon: Sigma, change: "45,200 total" },
+const overviewData = [
+    { title: "Pending Items", value: "12" },
+    { title: "Total Faculty", value: "250" },
+    { title: "Active Users", value: "235" },
+]
+
+const recentActivity = [
+    { text: "New faculty member added", time: "2 hours ago" },
+    { text: "Department of Computer Science updated", time: "4 hours ago" },
+    { text: "Faculty performance report generated", time: "1 day ago" },
+    { text: "System settings modified", time: "2 days ago" },
+    { text: "User account created", time: "3 days ago" },
+]
+
+const performanceData = [
+    { name: 'A', value: 50 },
+    { name: 'B', value: 70 },
+    { name: 'C', value: 50 },
+    { name: 'D', value: 30 },
+    { name: 'E', value: 80 },
+]
+
+const engagementData = [
+  { name: 'Jan', value: 109 },
+  { name: 'Feb', value: 21 },
+  { name 'Mar', value: 41 },
+  { name: 'Apr', value: 93 },
+  { name: 'May', value: 33 },
+  { name: 'Jun', value: 101 },
 ]
 
 export default function AdminDashboard() {
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((card) => (
-            <Card key={card.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                    <card.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold font-headline">{card.value}</div>
-                    <p className="text-xs text-muted-foreground">{card.change}</p>
-                </CardContent>
+    <div className="space-y-8">
+      <h2 className="text-3xl font-bold text-foreground">Super Admin Dashboard</h2>
+      
+      <div>
+        <h3 className="text-xl font-bold text-foreground mb-4">Overview</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {overviewData.map(item => (
+            <Card key={item.title} className="bg-card p-6">
+              <p className="text-base font-medium text-muted-foreground">{item.title}</p>
+              <p className="text-4xl font-bold text-foreground mt-2">{item.value}</p>
             </Card>
-        ))}
+          ))}
+        </div>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Credit Distribution</CardTitle>
-            <CardDescription>By category across the institution.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={adminDashboardData.creditDistribution}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  labelLine={false}
-                  label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                    const radius = innerRadius + (outerRadius - innerRadius) * 1.2;
-                    const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-                    const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-                    return (
-                      <text x={x} y={y} fill="currentColor" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs">
-                        {`${(percent * 100).toFixed(0)}%`}
-                      </text>
-                    );
-                  }}
-                >
-                  {adminDashboardData.creditDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Legend iconSize={10} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Recent System Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead className="text-right">Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {adminDashboardData.recentActivities.map((activity) => (
-                  <TableRow key={activity.id}>
-                    <TableCell className="font-medium">{activity.description}</TableCell>
-                    <TableCell>{activity.user}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{activity.date}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+      
+      <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1">
+          <h3 className="text-xl font-bold text-foreground mb-4">Recent Activity</h3>
+          <div className="relative pl-8">
+            <div className="absolute left-4 top-0 h-full w-0.5 bg-border"></div>
+            <div className="space-y-8">
+              {recentActivity.map((activity, index) => (
+                <div key={index} className="relative">
+                  <div className="absolute -left-5 top-1 h-3 w-3 rounded-full bg-primary"></div>
+                  <p className="font-medium text-foreground">{activity.text}</p>
+                  <p className="text-sm text-muted-foreground">{activity.time}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="lg:col-span-2">
+          <h3 className="text-xl font-bold text-foreground mb-4">User Statistics</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="p-6">
+              <p className="text-base font-medium text-muted-foreground">Faculty Performance Distribution</p>
+              <p className="text-3xl font-bold text-foreground mt-2">Average: 75%</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-muted-foreground">Last Quarter</p>
+                <p className="text-sm font-medium text-green-600">+10%</p>
+              </div>
+              <div className="h-40 mt-6 px-3">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={performanceData}>
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <Bar dataKey="value" fill="hsl(var(--primary)/0.2)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+            <Card className="p-6">
+              <p className="text-base font-medium text-muted-foreground">User Engagement Over Time</p>
+              <p className="text-3xl font-bold text-foreground mt-2">Trend: +5%</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-muted-foreground">Last 6 Months</p>
+                <p className="text-sm font-medium text-green-600">+5%</p>
+              </div>
+              <div className="h-48 mt-2">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={engagementData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <defs>
+                            <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#chart-gradient)" />
+                    </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
-  );
+  )
 }

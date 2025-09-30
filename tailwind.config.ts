@@ -10,8 +10,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        display: ['Inter', 'sans-serif'],
         body: ['Inter', 'sans-serif'],
-        headline: ['"Space Grotesk"', 'sans-serif'],
+        headline: ['Inter', 'sans-serif'], // Adjusted to match new designs
         code: ['monospace'],
       },
       colors: {
@@ -67,9 +68,11 @@ export default {
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
+        lg: '0.5rem',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        xl: '0.75rem',
+        full: '9999px',
       },
       keyframes: {
         'accordion-down': {
@@ -95,5 +98,5 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'), require('@tailwindcss/forms')],
 } satisfies Config;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Award, BarChart3, BotMessageSquare, GanttChart, LayoutDashboard, ShieldCheck, Users, Files, LogOut } from "lucide-react";
+import { Award, BarChart3, BotMessageSquare, GanttChart, LayoutDashboard, ShieldCheck, Users, Files, LogOut, Settings, Bell, History, MessageSquareWarning, FolderKanban, ShieldAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -15,7 +15,7 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Logo } from "@/components/icons";
+import { Logo, LogoAdmin } from "@/components/icons";
 
 type SidebarNavProps = {
   role: "faculty" | "admin";
@@ -23,17 +23,21 @@ type SidebarNavProps = {
 
 const facultyNav = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Good Works", href: "/good-works/submit", icon: Award },
+  { name: "Good Works", href: "/good-works", icon: Award },
+  { name: "Submit", href: "/good-works/submit", icon: Files },
   { name: "Appeals", href: "/appeals", icon: ShieldCheck },
-  { name: "History", href: "/history", icon: Files },
+  { name: "Notifications", href: "/notifications", icon: Bell },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 const adminNav = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { name: "Credit Tool", href: "/admin/credit-tool", icon: BotMessageSquare },
-  { name: "User Management", href: "/admin/users", icon: Users },
-  { name: "Review Submissions", href: "/admin/review", icon: GanttChart },
+  { name: "Faculty Accounts", href: "/admin/users", icon: Users },
+  { name: "Submissions", href: "/admin/review", icon: FolderKanban },
+  { name: "Negative Remarks", href: "/admin/remarks", icon: MessageSquareWarning },
+  { name: "Appeals", href: "/admin/appeals", icon: ShieldAlert },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
+  { name: "Credit Tool", href: "/admin/credit-tool", icon: BotMessageSquare },
 ];
 
 export function SidebarNav({ role }: SidebarNavProps) {
@@ -44,9 +48,9 @@ export function SidebarNav({ role }: SidebarNavProps) {
     <Sidebar>
       <SidebarHeader>
         <Link href="/" className="flex items-center gap-2">
-          <Logo className="h-8 w-8 text-sidebar-primary" />
+            {role === 'admin' ? <LogoAdmin className="h-8 w-8 text-sidebar-primary" /> : <Logo className="h-8 w-8 text-sidebar-primary" />}
           <span className="text-lg font-semibold font-headline text-sidebar-foreground">
-            CreditWise
+            Credit Hub
           </span>
         </Link>
       </SidebarHeader>
@@ -56,7 +60,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
             <SidebarMenuItem key={item.name}>
               <Link href={item.href} legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname === item.href}
+                  isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
                   tooltip={item.name}
                   className="justify-start"
                 >
@@ -73,7 +77,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
          <SidebarMenu>
             <SidebarMenuItem>
                 <Link href="/login" legacyBehavior passHref>
-                    <SidebarMenuButton tooltip="Logout" className="justify-start">
+                    <SidebarMenuButton tooltip="Logout" className="justify-start" onClick={() => localStorage.removeItem('userRole')}>
                         <LogOut className="h-5 w-5" />
                         <span>Logout</span>
                     </SidebarMenuButton>
