@@ -66,7 +66,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
             const Icon = item.icon;
             return (
                 <SidebarMenuItem key={item.name}>
-                <Link href={item.href} legacyBehavior passHref>
+                <Link href={item.href}>
                     <SidebarMenuButton
                     isActive={pathname === item.href.split('?')[0]}
                     tooltip={item.name}
@@ -85,8 +85,8 @@ export function SidebarNav({ role }: SidebarNavProps) {
         <SidebarSeparator />
          <SidebarMenu>
             <SidebarMenuItem>
-                <Link href={getLoginUrl()} legacyBehavior passHref>
-                    <SidebarMenuButton tooltip="Logout" className="justify-start" onClick={() => localStorage.removeItem('userRole')}>
+                <Link href={getLoginUrl()} onClick={() => localStorage.removeItem('userRole')}>
+                    <SidebarMenuButton tooltip="Logout" className="justify-start">
                         <LogOut className="h-5 w-5" />
                         <span className="group-data-[collapsible=icon]:hidden">Logout</span>
                     </SidebarMenuButton>
