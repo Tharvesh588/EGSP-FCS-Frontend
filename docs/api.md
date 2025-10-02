@@ -1,23 +1,21 @@
-# Credit Hub API Documentation
+# Credit Hub API Documentation (v1)
 
-This document provides a comprehensive overview of the API endpoints for the Credit Hub application, designed to manage faculty performance and credits.
+This document provides a comprehensive overview of the v1 API endpoints for the Credit Hub application, designed to manage faculty performance and credits.
 
 ## Base URL
 
-All API endpoints described in this document are prefixed with `/api`.
+All API endpoints described in this document are prefixed with `/api/v1`.
 
 ---
 
-## 1. Authentication
+## 1. Authentication API
 
 Endpoints to handle user authentication and session management.
 
 ### Login
 
-Authenticates a user (either faculty or admin) and returns a session token.
-
-- **Endpoint:** `POST /api/auth/login`
-- **Description:** Validates user credentials and initiates a session.
+- **Endpoint:** `POST /api/v1/auth/login`
+- **Description:** Authenticates a user (either faculty or admin) and returns a session token.
 - **Request Body:**
   ```json
   {
@@ -46,10 +44,8 @@ Authenticates a user (either faculty or admin) and returns a session token.
 
 ### Logout
 
-Invalidates the user's current session token, logging them out.
-
-- **Endpoint:** `POST /api/auth/logout`
-- **Description:** Terminates the current user session.
+- **Endpoint:** `POST /api/v1/auth/logout`
+- **Description:** Terminates the current user session by invalidating the session token.
 - **Success Response:** `204 No Content`
 - **Error Response (401 Unauthorized):**
   ```json
@@ -60,10 +56,8 @@ Invalidates the user's current session token, logging them out.
 
 ### Get Current User
 
-Retrieves the profile of the currently authenticated user based on their session token.
-
-- **Endpoint:** `GET /api/auth/me`
-- **Description:** Fetches user details for the active session.
+- **Endpoint:** `GET /api/v1/auth/me`
+- **Description:** Fetches the profile of the currently authenticated user based on their session token.
 - **Headers:** `{ "Authorization": "Bearer xxxxxxxx.yyyyyyy.zzzzzzz" }`
 - **Success Response (200 OK):**
   ```json
@@ -77,18 +71,16 @@ Retrieves the profile of the currently authenticated user based on their session
 
 ---
 
-## 2. Faculty Endpoints
+## 2. Faculty API
 
 These endpoints are scoped to individual faculty members and require a `faculty` role.
 
-### Get Faculty Dashboard Data
+### Get Faculty Dashboard
 
-Retrieves all necessary data for the faculty dashboard for a specific academic year.
-
-- **Endpoint:** `GET /api/faculty/{facultyId}/dashboard`
-- **Description:** Fetches credit balance, credit history, and recent activities.
-- **URL Parameters:** `facultyId` (string, required) - The ID of the faculty member.
-- **Query Parameters:** `academicYear` (string, optional) - The academic year to filter data for (e.g., "2023-2024"). Defaults to the current year if not provided.
+- **Endpoint:** `GET /api/v1/faculty/{facultyId}/dashboard`
+- **Description:** Retrieves all necessary data for the faculty dashboard for a specific academic year, including credit balance, credit history, and recent activities.
+- **URL Parameters:** `facultyId` (string, required)
+- **Query Parameters:** `academicYear` (string, optional, e.g., "2023-2024")
 - **Success Response (200 OK):**
   ```json
   {
@@ -110,10 +102,8 @@ Retrieves all necessary data for the faculty dashboard for a specific academic y
 
 ### Get Good Works Submissions
 
-Fetches a list of all "good works" submissions for a specific faculty member.
-
-- **Endpoint:** `GET /api/faculty/{facultyId}/good-works`
-- **Description:** Retrieves all achievements submitted by the faculty member.
+- **Endpoint:** `GET /api/v1/faculty/{facultyId}/good-works`
+- **Description:** Fetches a list of all "good works" submissions for a specific faculty member.
 - **URL Parameters:** `facultyId` (string, required)
 - **Success Response (200 OK):**
   ```json
@@ -131,10 +121,8 @@ Fetches a list of all "good works" submissions for a specific faculty member.
 
 ### Submit Good Work
 
-Allows a faculty member to submit a new achievement for review.
-
-- **Endpoint:** `POST /api/faculty/{facultyId}/good-works`
-- **Description:** Creates a new submission record.
+- **Endpoint:** `POST /api/v1/faculty/{facultyId}/good-works`
+- **Description:** Allows a faculty member to submit a new achievement for review.
 - **URL Parameters:** `facultyId` (string, required)
 - **Request Body:**
   ```json
@@ -149,16 +137,14 @@ Allows a faculty member to submit a new achievement for review.
 
 ---
 
-## 3. Super Admin Endpoints
+## 3. Super Admin API
 
 These endpoints require a `super-admin` or `admin` role and provide broad system management capabilities.
 
-### Get Admin Dashboard Statistics
+### Get Admin Dashboard
 
-Retrieves aggregated data for the super admin dashboard.
-
-- **Endpoint:** `GET /api/admin/dashboard`
-- **Description:** Fetches overview stats, user statistics, and recent system-wide activities.
+- **Endpoint:** `GET /api/v1/admin/dashboard`
+- **Description:** Retrieves aggregated data for the super admin dashboard, including overview stats, user statistics, and recent system-wide activities.
 - **Query Parameters:** `academicYear` (string, optional)
 - **Success Response (200 OK):**
   ```json
@@ -186,10 +172,8 @@ Retrieves aggregated data for the super admin dashboard.
 
 ### Get All Faculty Accounts
 
-Fetches a paginated and filterable list of all faculty accounts.
-
-- **Endpoint:** `GET /api/admin/faculty-accounts`
-- **Description:** Retrieves faculty user data for management purposes.
+- **Endpoint:** `GET /api/v1/admin/faculty-accounts`
+- **Description:** Fetches a paginated and filterable list of all faculty accounts for management purposes.
 - **Query Parameters:**
   - `department` (string, optional)
   - `status` (string, optional - "Active" or "Inactive")
@@ -214,10 +198,8 @@ Fetches a paginated and filterable list of all faculty accounts.
 
 ### Create New Faculty Account
 
-Allows a super admin to create a new faculty account.
-
-- **Endpoint:** `POST /api/admin/faculty-accounts`
-- **Description:** Registers a new faculty member in the system.
+- **Endpoint:** `POST /api/v1/admin/faculty-accounts`
+- **Description:** Allows a super admin to register a new faculty member in the system.
 - **Request Body:**
   ```json
   {
@@ -230,10 +212,8 @@ Allows a super admin to create a new faculty account.
 
 ### Impersonate Faculty Member
 
-Allows an admin to generate a temporary session token to log in as a specific faculty member.
-
-- **Endpoint:** `POST /api/admin/impersonate`
-- **Description:** Useful for troubleshooting and support.
+- **Endpoint:** `POST /api/v1/admin/impersonate`
+- **Description:** Generates a temporary session token to allow an admin to log in as a specific faculty member for troubleshooting and support.
 - **Request Body:** `{ "facultyId": "user-abc-123" }`
 - **Success Response (200 OK):**
   ```json
@@ -244,22 +224,20 @@ Allows an admin to generate a temporary session token to log in as a specific fa
 
 ---
 
-## 4. Credit & Review Endpoints (Admin)
+## 4. Credit & Review API (Admin)
 
 Endpoints for managing submissions, negative remarks, and appeals.
 
 ### Get Pending Submissions
 
-Retrieves all "good works" submissions that are awaiting admin review.
-
-- **Endpoint:** `GET /api/admin/submissions`
+- **Endpoint:** `GET /api/v1/admin/submissions`
+- **Description:** Retrieves all "good works" submissions that are awaiting admin review.
 - **Success Response (200 OK):** An array of submission objects.
 
 ### Review a Submission
 
-Allows an admin to approve or reject a submission and assign credits.
-
-- **Endpoint:** `POST /api/admin/submissions/{submissionId}/review`
+- **Endpoint:** `POST /api/v1/admin/submissions/{submissionId}/review`
+- **Description:** Allows an admin to approve or reject a submission and assign credits.
 - **URL Parameters:** `submissionId` (string, required)
 - **Request Body:**
   ```json
@@ -269,20 +247,18 @@ Allows an admin to approve or reject a submission and assign credits.
     "rationale": "Excellent work and significant contribution."
   }
   ```
-- **Success Response:** `200 OK`
+- **Success Response (200 OK):** `200 OK`
 
 ### Get Pending Appeals
 
-Fetches all pending appeals from faculty members regarding negative remarks.
-
-- **Endpoint:** `GET /api/admin/appeals`
+- **Endpoint:** `GET /api/v1/admin/appeals`
+- **Description:** Fetches all pending appeals from faculty members regarding negative remarks.
 - **Success Response (200 OK):** An array of appeal objects.
 
 ### Create a Negative Remark
 
-Allows an admin to create a negative remark against a faculty member.
-
-- **Endpoint:** `POST /api/admin/remarks`
+- **Endpoint:** `POST /api/v1/admin/remarks`
+- **Description:** Allows an admin to create a negative remark against a faculty member.
 - **Request Body:**
   ```json
   {
