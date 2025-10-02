@@ -30,7 +30,7 @@ export default function FacultyDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-5xl font-bold font-headline text-primary">
+          <div className="text-5xl font-bold text-primary">
             {facultyDashboardData.creditBalance}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
@@ -50,13 +50,13 @@ export default function FacultyDashboard() {
             <BarChart data={facultyDashboardData.creditHistory}>
               <XAxis
                 dataKey="month"
-                stroke="#888888"
+                stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
-                stroke="#888888"
+                stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
@@ -95,7 +95,7 @@ export default function FacultyDashboard() {
                         className="flex items-center gap-1 w-fit ml-auto"
                       >
                         {activity.credits > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                        {activity.credits}
+                        {Math.abs(activity.credits)}
                       </Badge>
                     )}
                   </TableCell>

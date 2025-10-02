@@ -36,23 +36,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole") as 'admin' | 'faculty' | null;
-    const uid = searchParams.get('uid');
-
-    if (!role || !uid) {
-        router.replace('/u/portal/auth?admin');
-        return;
-    }
+    // Default to admin for development, bypassing login
+    const role: 'admin' | 'faculty' = 'admin';
+    const uid = 'admin123';
     
     if (role === 'admin') {
       setUser(MOCK_ADMIN);
-      if (pathname === '/u/portal/dashboard' && !pathname.includes('/admin')) {
+      if (pathname === '/u/portal/dashboard' || !pathname.includes('/admin')) {
         router.replace(`/u/portal/dashboard/admin?uid=${uid}`);
       }
     } else {
+      // This block is now effectively unused but kept for future logic
       setUser(MOCK_USER);
        if (pathname.includes('/admin')) {
-        router.replace(`/u/portal/dashboard?uid=${uid}`);
+        router.replace(`/u/portal/dashboard?uid=faculty456`);
       }
     }
   }, [router, pathname, searchParams]);
@@ -60,7 +57,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (!user) {
     return (
         <div className="flex min-h-screen">
-            <Skeleton className="hidden md:block w-64 h-full" />
+            <div className="hidden md:block w-64 h-full bg-white dark:bg-card border-r">
+                <div className="p-4 space-y-4">
+                    <Skeleton className="h-8 w-32" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                </div>
+            </div>
             <div className="flex-1 p-4 space-y-4">
                 <Skeleton className="h-16" />
                 <Skeleton className="h-96" />
@@ -74,7 +78,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <SidebarNav role={user.role} />
         <SidebarInset>
             <Header user={user} />
-            <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+            <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-background">
                 {children}
             </main>
         </SidebarInset>

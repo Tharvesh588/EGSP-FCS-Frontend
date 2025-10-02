@@ -22,36 +22,22 @@ type SidebarNavProps = {
 };
 
 const getFacultyNav = (uid: string) => [
-  { name: "Dashboard", href: `/u/portal/dashboard?uid=${uid}` },
-  { name: "Good Works", href: `/u/portal/dashboard/good-works?uid=${uid}`},
-  { name: "Submit", href: `/u/portal/dashboard/good-works/submit?uid=${uid}`},
-  { name: "Appeals", href: `/u/portal/dashboard/appeals?uid=${uid}`},
-  { name: "Notifications", href: `/u/portal/dashboard/notifications?uid=${uid}`},
-  { name: "Settings", href: `/u/portal/dashboard/settings?uid=${uid}`},
+  { name: "Dashboard", href: `/u/portal/dashboard?uid=${uid}`, icon: LayoutDashboard },
+  { name: "Good Works", href: `/u/portal/dashboard/good-works?uid=${uid}`, icon: Award },
+  { name: "Submit", href: `/u/portal/dashboard/good-works/submit?uid=${uid}`, icon: Files },
+  { name: "Appeals", href: `/u/portal/dashboard/appeals?uid=${uid}`, icon: ShieldCheck },
+  { name: "Notifications", href: `/u/portal/dashboard/notifications?uid=${uid}`, icon: Bell },
+  { name: "Settings", href: `/u/portal/dashboard/settings?uid=${uid}`, icon: Settings },
 ];
 
 const getAdminNav = (uid: string) => [
-  { name: "Dashboard", href: `/u/portal/dashboard/admin?uid=${uid}` },
-  { name: "Faculty Accounts", href: `/u/portal/dashboard/admin/users?uid=${uid}` },
-  { name: "Submissions", href: `/u/portal/dashboard/admin/review?uid=${uid}` },
-  { name: "Negative Remarks", href: `/u/portal/dashboard/admin/remarks?uid=${uid}` },
-  { name: "Appeals", href: `/u/portal/dashboard/admin/appeals?uid=${uid}` },
-  { name: "Reports", href: `/u/portal/dashboard/admin/reports?uid=${uid}` },
+  { name: "Dashboard", href: `/u/portal/dashboard/admin?uid=${uid}`, icon: LayoutDashboard },
+  { name: "Faculty Accounts", href: `/u/portal/dashboard/admin/users?uid=${uid}`, icon: Users },
+  { name: "Submissions", href: `/u/portal/dashboard/admin/review?uid=${uid}`, icon: FolderKanban },
+  { name: "Negative Remarks", href: `/u/portal/dashboard/admin/remarks?uid=${uid}`, icon: MessageSquareWarning },
+  { name: "Appeals", href: `/u/portal/dashboard/admin/appeals?uid=${uid}`, icon: ShieldAlert },
+  { name: "Reports", href: `/u/portal/dashboard/admin/reports?uid=${uid}`, icon: BarChart3 },
 ];
-
-const iconMap: { [key: string]: React.ElementType } = {
-    Dashboard: LayoutDashboard,
-    "Good Works": Award,
-    Submit: Files,
-    Appeals: ShieldCheck,
-    Notifications: Bell,
-    Settings: Settings,
-    "Faculty Accounts": Users,
-    Submissions: FolderKanban,
-    "Negative Remarks": MessageSquareWarning,
-    Reports: BarChart3,
-};
-
 
 export function SidebarNav({ role }: SidebarNavProps) {
   const pathname = usePathname();
@@ -65,7 +51,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
   }
 
   return (
-    <Sidebar>
+    <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader>
         <Link href={role === 'admin' ? `/u/portal/dashboard/admin?uid=${uid}` : `/u/portal/dashboard?uid=${uid}`} className="flex items-center gap-2">
             {role === 'admin' ? <LogoAdmin className="h-8 w-8 text-sidebar-primary" /> : <Logo className="h-8 w-8 text-sidebar-primary" />}
@@ -77,7 +63,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
       <SidebarContent className="p-2">
         <SidebarMenu>
           {navItems.map((item) => {
-            const Icon = iconMap[item.name];
+            const Icon = item.icon;
             return (
                 <SidebarMenuItem key={item.name}>
                 <Link href={item.href} legacyBehavior passHref>
@@ -87,7 +73,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
                     className="justify-start"
                     >
                     {Icon && <Icon className="h-5 w-5" />}
-                    <span>{item.name}</span>
+                    <span className="group-data-[collapsible=icon]:hidden">{item.name}</span>
                     </SidebarMenuButton>
                 </Link>
                 </SidebarMenuItem>
@@ -102,7 +88,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
                 <Link href={getLoginUrl()} legacyBehavior passHref>
                     <SidebarMenuButton tooltip="Logout" className="justify-start" onClick={() => localStorage.removeItem('userRole')}>
                         <LogOut className="h-5 w-5" />
-                        <span>Logout</span>
+                        <span className="group-data-[collapsible=icon]:hidden">Logout</span>
                     </SidebarMenuButton>
                 </Link>
             </SidebarMenuItem>

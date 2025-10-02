@@ -17,13 +17,9 @@ function getTitleFromPathname(pathname: string): string {
     const parts = pathname.split('/').filter(Boolean);
     const lastPart = parts[parts.length - 1];
 
-    if (!lastPart || lastPart === 'dashboard') {
-        return 'Dashboard';
-    }
-    
-    // Handle special case for admin dashboard
-    if (lastPart === 'admin' && parts.includes('dashboard')) {
-        return 'Super Admin Dashboard';
+    if (!lastPart || lastPart === 'dashboard' || lastPart === 'admin' || lastPart === 'faculty') {
+        const rolePart = parts.find(p => p === 'admin' || p === 'faculty');
+        return rolePart ? `${rolePart.charAt(0).toUpperCase() + rolePart.slice(1)} Dashboard` : 'Dashboard';
     }
     
     return lastPart
@@ -43,13 +39,13 @@ export function Header({ user }: { user: User }) {
 
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+    <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
       <SidebarTrigger className="md:hidden" />
       <div className="flex w-full items-center justify-between">
         <h1 className="text-xl font-bold md:text-2xl">{title}</h1>
         <div className="flex items-center gap-4">
             <Link href={notificationsHref}>
-                <Button variant="ghost" size="icon" className="rounded-full relative">
+                <Button variant="ghost" size="icon" className="rounded-full relative text-muted-foreground hover:text-foreground">
                     <span className="material-symbols-outlined">notifications</span>
                     <span className="absolute -top-1 -right-1 flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
