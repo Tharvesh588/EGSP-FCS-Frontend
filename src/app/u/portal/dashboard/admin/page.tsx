@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const overviewData = [
     { title: "Pending Items", value: "12" },
@@ -43,7 +44,19 @@ const engagementData = [
 export default function AdminDashboard() {
   return (
     <div className="space-y-8">
-      <h2 className="text-3xl font-bold text-foreground">Super Admin Dashboard</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-3xl font-bold text-foreground">Super Admin Dashboard</h2>
+        <Select defaultValue="2023-2024">
+          <SelectTrigger className="w-full sm:w-auto">
+            <SelectValue placeholder="Select Academic Year" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="2023-2024">Academic Year 2023-2024</SelectItem>
+            <SelectItem value="2022-2023">Academic Year 2022-2023</SelectItem>
+            <SelectItem value="2021-2022">Academic Year 2021-2022</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       
       <div>
         <h3 className="text-xl font-bold text-foreground mb-4">Overview</h3>
