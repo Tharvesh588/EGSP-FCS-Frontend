@@ -31,16 +31,6 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-card rounded-xl shadow-lg border border-border">
           <div className="text-center">
-              <div className="flex justify-center mb-4">
-                  <Image
-                    src="https://egspgroup.in/_next/image?url=%2Fassets%2Fegspgoi___logo.webp&w=256&q=75"
-                    alt="EGS Pillay College Logo"
-                    width={150}
-                    height={50}
-                    className="object-contain mix-blend-multiply dark:mix-blend-normal"
-                  />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">Credit Hub</h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 Sign in as {isLoginAsAdmin ? 'an Admin' : 'a Faculty Member'}
               </p>
