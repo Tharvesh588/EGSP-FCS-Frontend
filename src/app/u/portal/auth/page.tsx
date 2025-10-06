@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Logo } from "@/components/icons";
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,11 +32,15 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-card rounded-xl shadow-lg border border-border">
           <div className="text-center">
               <div className="flex justify-center mb-4">
-                  <div className="p-3 bg-primary rounded-full">
-                      <Logo className="w-8 h-8 text-white" />
-                  </div>
+                  <Image
+                    src="https://egspgroup.in/_next/image?url=%2Fassets%2Fegspgoi___logo.webp&w=256&q=75"
+                    alt="EGS Pillay College Logo"
+                    width={150}
+                    height={50}
+                    className="object-contain"
+                  />
               </div>
-              <h1 className="text-2xl font-bold text-foreground">EGS Pillay Credit Hub</h1>
+              <h1 className="text-2xl font-bold text-foreground">Credit Hub</h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 Sign in as {isLoginAsAdmin ? 'an Admin' : 'a Faculty Member'}
               </p>
