@@ -33,6 +33,12 @@ const nextConfig: NextConfig = {
         hostname: 'egspgroup.in',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ibb.co',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

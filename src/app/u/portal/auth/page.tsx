@@ -30,6 +30,15 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-card rounded-xl shadow-lg border border-border">
+        <div className="flex justify-center mb-4">
+            <Image
+                src="https://i.ibb.co/DPNPDyNj/Screenshot-2025-10-06-114438.png"
+                alt="College Logo"
+                width={100}
+                height={100}
+                className="mix-blend-multiply dark:mix-blend-normal"
+            />
+        </div>
           <div className="text-center">
               <p className="mt-2 text-sm text-muted-foreground">
                 Sign in as {isLoginAsAdmin ? 'an Admin' : 'a Faculty Member'}
