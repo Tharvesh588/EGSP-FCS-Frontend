@@ -63,6 +63,9 @@ export function UserNav({ user }: { user: User }) {
                 Settings
             </DropdownMenuItem>
           </Link>
+           <DropdownMenuItem>
+                Help & Feedback
+            </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <Link href={loginHref} onClick={() => localStorage.removeItem('userRole')}>
