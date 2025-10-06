@@ -37,7 +37,7 @@ export default function LoginPage() {
                     alt="EGS Pillay College Logo"
                     width={150}
                     height={50}
-                    className="object-contain mix-blend-multiply"
+                    className="object-contain mix-blend-multiply dark:mix-blend-normal"
                   />
               </div>
               <h1 className="text-2xl font-bold text-foreground">Credit Hub</h1>
