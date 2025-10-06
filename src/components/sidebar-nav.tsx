@@ -54,9 +54,8 @@ export function SidebarNav({ role }: SidebarNavProps) {
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader>
         <Link href={role === 'admin' ? `/u/portal/dashboard/admin?uid=${uid}` : `/u/portal/dashboard?uid=${uid}`} className="flex items-center gap-2">
-            {role === 'admin' ? <LogoAdmin className="h-8 w-8 text-sidebar-primary" /> : <Logo className="h-8 w-8 text-sidebar-primary" />}
           <span className="text-lg font-semibold font-headline text-sidebar-foreground">
-            Credit Hub
+            EGSPGOI
           </span>
         </Link>
       </SidebarHeader>
