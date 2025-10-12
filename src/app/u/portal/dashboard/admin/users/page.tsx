@@ -202,16 +202,6 @@ export default function FacultyAccountsPage() {
             />
           </div>
           <div className="flex gap-4">
-            <Select>
-              <SelectTrigger className="w-full md:w-auto" disabled>
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="cs">Computer Science</SelectItem>
-                <SelectItem value="ee">Electrical Engineering</SelectItem>
-              </SelectContent>
-            </Select>
             <Select onValueChange={setStatusFilter} value={statusFilter}>
               <SelectTrigger className="w-full md:w-auto">
                 <SelectValue placeholder="Status" />
