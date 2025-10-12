@@ -59,7 +59,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          avatar: `https://i.pravatar.cc/150?u=${userData._id}` // Placeholder avatar
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`
         };
         
         setUser(userPayload);
@@ -79,6 +79,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error(error);
         // Handle error, maybe redirect to login
+        localStorage.removeItem("token");
+        localStorage.removeItem("userRole");
         router.push("/u/portal/auth?faculty_login");
       } finally {
         setLoading(false);

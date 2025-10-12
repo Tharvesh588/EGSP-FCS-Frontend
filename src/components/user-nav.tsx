@@ -30,6 +30,8 @@ export function UserNav({ user }: { user: User }) {
   const loginHref = user.role === 'admin'
     ? '/u/portal/auth?admin'
     : '/u/portal/auth?faculty_login';
+    
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
 
 
   return (
@@ -37,7 +39,7 @@ export function UserNav({ user }: { user: User }) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={user.avatar} alt={user.name} />
+            <AvatarImage src={avatarUrl} alt={user.name} />
             <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
           </Avatar>
         </Button>
@@ -68,7 +70,10 @@ export function UserNav({ user }: { user: User }) {
             </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <Link href={loginHref} onClick={() => localStorage.removeItem('userRole')}>
+        <Link href={loginHref} onClick={() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+        }}>
             <DropdownMenuItem>
             Log out
             </DropdownMenuItem>
