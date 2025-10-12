@@ -19,13 +19,8 @@ export default function LoginPage() {
   const [timestamp, setTimestamp] = useState('');
 
   useEffect(() => {
-    if (searchParams.has("admin")) {
-      setEmail("admin@egspec.org");
-      setPassword("password");
-    } else if (searchParams.has("faculty_login")) {
-      setEmail("faculty@egspec.org");
-      setPassword("password");
-    }
+    // This effect can be used for other purposes if needed,
+    // but the auto-filling logic is removed.
   }, [searchParams]);
 
   useEffect(() => {
