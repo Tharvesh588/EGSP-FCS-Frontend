@@ -14,15 +14,17 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("password");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState('');
 
   useEffect(() => {
     if (searchParams.has("admin")) {
       setEmail("admin@egspec.org");
+      setPassword("password");
     } else if (searchParams.has("faculty_login")) {
       setEmail("faculty@egspec.org");
+      setPassword("password");
     }
   }, [searchParams]);
 
@@ -45,18 +47,20 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.message || "Login failed");
       }
       
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userRole", data.user.role);
+      const { token, role, id } = responseData.data;
 
-      const redirectUrl = data.user.role === 'admin' 
-        ? `/u/portal/dashboard/admin?uid=${data.user.id}`
-        : `/u/portal/dashboard?uid=${data.user.id}`;
+      localStorage.setItem("token", token);
+      localStorage.setItem("userRole", role);
+
+      const redirectUrl = role === 'admin' 
+        ? `/u/portal/dashboard/admin?uid=${id}`
+        : `/u/portal/dashboard?uid=${id}`;
       
       router.push(redirectUrl);
 
@@ -81,7 +85,7 @@ export default function LoginPage() {
                   alt="College Logo"
                   width={120}
                   height={120}
-                  className="dark:invert bg-white"
+                  className="bg-white"
               />
           </div>
             <form className="mt-8 space-y-6" onSubmit={handleLogin}>

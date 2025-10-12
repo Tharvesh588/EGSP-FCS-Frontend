@@ -46,17 +46,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch user data");
+        const responseData = await response.json();
+        
+        if (!response.ok || !responseData.success) {
+          throw new Error(responseData.message || "Failed to fetch user data");
         }
 
-        const userData = await response.json();
+        const userData = responseData.data;
+
         const userPayload: User = {
-          id: userData.id,
+          id: userData._id,
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          avatar: `https://i.pravatar.cc/150?u=${userData.id}` // Placeholder avatar
+          avatar: `https://i.pravatar.cc/150?u=${userData._id}` // Placeholder avatar
         };
         
         setUser(userPayload);
