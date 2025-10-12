@@ -1,6 +1,7 @@
 // This file is the new location for src/app/(app)/admin/users/page.tsx
 "use client"
 
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -18,6 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast";
+import { colleges } from "@/lib/colleges";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const facultyAccounts = [
   {
@@ -58,6 +63,72 @@ const facultyAccounts = [
 ]
 
 export default function FacultyAccountsPage() {
+  const { toast } = useToast();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [college, setCollege] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const adminToken = localStorage.getItem("token");
+    if (!adminToken) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Admin token not found. Please log in again.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          college,
+          role: "faculty",
+        }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.message || "Failed to create account.");
+      }
+
+      toast({
+        title: "Account Created",
+        description: `Faculty account for ${name} has been successfully created.`,
+      });
+
+      // Reset form
+      setName("");
+      setEmail("");
+      setPassword("");
+      setCollege("");
+      // Optionally, refresh the list of users
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Creation Failed",
+        description: error.message || "An unexpected error occurred.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex-1 p-8">
       <header className="mb-8">
@@ -149,48 +220,74 @@ export default function FacultyAccountsPage() {
           Create New Account
         </h3>
         <div className="bg-card p-6 rounded-xl shadow-sm max-w-2xl">
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleCreateAccount}>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label
+                    className="block text-sm font-medium text-foreground mb-2"
+                    htmlFor="name"
+                  >
+                    Name
+                  </label>
+                  <Input
+                    id="name"
+                    placeholder="Enter faculty name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium text-foreground mb-2"
+                    htmlFor="email"
+                  >
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    placeholder="Enter faculty email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+            </div>
             <div>
               <label
                 className="block text-sm font-medium text-foreground mb-2"
-                htmlFor="name"
+                htmlFor="password"
               >
-                Name
+                Password
               </label>
               <Input
-                id="name"
-                placeholder="Enter faculty name"
-                type="text"
+                id="password"
+                placeholder="Enter a temporary password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
             <div>
               <label
                 className="block text-sm font-medium text-foreground mb-2"
-                htmlFor="email"
+                htmlFor="college"
               >
-                Email
+                College
               </label>
-              <Input
-                id="email"
-                placeholder="Enter faculty email"
-                type="email"
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium text-foreground mb-2"
-                htmlFor="department"
-              >
-                Department
-              </label>
-              <Select>
-                <SelectTrigger id="department">
-                  <SelectValue placeholder="Select department" />
+              <Select onValueChange={setCollege} value={college}>
+                <SelectTrigger id="college">
+                  <SelectValue placeholder="Select college" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cs">Computer Science</SelectItem>
-                  <SelectItem value="ee">Electrical Engineering</SelectItem>
-                  <SelectItem value="me">Mechanical Engineering</SelectItem>
+                  {Object.keys(colleges).map((collegeName) => (
+                    <SelectItem key={collegeName} value={collegeName}>
+                      {collegeName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -198,8 +295,9 @@ export default function FacultyAccountsPage() {
               <Button
                 type="submit"
                 className="w-full sm:w-auto"
+                disabled={isLoading}
               >
-                Create Account
+                {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
             </div>
           </form>
