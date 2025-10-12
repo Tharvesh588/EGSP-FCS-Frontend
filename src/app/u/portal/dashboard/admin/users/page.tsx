@@ -1,7 +1,7 @@
 // This file is the new location for src/app/(app)/admin/users/page.tsx
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -18,6 +18,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast";
 import { colleges } from "@/lib/colleges";
@@ -62,13 +64,29 @@ const facultyAccounts = [
   },
 ]
 
+type Departments = {
+    [key: string]: string[];
+};
+
+
 export default function FacultyAccountsPage() {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [college, setCollege] = useState("");
+  const [department, setDepartment] = useState("");
+  const [departments, setDepartments] = useState<Departments>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (college && colleges[college as keyof typeof colleges]) {
+      setDepartments(colleges[college as keyof typeof colleges]);
+      setDepartment(""); // Reset department when college changes
+    } else {
+      setDepartments({});
+    }
+  }, [college]);
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +115,7 @@ export default function FacultyAccountsPage() {
           email,
           password,
           college,
+          department, // API might not support this yet, but we include it.
           role: "faculty",
         }),
       });
@@ -117,6 +136,7 @@ export default function FacultyAccountsPage() {
       setEmail("");
       setPassword("");
       setCollege("");
+      setDepartment("");
       // Optionally, refresh the list of users
     } catch (error: any) {
       toast({
@@ -271,25 +291,50 @@ export default function FacultyAccountsPage() {
                 required
               />
             </div>
-            <div>
-              <label
-                className="block text-sm font-medium text-foreground mb-2"
-                htmlFor="college"
-              >
-                College
-              </label>
-              <Select onValueChange={setCollege} value={college}>
-                <SelectTrigger id="college">
-                  <SelectValue placeholder="Select college" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(colleges).map((collegeName) => (
-                    <SelectItem key={collegeName} value={collegeName}>
-                      {collegeName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label
+                  className="block text-sm font-medium text-foreground mb-2"
+                  htmlFor="college"
+                >
+                  College
+                </label>
+                <Select onValueChange={setCollege} value={college}>
+                  <SelectTrigger id="college">
+                    <SelectValue placeholder="Select college" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(colleges).map((collegeName) => (
+                      <SelectItem key={collegeName} value={collegeName}>
+                        {collegeName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium text-foreground mb-2"
+                  htmlFor="department"
+                >
+                  Department
+                </label>
+                <Select onValueChange={setDepartment} value={department} disabled={!college}>
+                  <SelectTrigger id="department">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(departments).map(([group, courses]) => (
+                        <SelectGroup key={group}>
+                            <SelectLabel>{group}</SelectLabel>
+                            {courses.map(course => (
+                                <SelectItem key={course} value={course}>{course}</SelectItem>
+                            ))}
+                        </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Button
@@ -306,3 +351,5 @@ export default function FacultyAccountsPage() {
     </div>
   )
 }
+
+    
