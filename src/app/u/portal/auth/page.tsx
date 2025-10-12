@@ -48,9 +48,9 @@ export default function LoginPage() {
               <Image
                   src="https://egspgroup.in/_next/image?url=%2Fassets%2Fegspgoi___logo.webp&w=256&q=75"
                   alt="College Logo"
-                  width={100}
-                  height={100}
-                  className="dark:brightness-0 dark:invert"
+                  width={120}
+                  height={120}
+                  className="dark:invert"
               />
           </div>
             <form className="mt-8 space-y-6" onSubmit={handleLogin}>
