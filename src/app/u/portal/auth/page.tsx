@@ -46,18 +46,13 @@ export default function LoginPage() {
         <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-card rounded-xl shadow-lg border border-border">
           <div className="flex justify-center mb-4">
               <Image
-                  src="https://i.ibb.co/DPNPDyNj/Screenshot-2025-10-06-114438.png"
+                  src="https://egspgroup.in/_next/image?url=%2Fassets%2Fegspgoi___logo.webp&w=256&q=75"
                   alt="College Logo"
                   width={100}
                   height={100}
                   className="dark:brightness-0 dark:invert"
               />
           </div>
-            <div className="text-center">
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Sign in as {isLoginAsAdmin ? 'an Admin' : 'a Faculty Member'}
-                </p>
-            </div>
             <form className="mt-8 space-y-6" onSubmit={handleLogin}>
                 <div className="space-y-4">
                     <div>
@@ -94,10 +89,7 @@ export default function LoginPage() {
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center justify-between">
-                    <p className="text-center text-xs text-muted-foreground">
-                        <code className="font-semibold">{isLoginAsAdmin ? 'admin@egspec.org' : 'faculty@egspec.org'}</code>
-                    </p>
+                <div className="flex items-center justify-end">
                     <div className="text-sm">
                         <a href="#" className="font-medium text-primary hover:text-primary/80">Forgot your password?</a>
                     </div>
