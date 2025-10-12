@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -6,21 +5,24 @@ import { useState, useEffect } from "react";
 import Image from 'next/image';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { useToast } from "@/hooks/use-toast";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
-  const [isLoginAsAdmin, setIsLoginAsAdmin] = useState(false);
+  const [password, setPassword] = useState("password");
+  const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState('');
 
   useEffect(() => {
     if (searchParams.has("admin")) {
       setEmail("admin@egspec.org");
-      setIsLoginAsAdmin(true);
     } else if (searchParams.has("faculty_login")) {
       setEmail("faculty@egspec.org");
-      setIsLoginAsAdmin(false);
     }
   }, [searchParams]);
 
@@ -33,17 +35,46 @@ export default function LoginPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const role = email.startsWith("admin") ? "admin" : "faculty";
-    localStorage.setItem("userRole", role);
-    router.push(`/u/portal/dashboard?uid=${role === 'admin' ? 'admin123' : 'faculty456'}`);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+      
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userRole", data.user.role);
+
+      const redirectUrl = data.user.role === 'admin' 
+        ? `/u/portal/dashboard/admin?uid=${data.user.id}`
+        : `/u/portal/dashboard?uid=${data.user.id}`;
+      
+      router.push(redirectUrl);
+
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message || "An unexpected error occurred.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <main className="flex-grow flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-card rounded-xl shadow-lg border border-border">
+        <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-xl shadow-lg border border-border">
           <div className="flex justify-center mb-4">
               <Image
                   src="https://egspgroup.in/_next/image?url=%2Fassets%2Fegspgoi___logo.webp&w=256&q=75"
@@ -84,7 +115,8 @@ export default function LoginPage() {
                                 required
                                 className="w-full pl-10 pr-3 py-3 border border-border bg-background rounded-lg placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                                 placeholder="Password"
-                                defaultValue="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
                     </div>
@@ -95,8 +127,8 @@ export default function LoginPage() {
                     </div>
                 </div>
                 <div>
-                    <button type="submit" className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-background transition-colors">
-                        Login
+                    <button type="submit" disabled={isLoading} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-background transition-colors disabled:opacity-50">
+                        {isLoading ? 'Logging in...' : 'Login'}
                     </button>
                 </div>
             </form>

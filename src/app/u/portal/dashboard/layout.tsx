@@ -5,24 +5,12 @@ import { Header } from "@/components/header";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { useState, useEffect, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
-const MOCK_USER = {
-  name: "Dr. Eleanor Vance",
-  email: "eleanor.v@egspec.org",
-  role: "faculty" as const,
-  avatar: PlaceHolderImages.find(img => img.id === 'faculty-avatar')?.imageUrl ?? "https://picsum.photos/seed/faculty/40/40",
-};
-
-const MOCK_ADMIN = {
-    name: "Admin User",
-    email: "admin@egspec.org",
-    role: "admin" as const,
-    avatar: PlaceHolderImages.find(img => img.id === 'admin-avatar')?.imageUrl ?? "https://picsum.photos/seed/admin/40/40",
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 type User = {
+  id: string;
   name: string;
   email: string;
   role: 'faculty' | 'admin';
@@ -31,30 +19,73 @@ type User = {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Default to admin for development, bypassing login
-    const role: 'admin' | 'faculty' = 'admin';
-    const uid = 'admin123';
-    
-    if (role === 'admin') {
-      setUser(MOCK_ADMIN);
-      if (pathname === '/u/portal/dashboard' || !pathname.includes('/admin')) {
-        router.replace(`/u/portal/dashboard/admin?uid=${uid}`);
-      }
-    } else {
-      // This block is now effectively unused but kept for future logic
-      setUser(MOCK_USER);
-       if (pathname.includes('/admin')) {
-        router.replace(`/u/portal/dashboard?uid=faculty456`);
-      }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/u/portal/auth?faculty_login");
+      return;
     }
+
+    const fetchUser = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("userRole");
+          router.push("/u/portal/auth?faculty_login");
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+
+        const userData = await response.json();
+        const userPayload: User = {
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          avatar: `https://i.pravatar.cc/150?u=${userData.id}` // Placeholder avatar
+        };
+        
+        setUser(userPayload);
+        
+        const uid = searchParams.get('uid');
+        const expectedPathPrefix = userPayload.role === 'admin' ? '/u/portal/dashboard/admin' : '/u/portal/dashboard';
+        const expectedUrl = userPayload.role === 'admin' ? `/u/portal/dashboard/admin?uid=${userPayload.id}`: `/u/portal/dashboard?uid=${userPayload.id}`;
+
+        if (userPayload.id !== uid) {
+          router.replace(expectedUrl);
+        } else if (userPayload.role === 'admin' && !pathname.startsWith(expectedPathPrefix)) {
+          router.replace(expectedUrl);
+        } else if (userPayload.role === 'faculty' && pathname.includes('/admin')) {
+           router.replace(`/u/portal/dashboard?uid=${userPayload.id}`);
+        }
+
+      } catch (error) {
+        console.error(error);
+        // Handle error, maybe redirect to login
+        router.push("/u/portal/auth?faculty_login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
   }, [router, pathname, searchParams]);
 
-  if (!user) {
+  if (loading || !user) {
     return (
         <div className="flex min-h-screen">
             <div className="hidden md:block w-64 h-full bg-white dark:bg-card border-r">
