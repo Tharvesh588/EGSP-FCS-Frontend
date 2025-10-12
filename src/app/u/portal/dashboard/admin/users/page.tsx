@@ -31,6 +31,7 @@ type FacultyAccount = {
   name: string;
   email: string;
   college: string;
+  department?: string;
   currentCredit: number;
   isActive: boolean;
 };
@@ -54,6 +55,9 @@ export default function FacultyAccountsPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [collegeFilter, setCollegeFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [filteredDepartments, setFilteredDepartments] = useState<Departments>({});
 
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
@@ -102,6 +106,15 @@ export default function FacultyAccountsPage() {
     }
   }, [college]);
 
+    useEffect(() => {
+    if (collegeFilter !== 'all' && colleges[collegeFilter as keyof typeof colleges]) {
+      setFilteredDepartments(colleges[collegeFilter as keyof typeof colleges]);
+      setDepartmentFilter("all"); 
+    } else {
+      setFilteredDepartments({});
+    }
+  }, [collegeFilter]);
+
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -129,7 +142,7 @@ export default function FacultyAccountsPage() {
           email,
           password,
           college,
-          department, // API might not support this yet, but we include it.
+          department,
           role: "faculty",
         }),
       });
@@ -173,9 +186,13 @@ export default function FacultyAccountsPage() {
         (statusFilter === 'active' && account.isActive) ||
         (statusFilter === 'inactive' && !account.isActive);
 
-      return matchesSearch && matchesStatus;
+      const matchesCollege = collegeFilter === 'all' || account.college === collegeFilter;
+      
+      const matchesDepartment = departmentFilter === 'all' || account.department === departmentFilter;
+
+      return matchesSearch && matchesStatus && matchesCollege && matchesDepartment;
     });
-  }, [facultyAccounts, searchTerm, statusFilter]);
+  }, [facultyAccounts, searchTerm, statusFilter, collegeFilter, departmentFilter]);
 
   return (
     <div className="flex-1 p-8">
@@ -188,8 +205,8 @@ export default function FacultyAccountsPage() {
         </p>
       </header>
       <div className="bg-card p-6 rounded-xl shadow-sm">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-grow">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="relative lg:col-span-1">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               search
             </span>
@@ -201,9 +218,35 @@ export default function FacultyAccountsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex gap-4">
+            <Select onValueChange={setCollegeFilter} value={collegeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="College" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Colleges</SelectItem>
+                {Object.keys(colleges).map((col) => (
+                  <SelectItem key={col} value={col}>{col}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select onValueChange={setDepartmentFilter} value={departmentFilter} disabled={collegeFilter === 'all'}>
+              <SelectTrigger>
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {Object.entries(filteredDepartments).map(([group, courses]) => (
+                  <SelectGroup key={group}>
+                    <SelectLabel>{group}</SelectLabel>
+                    {courses.map(course => (
+                        <SelectItem key={course} value={course}>{course}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
             <Select onValueChange={setStatusFilter} value={statusFilter}>
-              <SelectTrigger className="w-full md:w-auto">
+              <SelectTrigger>
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -212,7 +255,6 @@ export default function FacultyAccountsPage() {
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
-          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
