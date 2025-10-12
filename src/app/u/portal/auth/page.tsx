@@ -50,7 +50,7 @@ export default function LoginPage() {
                   alt="College Logo"
                   width={120}
                   height={120}
-                  className="dark:invert"
+                  className="dark:invert bg-white"
               />
           </div>
             <form className="mt-8 space-y-6" onSubmit={handleLogin}>
