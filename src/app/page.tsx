@@ -1,6 +1,54 @@
-import { redirect } from 'next/navigation';
+"use client";
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
+import Link from 'next/link';
 
 export default function Home() {
-  // Redirect to the new admin login as the default entry point.
-  redirect('/u/portal/auth?admin');
+  const router = useRouter();
+  const [timestamp, setTimestamp] = useState('');
+
+  useEffect(() => {
+    // Set initial timestamp and update every second
+    const updateTimestamp = () => {
+      setTimestamp(format(new Date(), 'yyyy-MM-dd HH:mm:ss'));
+    };
+    updateTimestamp();
+    const timer = setInterval(updateTimestamp, 1000);
+
+    // Redirect after a short delay
+    const redirectTimer = setTimeout(() => {
+      router.push('/u/portal/auth?faculty_login');
+    }, 2000); // 2-second delay
+
+    // Cleanup timers on component unmount
+    return () => {
+      clearInterval(timer);
+      clearTimeout(redirectTimer);
+    };
+  }, [router]);
+
+  return (
+    <div className="flex flex-col min-h-screen bg-background">
+      <main className="flex-grow flex flex-col items-center justify-center text-center p-4">
+        <div className="space-y-4">
+            <div className="flex justify-center items-center">
+                 <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+            </div>
+            <h1 className="text-2xl font-semibold text-foreground">Loading CreditWise</h1>
+            <p className="text-muted-foreground">Please wait while we prepare the application for you...</p>
+        </div>
+      </main>
+      <footer className="w-full bg-background border-t border-border p-4">
+        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground gap-2">
+            <span>App Version: 1.0.0</span>
+            <span suppressHydrationWarning>Session Time: {timestamp || 'Loading...'}</span>
+            <Link href="/u/portal/auth?admin" className="text-primary hover:underline font-medium">
+                Admin Login
+            </Link>
+        </div>
+      </footer>
+    </div>
+  );
 }
