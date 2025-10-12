@@ -1,7 +1,7 @@
 // This file is the new location for src/app/(app)/admin/users/page.tsx
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -26,43 +26,14 @@ import { colleges } from "@/lib/colleges";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-const facultyAccounts = [
-  {
-    name: "Dr. Anjali Sharma",
-    email: "anjali.sharma@example.com",
-    department: "Computer Science",
-    credits: 1250,
-    status: "Active",
-  },
-  {
-    name: "Prof. Rajesh Verma",
-    email: "rajesh.verma@example.com",
-    department: "Electrical Engineering",
-    credits: 980,
-    status: "Active",
-  },
-  {
-    name: "Ms. Priya Kapoor",
-    email: "priya.kapoor@example.com",
-    department: "Mechanical Engineering",
-    credits: 1100,
-    status: "Active",
-  },
-  {
-    name: "Mr. Vikram Singh",
-    email: "vikram.singh@example.com",
-    department: "Civil Engineering",
-    credits: 850,
-    status: "Inactive",
-  },
-  {
-    name: "Dr. Neha Gupta",
-    email: "neha.gupta@example.com",
-    department: "Electronics and Communication",
-    credits: 1300,
-    status: "Active",
-  },
-]
+type FacultyAccount = {
+  _id: string;
+  name: string;
+  email: string;
+  college: string;
+  currentCredit: number;
+  isActive: boolean;
+};
 
 type Departments = {
     [key: string]: string[];
@@ -78,6 +49,49 @@ export default function FacultyAccountsPage() {
   const [department, setDepartment] = useState("");
   const [departments, setDepartments] = useState<Departments>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [facultyAccounts, setFacultyAccounts] = useState<FacultyAccount[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const fetchUsers = async () => {
+    setIsLoadingUsers(true);
+    const adminToken = localStorage.getItem("token");
+    if (!adminToken) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Admin token not found.",
+      });
+      setIsLoadingUsers(false);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
+        headers: {
+          "Authorization": `Bearer ${adminToken}`,
+        },
+      });
+      const responseData = await response.json();
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.message || "Failed to fetch users.");
+      }
+      setFacultyAccounts(responseData.items);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Fetch Users",
+        description: error.message,
+      });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   useEffect(() => {
     if (college && colleges[college as keyof typeof colleges]) {
@@ -131,13 +145,13 @@ export default function FacultyAccountsPage() {
         description: `Faculty account for ${name} has been successfully created.`,
       });
 
-      // Reset form
+      // Reset form and refresh user list
       setName("");
       setEmail("");
       setPassword("");
       setCollege("");
       setDepartment("");
-      // Optionally, refresh the list of users
+      fetchUsers();
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -148,6 +162,20 @@ export default function FacultyAccountsPage() {
       setIsLoading(false);
     }
   };
+
+  const filteredAccounts = useMemo(() => {
+    return facultyAccounts.filter(account => {
+      const matchesSearch = searchTerm.trim() === "" ||
+        account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        account.email.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' ||
+        (statusFilter === 'active' && account.isActive) ||
+        (statusFilter === 'inactive' && !account.isActive);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [facultyAccounts, searchTerm, statusFilter]);
 
   return (
     <div className="flex-1 p-8">
@@ -169,11 +197,13 @@ export default function FacultyAccountsPage() {
               className="w-full pl-10 pr-4 py-2.5 bg-background rounded-lg focus:ring-2 focus:ring-primary transition"
               placeholder="Search by name or email"
               type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex gap-4">
             <Select>
-              <SelectTrigger className="w-full md:w-auto">
+              <SelectTrigger className="w-full md:w-auto" disabled>
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
@@ -182,7 +212,7 @@ export default function FacultyAccountsPage() {
                 <SelectItem value="ee">Electrical Engineering</SelectItem>
               </SelectContent>
             </Select>
-            <Select>
+            <Select onValueChange={setStatusFilter} value={statusFilter}>
               <SelectTrigger className="w-full md:w-auto">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -200,37 +230,51 @@ export default function FacultyAccountsPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Department</TableHead>
+                <TableHead>College</TableHead>
                 <TableHead className="text-right">Credits</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {facultyAccounts.map((account, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium text-foreground">
-                    {account.name}
-                  </TableCell>
-                  <TableCell>{account.email}</TableCell>
-                  <TableCell>{account.department}</TableCell>
-                  <TableCell className="text-right">{account.credits}</TableCell>
-                  <TableCell className="text-center">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        account.status === "Active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {account.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button variant="link" className="text-primary hover:underline">Impersonate</Button>
+              {isLoadingUsers ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">
+                    Loading faculty accounts...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : filteredAccounts.length > 0 ? (
+                filteredAccounts.map((account) => (
+                  <TableRow key={account._id}>
+                    <TableCell className="font-medium text-foreground">
+                      {account.name}
+                    </TableCell>
+                    <TableCell>{account.email}</TableCell>
+                    <TableCell>{account.college}</TableCell>
+                    <TableCell className="text-right">{account.currentCredit}</TableCell>
+                    <TableCell className="text-center">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          account.isActive
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {account.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button variant="link" className="text-primary hover:underline">Impersonate</Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                    <TableCell colSpan={6} className="text-center">
+                        No faculty accounts found.
+                    </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
@@ -351,5 +395,3 @@ export default function FacultyAccountsPage() {
     </div>
   )
 }
-
-    
