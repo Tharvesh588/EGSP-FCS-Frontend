@@ -23,13 +23,38 @@ type CreditTitle = {
   points: number;
 };
 
+const getCurrentAcademicYear = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth(); // 0-11
+    const currentYear = today.getFullYear();
+    // Academic year starts in June (index 5)
+    if (currentMonth >= 5) {
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+    }
+    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
+};
+
+const generateYearOptions = () => {
+    const currentYearString = getCurrentAcademicYear();
+    const [startCurrentYear] = currentYearString.split('-').map(Number);
+    
+    const years = [];
+    for (let i = 0; i < 5; i++) {
+        const startYear = startCurrentYear - i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
+    }
+    return years;
+};
+
+
 export default function SubmitAchievementPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [creditTitles, setCreditTitles] = useState<CreditTitle[]>([]);
   const [selectedCreditTitleId, setSelectedCreditTitleId] = useState("");
   const [title, setTitle] = useState("");
-  const [academicYear, setAcademicYear] = useState("");
+  const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [proof, setProof] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fileName, setFileName] = useState("");
@@ -114,7 +139,7 @@ export default function SubmitAchievementPage() {
       // Reset form
       setTitle("");
       setSelectedCreditTitleId("");
-      setAcademicYear("");
+      setAcademicYear(getCurrentAcademicYear());
       setProof(null);
       setFileName("");
 
@@ -127,17 +152,6 @@ export default function SubmitAchievementPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateYearOptions = () => {
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let i = -2; i < 3; i++) {
-        const startYear = currentYear - i;
-        const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
-    }
-    return years.reverse();
   };
 
   return (
