@@ -25,7 +25,7 @@ type CreditTitle = {
 
 const getCurrentAcademicYear = () => {
     const today = new Date();
-    const currentMonth = today.getMonth(); // 0-11
+    const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
     // Academic year starts in June (index 5)
     if (currentMonth >= 5) {
@@ -244,6 +244,9 @@ export default function SubmitAchievementPage() {
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
                 PDF, DOCX, PNG, JPG up to 10MB
+              </p>
+              <p className="text-xs leading-5 text-muted-foreground/80 mt-1">
+                For multiple files, please combine them into a single .zip archive.
               </p>
                {fileName && <p className="text-sm text-green-600 mt-2">{fileName}</p>}
             </div>
