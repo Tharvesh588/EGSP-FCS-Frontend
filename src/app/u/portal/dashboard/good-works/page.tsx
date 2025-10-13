@@ -41,7 +41,7 @@ const generateYearOptions = () => {
     for (let i = -2; i < 3; i++) {
         const startYear = currentYear + i;
         const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
+        years.push(`${startYear}-${endYear.toString()}`);
     }
     return years.reverse();
 };
@@ -73,9 +73,12 @@ export default function GoodWorksPage() {
       return;
     }
     
+    const yearParts = currentYear.split('-');
+    const formattedYear = `${yearParts[0]}-${yearParts[1].slice(-2)}`;
+
     let url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?page=${currentPage}&limit=${limit}`;
     if (currentYear) {
-      url += `&academicYear=${currentYear}`;
+      url += `&academicYear=${formattedYear}`;
     }
 
     try {
@@ -106,7 +109,10 @@ export default function GoodWorksPage() {
   };
 
   useEffect(() => {
-    fetchGoodWorks(page, academicYear);
+    const uid = searchParams.get('uid');
+    if (uid) {
+        fetchGoodWorks(page, academicYear);
+    }
   }, [page, academicYear, searchParams]);
 
   const filteredWorks = goodWorks.filter(work => {
@@ -185,7 +191,7 @@ export default function GoodWorksPage() {
                     <TableCell className="font-medium text-foreground">{work.title}</TableCell>
                     <TableCell>
                       {work.categories.map(cat => (
-                        <Badge key={cat._id} variant="secondary">{cat.title}</Badge>
+                        <Badge key={`${work._id}-${cat._id}`} variant="secondary">{cat.title}</Badge>
                       ))}
                     </TableCell>
                     <TableCell className="font-medium text-foreground">{work.points}</TableCell>
