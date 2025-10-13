@@ -26,7 +26,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 type GoodWork = {
   _id: string;
-  date: string;
+  createdAt: string;
   title: string;
   description?: string;
   categories: { _id: string; title: string }[];
@@ -39,7 +39,7 @@ const generateYearOptions = () => {
     const currentYear = new Date().getFullYear();
     const years = [];
     for (let i = -2; i < 3; i++) {
-        const startYear = currentYear - i;
+        const startYear = currentYear + i;
         const endYear = startYear + 1;
         years.push(`${startYear}-${endYear.toString().slice(-2)}`);
     }
@@ -58,7 +58,7 @@ export default function GoodWorksPage() {
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
 
-  const fetchGoodWorks = async () => {
+  const fetchGoodWorks = async (currentPage: number, currentYear: string) => {
     setIsLoading(true);
     const token = localStorage.getItem("token");
     const facultyId = searchParams.get('uid');
@@ -73,9 +73,9 @@ export default function GoodWorksPage() {
       return;
     }
     
-    let url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?page=${page}&limit=${limit}`;
-    if (academicYear) {
-      url += `&academicYear=${academicYear}`;
+    let url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?page=${currentPage}&limit=${limit}`;
+    if (currentYear) {
+      url += `&academicYear=${currentYear}`;
     }
 
     try {
@@ -98,14 +98,16 @@ export default function GoodWorksPage() {
         title: "Failed to Fetch Data",
         description: error.message,
       });
+      setGoodWorks([]);
+      setTotal(0);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchGoodWorks();
-  }, [page, academicYear]);
+    fetchGoodWorks(page, academicYear);
+  }, [page, academicYear, searchParams]);
 
   const filteredWorks = goodWorks.filter(work => {
     const matchesSearch = searchTerm.trim() === "" ||
@@ -142,7 +144,7 @@ export default function GoodWorksPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-           <Select onValueChange={setAcademicYear} value={academicYear}>
+           <Select onValueChange={(value) => { setAcademicYear(value); setPage(1); }} value={academicYear}>
                 <SelectTrigger className="w-full sm:w-auto">
                     <SelectValue placeholder="Select Academic Year" />
                 </SelectTrigger>
@@ -231,11 +233,16 @@ export default function GoodWorksPage() {
                 <Button variant="outline" size="icon" className="rounded-r-none h-8 w-8" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                     <span className="material-symbols-outlined h-5 w-5"> chevron_left </span>
                 </Button>
-                {[...Array(totalPages)].map((_, i) => (
-                   <Button key={i} variant={page === i + 1 ? "outline" : "ghost"} size="icon" className="rounded-none h-8 w-8" onClick={() => setPage(i + 1)}>
-                       {i + 1}
-                   </Button>
-                )).slice(Math.max(0, page - 3), page + 2)}
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .slice(Math.max(0, page - 3), page + 2)
+                  .map(p => (
+                    <Button key={p} variant={page === p ? "outline" : "ghost"} size="icon" className="rounded-none h-8 w-8" onClick={() => setPage(p)}>
+                        {p}
+                    </Button>
+                  ))
+                }
+
                 <Button variant="outline" size="icon" className="rounded-l-none h-8 w-8" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
                     <span className="material-symbols-outlined h-5 w-5"> chevron_right </span>
                 </Button>
