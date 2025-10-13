@@ -221,26 +221,17 @@ export default function SubmitAchievementPage() {
         </div>
         <div>
           <Label>Attachments</Label>
-          <div className="mt-2 flex justify-center rounded-xl border-2 border-dashed border-border px-6 pt-10 pb-12">
+          <Label
+              htmlFor="file-upload"
+              className="mt-2 flex justify-center rounded-xl border-2 border-dashed border-border px-6 pt-10 pb-12 cursor-pointer hover:border-primary/50 transition-colors"
+            >
             <div className="text-center">
               <span className="material-symbols-outlined text-5xl text-primary/50">
                 cloud_upload
               </span>
-              <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                <Label
-                  htmlFor="file-upload"
-                  className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary/80"
-                >
-                  <span>Upload a file</span>
-                  <Input
-                    id="file-upload"
-                    name="file-upload"
-                    type="file"
-                    className="sr-only"
-                    onChange={handleFileChange}
-                  />
-                </Label>
-                <p className="pl-1">or drag and drop</p>
+              <div className="mt-4 flex text-sm leading-6 text-muted-foreground justify-center">
+                  <span className="font-semibold text-primary">Upload a file</span>
+                  <p className="pl-1">or drag and drop</p>
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
                 PDF, DOCX, PNG, JPG up to 10MB
@@ -248,9 +239,16 @@ export default function SubmitAchievementPage() {
               <p className="text-xs leading-5 text-muted-foreground/80 mt-1">
                 For multiple files, please combine them into a single .zip archive.
               </p>
-               {fileName && <p className="text-sm text-green-600 mt-2">{fileName}</p>}
+              {fileName && <p className="text-sm text-green-600 mt-2">{fileName}</p>}
             </div>
-          </div>
+            <Input
+              id="file-upload"
+              name="file-upload"
+              type="file"
+              className="sr-only"
+              onChange={handleFileChange}
+            />
+          </Label>
         </div>
         <div className="flex justify-end pt-4">
           <Button type="submit" disabled={isLoading}>
