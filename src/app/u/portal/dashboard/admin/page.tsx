@@ -1,6 +1,7 @@
 // This file is the new location for src/app/(app)/admin/dashboard/page.tsx
 "use client";
 
+import { useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from "recharts";
 import {
   Card,
@@ -41,19 +42,46 @@ const engagementData = [
   { name: 'Jun', value: 101 },
 ]
 
+const getCurrentAcademicYear = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    // Academic year starts in June (index 5)
+    if (currentMonth >= 5) {
+      return `${currentYear}-${(currentYear + 1).toString()}`;
+    }
+    return `${currentYear - 1}-${currentYear.toString()}`;
+};
+
+const generateYearOptions = () => {
+    const currentYearString = getCurrentAcademicYear();
+    const [startCurrentYear] = currentYearString.split('-').map(Number);
+    
+    const years = [];
+    for (let i = 0; i < 5; i++) {
+        const startYear = startCurrentYear - i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear.toString()}`);
+    }
+    return years;
+};
+
 export default function AdminDashboard() {
+  const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
+  const yearOptions = generateYearOptions();
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-3xl font-bold text-foreground">Super Admin Dashboard</h2>
-        <Select defaultValue="2023-2024">
+        <Select value={academicYear} onValueChange={setAcademicYear}>
           <SelectTrigger className="w-full sm:w-auto">
             <SelectValue placeholder="Select Academic Year" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="2023-2024">Academic Year 2023-2024</SelectItem>
-            <SelectItem value="2022-2023">Academic Year 2022-2023</SelectItem>
-            <SelectItem value="2021-2022">Academic Year 2021-2022</SelectItem>
+            {yearOptions.map(year => (
+                <SelectItem key={year} value={year}>Academic Year {year}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
