@@ -35,15 +35,28 @@ type GoodWork = {
   academicYear: string;
 };
 
-const generateYearOptions = () => {
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let i = -2; i < 3; i++) {
-        const startYear = currentYear + i;
-        const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString()}`);
+const getCurrentAcademicYear = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth(); // 0-11
+    const currentYear = today.getFullYear();
+    // Academic year starts in June (index 5)
+    if (currentMonth >= 5) {
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
     }
-    return years.reverse();
+    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
+};
+
+const generateYearOptions = () => {
+    const currentYearString = getCurrentAcademicYear();
+    const [startCurrentYear] = currentYearString.split('-').map(Number);
+    
+    const years = [];
+    for (let i = 0; i < 5; i++) {
+        const startYear = startCurrentYear - i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
+    }
+    return years;
 };
 
 export default function GoodWorksPage() {
@@ -53,7 +66,7 @@ export default function GoodWorksPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [academicYear, setAcademicYear] = useState(generateYearOptions()[0]);
+  const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -73,12 +86,9 @@ export default function GoodWorksPage() {
       return;
     }
     
-    const yearParts = currentYear.split('-');
-    const formattedYear = `${yearParts[0]}-${yearParts[1].slice(-2)}`;
-
     let url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?page=${currentPage}&limit=${limit}`;
     if (currentYear) {
-      url += `&academicYear=${formattedYear}`;
+      url += `&academicYear=${currentYear}`;
     }
 
     try {
@@ -126,6 +136,7 @@ export default function GoodWorksPage() {
   });
 
   const totalPages = Math.ceil(total / limit);
+  const yearOptions = generateYearOptions();
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -155,7 +166,7 @@ export default function GoodWorksPage() {
                     <SelectValue placeholder="Select Academic Year" />
                 </SelectTrigger>
                 <SelectContent>
-                    {generateYearOptions().map(year => (
+                    {yearOptions.map(year => (
                         <SelectItem key={year} value={year}>{year}</SelectItem>
                     ))}
                 </SelectContent>
