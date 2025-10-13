@@ -1,6 +1,7 @@
-// This file is the new location for src/app/(app)/good-works/page.tsx
 "use client"
 
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,58 +13,112 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
-const goodWorks = [
-  {
-    date: "2024-07-26",
-    title: "Publication in International Journal",
-    description:
-      "Published a research paper on renewable energy in a peer-reviewed journal.",
-    category: "Research",
-    status: "Approved",
-  },
-  {
-    date: "2024-07-20",
-    title: "Conference Presentation",
-    description:
-      "Presented a paper on AI applications in engineering at the National Conference.",
-    category: "Presentation",
-    status: "Pending",
-  },
-  {
-    date: "2024-07-15",
-    title: "Workshop Conducted",
-    description:
-      "Conducted a workshop on advanced programming techniques for students.",
-    category: "Workshop",
-    status: "Approved",
-  },
-  {
-    date: "2024-07-10",
-    title: "Patent Application",
-    description: "Filed a patent application for an innovative engineering solution.",
-    category: "Innovation",
-    status: "Rejected",
-  },
-  {
-    date: "2024-07-05",
-    title: "Book Chapter Contribution",
-    description:
-      "Contributed a chapter to a book on sustainable engineering practices.",
-    category: "Publication",
-    status: "Approved",
-  },
-  {
-    date: "2024-06-30",
-    title: "Guest Lecture",
-    description:
-      "Delivered a guest lecture at another institution on emerging technologies.",
-    category: "Lecture",
-    status: "Pending",
-  },
-]
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+type GoodWork = {
+  _id: string;
+  date: string;
+  title: string;
+  description?: string;
+  categories: { _id: string; title: string }[];
+  status: "approved" | "pending" | "rejected";
+  points: number;
+  academicYear: string;
+};
+
+const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = -2; i < 3; i++) {
+        const startYear = currentYear - i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
+    }
+    return years.reverse();
+};
 
 export default function GoodWorksPage() {
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const [goodWorks, setGoodWorks] = useState<GoodWork[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [academicYear, setAcademicYear] = useState(generateYearOptions()[0]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  const fetchGoodWorks = async () => {
+    setIsLoading(true);
+    const token = localStorage.getItem("token");
+    const facultyId = searchParams.get('uid');
+
+    if (!token || !facultyId) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Could not retrieve user credentials.",
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    let url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?page=${page}&limit=${limit}`;
+    if (academicYear) {
+      url += `&academicYear=${academicYear}`;
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      const responseData = await response.json();
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.message || "Failed to fetch good works.");
+      }
+
+      setGoodWorks(responseData.items);
+      setTotal(responseData.total);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Fetch Data",
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGoodWorks();
+  }, [page, academicYear]);
+
+  const filteredWorks = goodWorks.filter(work => {
+    const matchesSearch = searchTerm.trim() === "" ||
+      work.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (work.description && work.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === 'all' || work.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalPages = Math.ceil(total / limit);
+
   return (
     <div className="mx-auto max-w-7xl">
       <div className="mb-8">
@@ -82,79 +137,106 @@ export default function GoodWorksPage() {
             className="w-full rounded-lg bg-card py-2 pl-10 pr-4 focus:ring-2 focus:ring-primary/50"
             placeholder="Search by title or description"
             type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" className="bg-primary/10 text-primary">All</Button>
-          <Button variant="ghost">Pending</Button>
-          <Button variant="ghost">Approved</Button>
-          <Button variant="ghost">Rejected</Button>
+           <Select onValueChange={setAcademicYear} value={academicYear}>
+                <SelectTrigger className="w-full sm:w-auto">
+                    <SelectValue placeholder="Select Academic Year" />
+                </SelectTrigger>
+                <SelectContent>
+                    {generateYearOptions().map(year => (
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('all')}>All</Button>
+          <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('pending')}>Pending</Button>
+          <Button variant={statusFilter === 'approved' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('approved')}>Approved</Button>
+          <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
         </div>
       </div>
-      <div className="overflow-hidden rounded-lg bg-card shadow-sm">
+      <div className="overflow-hidden rounded-lg bg-card shadow-sm border">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead className="w-1/3">Description</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Points</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {goodWorks.map((work, index) => (
-                <TableRow key={index}>
-                  <TableCell className="text-muted-foreground">{work.date}</TableCell>
-                  <TableCell className="font-medium text-foreground">{work.title}</TableCell>
-                  <TableCell className="max-w-sm truncate text-muted-foreground">{work.description}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{work.category}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        work.status === "Approved"
-                          ? "default"
-                          : work.status === "Pending"
-                          ? "secondary"
-                          : "destructive"
-                      }
-                      className={
-                        work.status === "Approved" ? "bg-green-100 text-green-800" :
-                        work.status === "Pending" ? "bg-yellow-100 text-yellow-800" :
-                        "bg-red-100 text-red-800"
-                      }
-                    >
-                      <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${
-                        work.status === "Approved" ? "bg-green-500" :
-                        work.status === "Pending" ? "bg-yellow-500" :
-                        "bg-red-500"
-                      }`}></span>
-                      {work.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="link" className="p-0 h-auto text-primary">View Details</Button>
-                  </TableCell>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">Loading...</TableCell>
                 </TableRow>
-              ))}
+              ) : filteredWorks.length > 0 ? (
+                filteredWorks.map((work) => (
+                  <TableRow key={work._id}>
+                    <TableCell className="text-muted-foreground">{new Date(work.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-medium text-foreground">{work.title}</TableCell>
+                    <TableCell>
+                      {work.categories.map(cat => (
+                        <Badge key={cat._id} variant="secondary">{cat.title}</Badge>
+                      ))}
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground">{work.points}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          work.status === "approved"
+                            ? "default"
+                            : work.status === "pending"
+                            ? "secondary"
+                            : "destructive"
+                        }
+                        className={
+                          work.status === "approved" ? "bg-green-100 text-green-800" :
+                          work.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                          "bg-red-100 text-red-800"
+                        }
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${
+                          work.status === "approved" ? "bg-green-500" :
+                          work.status === "pending" ? "bg-yellow-500" :
+                          "bg-red-500"
+                        }`}></span>
+                        {work.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="link" className="p-0 h-auto text-primary">View Details</Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">No good works found.</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
         <div className="flex items-center justify-between border-t px-4 py-3 sm:px-6">
             <div className="text-sm text-muted-foreground">
-                Showing <span className="font-medium text-foreground">1</span> to <span className="font-medium text-foreground">6</span> of <span className="font-medium text-foreground">10</span> results
+                Showing <span className="font-medium text-foreground">{(page - 1) * limit + 1}</span> to <span className="font-medium text-foreground">{Math.min(page * limit, total)}</span> of <span className="font-medium text-foreground">{total}</span> results
             </div>
             <nav aria-label="Pagination" className="isolate inline-flex -space-x-px rounded-lg shadow-sm">
-                <Button variant="outline" size="icon" className="rounded-r-none h-8 w-8">
+                <Button variant="outline" size="icon" className="rounded-r-none h-8 w-8" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                     <span className="material-symbols-outlined h-5 w-5"> chevron_left </span>
                 </Button>
-                <Button variant="outline" size="icon" className="rounded-none h-8 w-8 bg-primary/10 border-primary text-primary">1</Button>
-                <Button variant="outline" size="icon" className="rounded-none h-8 w-8">2</Button>
-                <Button variant="outline" size="icon" className="rounded-l-none h-8 w-8">
+                {[...Array(totalPages)].map((_, i) => (
+                   <Button key={i} variant={page === i + 1 ? "outline" : "ghost"} size="icon" className="rounded-none h-8 w-8" onClick={() => setPage(i + 1)}>
+                       {i + 1}
+                   </Button>
+                )).slice(Math.max(0, page - 3), page + 2)}
+                <Button variant="outline" size="icon" className="rounded-l-none h-8 w-8" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
                     <span className="material-symbols-outlined h-5 w-5"> chevron_right </span>
                 </Button>
             </nav>

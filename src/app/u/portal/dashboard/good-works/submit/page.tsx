@@ -1,4 +1,3 @@
-// This file is the new location for src/app/(app)/good-works/submit/page.tsx
 "use client"
 
 import { useState, useEffect } from "react";
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -25,14 +25,16 @@ type CreditTitle = {
 
 export default function SubmitAchievementPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [creditTitles, setCreditTitles] = useState<CreditTitle[]>([]);
-  const [selectedCreditTitle, setSelectedCreditTitle] = useState<CreditTitle | null>(null);
+  const [selectedCreditTitleId, setSelectedCreditTitleId] = useState("");
   const [title, setTitle] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [proof, setProof] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fileName, setFileName] = useState("");
 
+  const selectedCreditTitle = creditTitles.find(ct => ct._id === selectedCreditTitleId);
 
   useEffect(() => {
     const fetchCreditTitles = async () => {
@@ -55,11 +57,6 @@ export default function SubmitAchievementPage() {
     };
     fetchCreditTitles();
   }, []);
-
-  const handleCategoryChange = (value: string) => {
-    const selected = creditTitles.find(ct => ct._id === value);
-    setSelectedCreditTitle(selected || null);
-  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -90,6 +87,7 @@ export default function SubmitAchievementPage() {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("points", selectedCreditTitle.points.toString());
+    formData.append("categories", selectedCreditTitle._id);
     formData.append("academicYear", academicYear);
     formData.append("proof", proof);
 
@@ -115,7 +113,7 @@ export default function SubmitAchievementPage() {
 
       // Reset form
       setTitle("");
-      setSelectedCreditTitle(null);
+      setSelectedCreditTitleId("");
       setAcademicYear("");
       setProof(null);
       setFileName("");
@@ -134,12 +132,12 @@ export default function SubmitAchievementPage() {
   const generateYearOptions = () => {
     const currentYear = new Date().getFullYear();
     const years = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = -2; i < 3; i++) {
         const startYear = currentYear - i;
         const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear}`);
+        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
     }
-    return years;
+    return years.reverse();
   };
 
   return (
@@ -156,7 +154,7 @@ export default function SubmitAchievementPage() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <Label htmlFor="category">Category</Label>
-            <Select onValueChange={handleCategoryChange} value={selectedCreditTitle?._id}>
+            <Select onValueChange={setSelectedCreditTitleId} value={selectedCreditTitleId}>
               <SelectTrigger id="category" className="mt-1">
                 <SelectValue placeholder="Select Category" />
               </SelectTrigger>
