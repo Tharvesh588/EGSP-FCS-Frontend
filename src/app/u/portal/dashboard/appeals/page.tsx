@@ -220,14 +220,16 @@ export default function AppealsPage() {
                 <h4 className="text-sm font-medium text-muted-foreground">Reason/Notes</h4>
                 <p className="text-sm bg-muted/50 p-3 rounded-md border">{selectedReport.notes || "No notes provided."}</p>
               </div>
-              <div>
-                 <Link href={selectedReport.proof} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="w-full">
-                        <span className="material-symbols-outlined mr-2">visibility</span>
-                        View Proof Document
-                    </Button>
-                </Link>
-              </div>
+              {selectedReport.proof && (
+                <div>
+                   <Link href={selectedReport.proof} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="w-full">
+                          <span className="material-symbols-outlined mr-2">visibility</span>
+                          View Proof Document
+                      </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter className="sm:justify-start">
