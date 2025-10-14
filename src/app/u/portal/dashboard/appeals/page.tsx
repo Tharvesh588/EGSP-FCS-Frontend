@@ -1,4 +1,3 @@
-// This file is the new location for src/app/(app)/appeals/page.tsx
 "use client"
 
 import { useState, useEffect } from "react";
@@ -232,9 +231,12 @@ export default function AppealsPage() {
               )}
             </div>
           )}
-          <DialogFooter className="sm:justify-start">
+          <DialogFooter className="sm:justify-between pt-4">
              <Button type="button" variant="secondary" onClick={() => setSelectedReport(null)}>
               Close
+            </Button>
+            <Button type="button">
+                Create Appeal
             </Button>
           </DialogFooter>
         </DialogContent>
