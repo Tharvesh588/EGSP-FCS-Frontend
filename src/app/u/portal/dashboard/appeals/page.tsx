@@ -12,7 +12,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -22,6 +31,8 @@ type NegativeReport = {
   createdAt: string;
   type: "positive" | "negative";
   points: number;
+  notes: string;
+  proof: string; // URL to the proof document
 };
 
 export default function AppealsPage() {
@@ -29,6 +40,7 @@ export default function AppealsPage() {
   const searchParams = useSearchParams();
   const [negativeReports, setNegativeReports] = useState<NegativeReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedReport, setSelectedReport] = useState<NegativeReport | null>(null);
 
   useEffect(() => {
     const fetchNegativeReports = async () => {
@@ -60,7 +72,6 @@ export default function AppealsPage() {
           throw new Error(responseData.message || "Failed to fetch negative remarks.");
         }
         
-        // Filter for negative credits on the client-side as a fallback, though the API should handle it.
         const negativeCredits = responseData.items.filter((item: any) => item.type === 'negative' || item.points < 0);
         setNegativeReports(negativeCredits);
 
@@ -126,7 +137,7 @@ export default function AppealsPage() {
                         </TableCell>
                         <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="link" className="text-primary">
+                          <Button variant="link" className="text-primary" onClick={() => setSelectedReport(report)}>
                             View
                           </Button>
                         </TableCell>
@@ -186,6 +197,46 @@ export default function AppealsPage() {
           </div>
         </section>
       </div>
+
+       <Dialog open={!!selectedReport} onOpenChange={(isOpen) => !isOpen && setSelectedReport(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Negative Remark Details</DialogTitle>
+            <DialogDescription>
+              Review the details of the negative remark submitted by the administration.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Remark Title</h4>
+                <p className="font-semibold">{selectedReport.title}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Date Issued</h4>
+                <p>{new Date(selectedReport.createdAt).toLocaleString()}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Reason/Notes</h4>
+                <p className="text-sm bg-muted/50 p-3 rounded-md border">{selectedReport.notes || "No notes provided."}</p>
+              </div>
+              <div>
+                 <Link href={selectedReport.proof} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full">
+                        <span className="material-symbols-outlined mr-2">visibility</span>
+                        View Proof Document
+                    </Button>
+                </Link>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="sm:justify-start">
+             <Button type="button" variant="secondary" onClick={() => setSelectedReport(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
