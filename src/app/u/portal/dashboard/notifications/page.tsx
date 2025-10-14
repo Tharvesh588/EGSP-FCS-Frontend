@@ -1,6 +1,9 @@
 // This file is the new location for src/app/(app)/notifications/page.tsx
 "use client"
 
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -8,51 +11,137 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { formatDistanceToNow } from 'date-fns';
 
-const notifications = [
-  {
-    type: "new_faculty",
-    title: "New Faculty Member",
-    message: "New faculty member, Dr. Anjali Sharma, has joined the department.",
-    time: "2d ago",
-    read: false,
-    icon: "group_add",
-  },
-  {
-    type: "deadline",
-    title: "Activity Report Deadline",
-    message: "The deadline for submitting faculty activity reports for the semester is approaching.",
-    time: "3d ago",
-    read: false,
-    icon: "event",
-  },
-  {
-    type: "approved",
-    title: "Publication Approved",
-    message: "Your recent publication in the Journal of Engineering Education has been approved.",
-    time: "1w ago",
-    read: true,
-    icon: "task_alt",
-  },
-  {
-    type: "evaluation",
-    title: "Performance Evaluation",
-    message: "The faculty performance evaluation for the academic year 2023-2024 is now available.",
-    time: "2w ago",
-    read: true,
-    icon: "grading",
-  },
-  {
-    type: "training",
-    title: "Training Session",
-    message: "A new training session on innovative teaching methodologies is scheduled for next month.",
-    time: "3w ago",
-    read: true,
-    icon: "model_training",
-  },
-]
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+type Credit = {
+  _id: string;
+  title: string;
+  createdAt: string;
+  status: 'approved' | 'pending' | 'rejected';
+  points: number;
+  type: 'positive' | 'negative';
+};
+
+type Notification = {
+  id: string;
+  type: 'negative_remark' | 'approved' | 'pending' | 'rejected';
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  icon: string;
+};
 
 export default function NotificationsPage() {
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'read' | 'unread'>('all');
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      const facultyId = searchParams.get('uid');
+
+      if (!token || !facultyId) {
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: "Could not retrieve user credentials.",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      const url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=20`;
+
+      try {
+        const response = await fetch(url, {
+          headers: { "Authorization": `Bearer ${token}` },
+        });
+
+        const responseData = await response.json();
+        if (!response.ok || !responseData.success) {
+          throw new Error(responseData.message || "Failed to fetch notifications.");
+        }
+        
+        const fetchedCredits: Credit[] = responseData.items;
+        const generatedNotifications: Notification[] = fetchedCredits.map(credit => {
+          let notificationType: Notification['type'] = 'pending';
+          let title = '';
+          let message = '';
+          let icon = '';
+
+          if (credit.type === 'negative') {
+            notificationType = 'negative_remark';
+            title = 'Negative Remark Received';
+            message = `A negative remark for "${credit.title}" has been issued.`;
+            icon = 'report';
+          } else {
+            switch(credit.status) {
+              case 'approved':
+                notificationType = 'approved';
+                title = 'Submission Approved';
+                message = `Your submission for "${credit.title}" has been approved.`;
+                icon = 'task_alt';
+                break;
+              case 'rejected':
+                notificationType = 'rejected';
+                title = 'Submission Rejected';
+                message = `Your submission for "${credit.title}" has been rejected.`;
+                icon = 'cancel';
+                break;
+              default:
+                notificationType = 'pending';
+                title = 'Submission Pending';
+                message = `Your submission for "${credit.title}" is currently under review.`;
+                icon = 'hourglass_top';
+                break;
+            }
+          }
+
+          return {
+            id: credit._id,
+            type: notificationType,
+            title,
+            message,
+            time: formatDistanceToNow(new Date(credit.createdAt), { addSuffix: true }),
+            read: credit.status !== 'pending' && credit.type !== 'negative', // Example logic for read status
+            icon,
+          };
+        });
+
+        setNotifications(generatedNotifications);
+
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Failed to Fetch Notifications",
+          description: error.message,
+        });
+        setNotifications([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    const uid = searchParams.get('uid');
+    if (uid) {
+        fetchNotifications();
+    }
+  }, [searchParams, toast]);
+
+  const filteredNotifications = notifications.filter(n => {
+    if (filter === 'all') return true;
+    if (filter === 'read') return n.read;
+    if (filter === 'unread') return !n.read;
+    return true;
+  });
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-8">
@@ -61,31 +150,34 @@ export default function NotificationsPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button>
-                All
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
                 <span className="material-symbols-outlined ml-2 text-base">expand_more</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem>All</DropdownMenuItem>
-              <DropdownMenuItem>Unread</DropdownMenuItem>
-              <DropdownMenuItem>Read</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter('all')}>All</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter('unread')}>Unread</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter('read')}>Read</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
         <div className="mt-6 flex flex-col gap-4">
-          {notifications.map((notification, index) => (
+          {isLoading ? (
+             <p>Loading notifications...</p>
+          ) : filteredNotifications.length > 0 ? (
+            filteredNotifications.map((notification) => (
             <div
-              key={index}
+              key={notification.id}
               className="group flex cursor-pointer items-start gap-4 rounded-lg bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
             >
               <div
                 className={`relative flex shrink-0 items-center justify-center rounded-full size-12 ${
-                  notification.read ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+                  notification.read ? "bg-muted text-muted-foreground" : notification.type === 'negative_remark' ? "bg-red-100 text-red-700" : "bg-primary/10 text-primary"
                 }`}
               >
                 <span className="material-symbols-outlined">{notification.icon}</span>
                 {!notification.read && (
-                  <span className="absolute top-0 right-0 block h-3 w-3 rounded-full bg-primary ring-2 ring-card"></span>
+                  <span className={`absolute top-0 right-0 block h-3 w-3 rounded-full ${notification.type === 'negative_remark' ? "bg-red-500" : "bg-primary"} ring-2 ring-card`}></span>
                 )}
               </div>
               <div className="flex-1">
@@ -97,7 +189,12 @@ export default function NotificationsPage() {
                 <span className="material-symbols-outlined text-base">more_vert</span>
               </Button>
             </div>
-          ))}
+            ))
+          ) : (
+            <div className="text-center py-10">
+                <p>No notifications found.</p>
+            </div>
+          )}
         </div>
       </div>
     </main>
