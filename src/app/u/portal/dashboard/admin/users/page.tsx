@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast";
 import { colleges } from "@/lib/colleges";
+import { Edit, View } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -296,7 +297,14 @@ export default function FacultyAccountsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button variant="link" className="text-primary hover:underline">Impersonate</Button>
+                        <div className="flex justify-center gap-2">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <View className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </TableCell>
                   </TableRow>
                 ))
