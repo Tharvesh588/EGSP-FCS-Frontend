@@ -14,6 +14,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const READ_NOTIFICATIONS_KEY = 'readNotificationIds';
 
 type Credit = {
   _id: string;
@@ -42,7 +43,7 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<'all' | 'read' | 'unread'>('all');
 
   useEffect(() => {
-    const fetchNotifications = async () => {
+    const fetchAndProcessNotifications = async () => {
       setIsLoading(true);
       const token = localStorage.getItem("token");
       const facultyId = searchParams.get('uid');
@@ -57,9 +58,8 @@ export default function NotificationsPage() {
         return;
       }
       
-      const url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=20`;
-
       try {
+        const url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=50`;
         const response = await fetch(url, {
           headers: { "Authorization": `Bearer ${token}` },
         });
@@ -70,11 +70,21 @@ export default function NotificationsPage() {
         }
         
         const fetchedCredits: Credit[] = responseData.items;
+
+        const storedReadIds: string[] = JSON.parse(localStorage.getItem(READ_NOTIFICATIONS_KEY) || '[]');
+        const readIdsSet = new Set(storedReadIds);
+        const newUnreadIds: string[] = [];
+
         const generatedNotifications: Notification[] = fetchedCredits.map(credit => {
           let notificationType: Notification['type'] = 'pending';
           let title = '';
           let message = '';
           let icon = '';
+          const isRead = readIdsSet.has(credit._id);
+
+          if (!isRead) {
+            newUnreadIds.push(credit._id);
+          }
 
           if (credit.type === 'negative') {
             notificationType = 'negative_remark';
@@ -110,12 +120,21 @@ export default function NotificationsPage() {
             title,
             message,
             time: formatDistanceToNow(new Date(credit.createdAt), { addSuffix: true }),
-            read: credit.status !== 'pending' && credit.type !== 'negative', // Example logic for read status
+            read: isRead,
             icon,
           };
         });
 
         setNotifications(generatedNotifications);
+
+        if (newUnreadIds.length > 0) {
+          const updatedReadIds = [...storedReadIds, ...newUnreadIds];
+          localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(updatedReadIds));
+          // Refresh notifications to mark them as read visually
+          setNotifications(prevNotifications => 
+            prevNotifications.map(n => ({...n, read: true}))
+          );
+        }
 
       } catch (error: any) {
         toast({
@@ -131,7 +150,7 @@ export default function NotificationsPage() {
     
     const uid = searchParams.get('uid');
     if (uid) {
-        fetchNotifications();
+        fetchAndProcessNotifications();
     }
   }, [searchParams, toast]);
 
