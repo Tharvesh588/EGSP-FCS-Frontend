@@ -75,7 +75,6 @@ export default function ManageCreditTitlesPage() {
   // State for editing
   const [editingTitle, setEditingTitle] = useState<CreditTitle | null>(null);
   const [isEditLoading, setIsEditLoading] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const fetchCreditTitles = async () => {
     setIsLoadingTitles(true);
@@ -177,7 +176,7 @@ export default function ManageCreditTitlesPage() {
     setIsEditLoading(true);
     const adminToken = localStorage.getItem("token");
     if (!adminToken) {
-        toast({ variant: "destructive", title: "Authentication Error" });
+        toast({ variant: "destructive", title: "Authentication Error", description: "Invalid token" });
         setIsEditLoading(false);
         return;
     }
@@ -203,7 +202,6 @@ export default function ManageCreditTitlesPage() {
         }
 
         toast({ title: "Update Successful", description: "Credit title has been updated." });
-        setIsEditDialogOpen(false);
         setEditingTitle(null);
         fetchCreditTitles();
     } catch (error: any) {
@@ -351,22 +349,65 @@ export default function ManageCreditTitlesPage() {
                       <TableCell className="text-muted-foreground">{ct.description}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                            <Dialog open={isEditDialogOpen && editingTitle?._id === ct._id} onOpenChange={(isOpen) => {
-                                if (!isOpen) setEditingTitle(null);
-                                setIsEditDialogOpen(isOpen);
+                            <Dialog open={editingTitle?._id === ct._id} onOpenChange={(isOpen) => {
+                                if (isOpen) {
+                                    setEditingTitle(ct);
+                                } else {
+                                    setEditingTitle(null);
+                                }
                             }}>
                                 <DialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" onClick={() => {
-                                        setEditingTitle(ct);
-                                        setIsEditDialogOpen(true);
-                                    }}>
+                                    <Button variant="ghost" size="icon">
                                         <Edit className="h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Edit Credit Title</DialogTitle>
+                                    </DialogHeader>
+                                    {editingTitle && (
+                                        <form onSubmit={handleEditSubmit} className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-muted-foreground" htmlFor="edit-title">Title</label>
+                                                <Input id="edit-title" value={editingTitle.title} onChange={(e) => setEditingTitle({...editingTitle, title: e.target.value})} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-muted-foreground" htmlFor="edit-points">Points</label>
+                                                    <Input id="edit-points" type="number" value={editingTitle.points} onChange={(e) => setEditingTitle({...editingTitle, points: Number(e.target.value)})} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-muted-foreground" htmlFor="edit-type">Type</label>
+                                                    <Select value={editingTitle.type} onValueChange={(value) => setEditingTitle({...editingTitle, type: value as any})}>
+                                                        <SelectTrigger id="edit-type">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="positive">Positive</SelectItem>
+                                                            <SelectItem value="negative">Negative</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-muted-foreground" htmlFor="edit-description">Description</label>
+                                                <Textarea id="edit-description" value={editingTitle.description} onChange={(e) => setEditingTitle({...editingTitle, description: e.target.value})} rows={3} />
+                                            </div>
+                                            <DialogFooter>
+                                                <DialogClose asChild>
+                                                    <Button type="button" variant="secondary">Cancel</Button>
+                                                </DialogClose>
+                                                <Button type="submit" disabled={isEditLoading}>
+                                                    {isEditLoading ? "Saving..." : "Save Changes"}
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    )}
+                                </DialogContent>
                             </Dialog>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive">
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </AlertDialogTrigger>
@@ -379,7 +420,7 @@ export default function ManageCreditTitlesPage() {
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(ct._id)}>Delete</AlertDialogAction>
+                                    <AlertDialogAction onClick={() => handleDelete(ct._id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
@@ -397,51 +438,6 @@ export default function ManageCreditTitlesPage() {
           </div>
         </div>
       </div>
-      {editingTitle && (
-         <Dialog open={isEditDialogOpen && editingTitle !== null} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Edit Credit Title</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleEditSubmit} className="space-y-4">
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground" htmlFor="edit-title">Title</label>
-                        <Input id="edit-title" value={editingTitle.title} onChange={(e) => setEditingTitle({...editingTitle, title: e.target.value})} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-muted-foreground" htmlFor="edit-points">Points</label>
-                            <Input id="edit-points" type="number" value={editingTitle.points} onChange={(e) => setEditingTitle({...editingTitle, points: Number(e.target.value)})} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-muted-foreground" htmlFor="edit-type">Type</label>
-                            <Select value={editingTitle.type} onValueChange={(value) => setEditingTitle({...editingTitle, type: value as any})}>
-                                <SelectTrigger id="edit-type">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="positive">Positive</SelectItem>
-                                    <SelectItem value="negative">Negative</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-muted-foreground" htmlFor="edit-description">Description</label>
-                        <Textarea id="edit-description" value={editingTitle.description} onChange={(e) => setEditingTitle({...editingTitle, description: e.target.value})} rows={3} />
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="secondary">Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isEditLoading}>
-                            {isEditLoading ? "Saving..." : "Save Changes"}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-      )}
     </div>
   )
 }
