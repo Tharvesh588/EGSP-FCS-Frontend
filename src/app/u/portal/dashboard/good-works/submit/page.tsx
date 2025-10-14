@@ -21,6 +21,7 @@ type CreditTitle = {
   _id: string;
   title: string;
   points: number;
+  type: 'positive' | 'negative';
 };
 
 const getCurrentAcademicYear = () => {
@@ -74,7 +75,7 @@ export default function SubmitAchievementPage() {
         });
         const responseData = await response.json();
         if (responseData.success) {
-          setCreditTitles(responseData.items);
+          setCreditTitles(responseData.items.filter((ct: CreditTitle) => ct.type === 'positive'));
         }
       } catch (error) {
         console.error("Failed to fetch credit titles:", error);
@@ -223,13 +224,13 @@ export default function SubmitAchievementPage() {
           <Label>Attachments</Label>
           <Label
               htmlFor="file-upload"
-              className="mt-2 flex justify-center rounded-xl border-2 border-dashed border-border px-6 pt-10 pb-12 cursor-pointer hover:border-primary/50 transition-colors"
+              className="mt-2 flex cursor-pointer justify-center rounded-xl border-2 border-dashed border-border px-6 pt-10 pb-12 transition-colors hover:border-primary/50"
             >
             <div className="text-center">
               <span className="material-symbols-outlined text-5xl text-primary/50">
                 cloud_upload
               </span>
-              <div className="mt-4 flex text-sm leading-6 text-muted-foreground justify-center">
+              <div className="mt-4 flex justify-center text-sm leading-6 text-muted-foreground">
                   <span className="font-semibold text-primary">Upload a file</span>
                   <p className="pl-1">or drag and drop</p>
               </div>
