@@ -18,9 +18,13 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -40,6 +44,12 @@ export default function AppealsPage() {
   const [negativeReports, setNegativeReports] = useState<NegativeReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<NegativeReport | null>(null);
+
+  const [isAppealDialogOpen, setIsAppealDialogOpen] = useState(false);
+  const [appealableRemarks, setAppealableRemarks] = useState<NegativeReport[]>([]);
+  const [selectedRemarkId, setSelectedRemarkId] = useState("");
+  const [appealReason, setAppealReason] = useState("");
+  const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
 
   useEffect(() => {
     const fetchNegativeReports = async () => {
@@ -74,6 +84,11 @@ export default function AppealsPage() {
         const negativeCredits = responseData.items.filter((item: any) => item.type === 'negative' || item.points < 0);
         setNegativeReports(negativeCredits);
 
+        const now = new Date();
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const recentRemarks = negativeCredits.filter((report: NegativeReport) => new Date(report.createdAt) > twentyFourHoursAgo);
+        setAppealableRemarks(recentRemarks);
+
       } catch (error: any) {
         toast({
           variant: "destructive",
@@ -92,6 +107,53 @@ export default function AppealsPage() {
     }
   }, [searchParams, toast]);
 
+  const handleAppealSubmit = async () => {
+    if (!selectedRemarkId || !appealReason) {
+        toast({
+            variant: "destructive",
+            title: "Incomplete Form",
+            description: "Please select a remark and provide a reason.",
+        });
+        return;
+    }
+    setIsSubmittingAppeal(true);
+    const token = localStorage.getItem("token");
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/${selectedRemarkId}/appeal`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ reason: appealReason }),
+        });
+
+        const responseData = await response.json();
+        if (!response.ok || !responseData.success) {
+            throw new Error(responseData.message || "Failed to submit appeal.");
+        }
+        
+        toast({
+            title: "Appeal Submitted",
+            description: "Your appeal has been successfully submitted for review.",
+        });
+
+        setIsAppealDialogOpen(false);
+        setSelectedRemarkId("");
+        setAppealReason("");
+
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Appeal Failed",
+            description: error.message,
+        });
+    } finally {
+        setIsSubmittingAppeal(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
@@ -101,7 +163,7 @@ export default function AppealsPage() {
             View and manage your appeals against negative reports.
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setIsAppealDialogOpen(true)}>
           <span className="material-symbols-outlined -ml-1 mr-2 h-5 w-5">add</span>
           <span>Create Appeal</span>
         </Button>
@@ -235,8 +297,58 @@ export default function AppealsPage() {
              <Button type="button" variant="secondary" onClick={() => setSelectedReport(null)}>
               Close
             </Button>
-            <Button type="button">
+            <Button type="button" onClick={() => { setSelectedReport(null); setIsAppealDialogOpen(true); }}>
                 Create Appeal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAppealDialogOpen} onOpenChange={setIsAppealDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create an Appeal</DialogTitle>
+            <DialogDescription>
+              Select a negative remark from the last 24 hours and provide your reason for the appeal.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+                <label className="text-sm font-medium">Negative Remark</label>
+                <Select onValueChange={setSelectedRemarkId} value={selectedRemarkId}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a remark to appeal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {appealableRemarks.length > 0 ? (
+                           appealableRemarks.map(remark => (
+                            <SelectItem key={remark._id} value={remark._id}>
+                                {remark.title} ({new Date(remark.createdAt).toLocaleTimeString()})
+                            </SelectItem>
+                           ))
+                        ) : (
+                           <p className="p-4 text-sm text-muted-foreground">No remarks eligible for appeal.</p>
+                        )}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <label htmlFor="reason" className="text-sm font-medium">Reason for Appeal</label>
+                <Textarea 
+                    id="reason" 
+                    placeholder="Explain why you are appealing this remark..."
+                    value={appealReason}
+                    onChange={(e) => setAppealReason(e.target.value)} 
+                    rows={4}
+                />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleAppealSubmit} disabled={isSubmittingAppeal}>
+                {isSubmittingAppeal ? 'Submitting...' : 'Submit Appeal'}
             </Button>
           </DialogFooter>
         </DialogContent>
