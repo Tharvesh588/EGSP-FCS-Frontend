@@ -44,9 +44,14 @@ export default function Home() {
         <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground gap-2">
             <span>App Version: 1.0.0</span>
             <span suppressHydrationWarning>Session Time: {timestamp || 'Loading...'}</span>
-            <Link href="/u/portal/auth?admin" className="text-primary hover:underline font-medium">
-                Admin Login
-            </Link>
+            <div className="flex gap-4">
+              <Link href="/u/portal/auth?faculty_login" className="text-primary hover:underline font-medium">
+                  Faculty Login
+              </Link>
+              <Link href="/u/portal/auth?admin" className="text-primary hover:underline font-medium">
+                  Admin Login
+              </Link>
+            </div>
         </div>
       </footer>
     </div>

@@ -17,6 +17,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState('');
+  
+  const isAdminLogin = searchParams.has('admin');
 
   useEffect(() => {
     // This effect can be used for other purposes if needed,
@@ -137,9 +139,15 @@ export default function LoginPage() {
         <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground gap-2">
             <span>App Version: 1.0.0</span>
             <span suppressHydrationWarning>Session Time: {timestamp || 'Loading...'}</span>
-            <Link href="/u/portal/auth?admin" className="text-primary hover:underline font-medium">
+            {isAdminLogin ? (
+              <Link href="/u/portal/auth?faculty_login" className="text-primary hover:underline font-medium">
+                Faculty Login
+              </Link>
+            ) : (
+              <Link href="/u/portal/auth?admin" className="text-primary hover:underline font-medium">
                 Admin Login
-            </Link>
+              </Link>
+            )}
         </div>
       </footer>
     </div>
