@@ -1,6 +1,7 @@
 // This file is the new location for src/app/(app)/admin/remarks/page.tsx
 "use client"
 
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -19,6 +20,45 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+import { useToast } from "@/hooks/use-toast";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+type User = {
+  _id: string;
+  name: string;
+};
+
+type CreditTitle = {
+  _id: string;
+  title: string;
+  points: number;
+  type: 'positive' | 'negative';
+};
+
+const getCurrentAcademicYear = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    // Academic year starts in June (index 5)
+    if (currentMonth >= 5) {
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+    }
+    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
+};
+
+const generateYearOptions = () => {
+    const currentYearString = getCurrentAcademicYear();
+    const [startCurrentYear] = currentYearString.split('-').map(Number);
+    
+    const years = [];
+    for (let i = 0; i < 5; i++) {
+        const startYear = startCurrentYear - i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
+    }
+    return years;
+};
 
 const remarks = [
   {
@@ -45,6 +85,136 @@ const remarks = [
 ]
 
 export default function ManageRemarksPage() {
+  const { toast } = useToast();
+  const [facultyId, setFacultyId] = useState("");
+  const [creditTitleId, setCreditTitleId] = useState("");
+  const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
+  const [notes, setNotes] = useState("");
+  const [proof, setProof] = useState<File | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [facultyList, setFacultyList] = useState<User[]>([]);
+  const [creditTitles, setCreditTitles] = useState<CreditTitle[]>([]);
+
+  useEffect(() => {
+    const adminToken = localStorage.getItem("token");
+    if (!adminToken) {
+      toast({ variant: "destructive", title: "Authentication Error" });
+      return;
+    }
+
+    const fetchFaculty = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        const data = await response.json();
+        if (data.success) {
+          setFacultyList(data.items);
+        } else {
+          throw new Error(data.message || "Failed to fetch faculty");
+        }
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message });
+      }
+    };
+
+    const fetchCreditTitles = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Assuming negative titles can be identified, if not, all will be shown.
+          // For now, filtering by a convention if one exists, e.g., points < 0 or type === 'negative'
+          setCreditTitles(data.items.filter((ct: CreditTitle) => ct.type === 'negative'));
+        } else {
+          throw new Error(data.message || "Failed to fetch credit titles");
+        }
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message });
+      }
+    };
+
+    fetchFaculty();
+    fetchCreditTitles();
+  }, [toast]);
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setProof(event.target.files[0]);
+      setFileName(event.target.files[0].name);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!facultyId || !creditTitleId || !academicYear || !notes || !proof) {
+      toast({
+        variant: "destructive",
+        title: "Incomplete Form",
+        description: "Please fill all fields and upload a proof document.",
+      });
+      return;
+    }
+    setIsLoading(true);
+
+    const adminToken = localStorage.getItem("token");
+    if (!adminToken) {
+      toast({ variant: "destructive", title: "Authentication Error" });
+      setIsLoading(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("facultyId", facultyId);
+    formData.append("creditTitleId", creditTitleId);
+    formData.append("academicYear", academicYear);
+    formData.append("notes", notes);
+    formData.append("proof", proof);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/negative-credit`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${adminToken}`,
+        },
+        body: formData,
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.message || "Failed to issue remark.");
+      }
+
+      toast({
+        title: "Remark Issued",
+        description: "The negative remark has been successfully recorded.",
+      });
+
+      // Reset form
+      setFacultyId("");
+      setCreditTitleId("");
+      setAcademicYear(getCurrentAcademicYear());
+      setNotes("");
+      setProof(null);
+      setFileName("");
+
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Submission Failed",
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-8">
@@ -60,7 +230,7 @@ export default function ManageRemarksPage() {
           <h2 className="text-xl font-semibold text-foreground">
             Create New Remark
           </h2>
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label
                 className="block text-sm font-medium text-muted-foreground"
@@ -68,49 +238,70 @@ export default function ManageRemarksPage() {
               >
                 Faculty Member
               </label>
-              <Select>
+              <Select value={facultyId} onValueChange={setFacultyId}>
                 <SelectTrigger id="faculty">
                   <SelectValue placeholder="Select Faculty Member" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dr-priya-sharma">
-                    Dr. Priya Sharma
-                  </SelectItem>
-                  <SelectItem value="prof-arjun-verma">
-                    Prof. Arjun Verma
-                  </SelectItem>
+                  {facultyList.map(faculty => (
+                    <SelectItem key={faculty._id} value={faculty._id}>
+                      {faculty.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label
                 className="block text-sm font-medium text-muted-foreground"
-                htmlFor="severity"
+                htmlFor="creditTitle"
               >
-                Severity
+                Remark Title
               </label>
-              <Select>
-                <SelectTrigger id="severity">
-                  <SelectValue placeholder="Select Severity" />
+              <Select value={creditTitleId} onValueChange={setCreditTitleId}>
+                <SelectTrigger id="creditTitle">
+                  <SelectValue placeholder="Select Remark Title" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
+                   {creditTitles.map(ct => (
+                    <SelectItem key={ct._id} value={ct._id}>
+                        {ct.title} ({ct.points} points)
+                    </SelectItem>
+                ))}
+                </SelectContent>
+              </Select>
+            </div>
+             <div>
+              <label
+                className="block text-sm font-medium text-muted-foreground"
+                htmlFor="academicYear"
+              >
+                Academic Year
+              </label>
+              <Select value={academicYear} onValueChange={setAcademicYear}>
+                <SelectTrigger id="academicYear">
+                    <SelectValue placeholder="Select Academic Year" />
+                </SelectTrigger>
+                <SelectContent>
+                    {generateYearOptions().map(year => (
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label
                 className="block text-sm font-medium text-muted-foreground"
-                htmlFor="description"
+                htmlFor="notes"
               >
-                Description
+                Notes / Description
               </label>
               <Textarea
-                id="description"
-                placeholder="Enter Description"
+                id="notes"
+                placeholder="Enter detailed notes"
                 rows={4}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
               />
             </div>
             <div>
@@ -119,35 +310,40 @@ export default function ManageRemarksPage() {
               >
                 Upload Document
               </label>
-              <div className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-border px-6 pt-5 pb-6">
+               <label
+                  htmlFor="file-upload"
+                  className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-border px-6 pt-5 pb-6 cursor-pointer hover:border-primary transition-colors"
+                >
                 <div className="space-y-1 text-center">
                   <span className="material-symbols-outlined text-4xl text-muted-foreground/50">
-                    {" "}
-                    cloud_upload{" "}
+                    cloud_upload
                   </span>
                   <div className="flex text-sm text-muted-foreground">
-                    <label
+                    <span
                       className="relative cursor-pointer rounded-md font-medium text-primary hover:text-primary/80 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
-                      htmlFor="file-upload"
                     >
                       <span>Upload a file</span>
-                      <Input
+                    </span>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                   <p className="text-xs text-muted-foreground/80">
+                    PNG, JPG, PDF, DOCX, ZIP up to 10MB
+                  </p>
+                  {fileName && <p className="text-sm text-green-600 mt-2">{fileName}</p>}
+                   <Input
                         id="file-upload"
                         name="file-upload"
                         type="file"
                         className="sr-only"
+                        onChange={handleFileChange}
                       />
-                    </label>
-                    <p className="pl-1">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground/80">
-                    PNG, JPG, PDF up to 10MB
-                  </p>
                 </div>
-              </div>
+              </label>
             </div>
             <div className="flex justify-end">
-              <Button type="submit">Submit Remark</Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Submitting..." : "Submit Remark"}
+              </Button>
             </div>
           </form>
         </div>
