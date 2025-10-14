@@ -7,8 +7,57 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useState, useEffect } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+type UserProfile = {
+  name: string;
+  email: string;
+  college: string;
+  department?: string;
+  avatar: string;
+};
 
 export default function SettingsPage() {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setLoading(false);
+        // Optionally redirect to login
+        return;
+      }
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        const responseData = await response.json();
+        if (responseData.success) {
+          const userData = responseData.data;
+          setUser({
+            name: userData.name,
+            email: userData.email,
+            college: userData.college,
+            department: userData.department,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch user data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-8">
@@ -25,16 +74,29 @@ export default function SettingsPage() {
             Profile Information
           </h2>
           <div className="rounded-xl border bg-card p-6">
-            <div className="flex flex-col items-start gap-6 sm:flex-row">
-              <div className="flex-1">
-                <p className="text-lg font-bold text-foreground">Dr. Priya Sharma</p>
-                <p className="text-muted-foreground">Professor, Computer Science</p>
-              </div>
-              <Avatar className="h-32 w-32 flex-shrink-0">
-                <AvatarImage src="https://images.unsplash.com/photo-1573165850883-9b0e18c44bd2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwcm9mZXNzaW9uYWwlMjB3b21hbnxlbnwwfHx8fDE3NTkxMzA2NDZ8MA&ixlib=rb-4.1.0&q=80&w=1080" />
-                <AvatarFallback>PS</AvatarFallback>
-              </Avatar>
-            </div>
+            {loading ? (
+                <div className="flex flex-col items-start gap-6 sm:flex-row">
+                    <div className="flex-1 space-y-2">
+                        <Skeleton className="h-7 w-48" />
+                        <Skeleton className="h-5 w-64" />
+                    </div>
+                    <Skeleton className="h-32 w-32 rounded-full flex-shrink-0" />
+                </div>
+            ) : user ? (
+                <div className="flex flex-col items-start gap-6 sm:flex-row">
+                <div className="flex-1">
+                    <p className="text-lg font-bold text-foreground">{user.name}</p>
+                    <p className="text-muted-foreground">{user.department || 'N/A'}, {user.college}</p>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                </div>
+                <Avatar className="h-32 w-32 flex-shrink-0">
+                    <AvatarImage src={user.avatar} />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                </div>
+            ) : (
+                 <p>Could not load user profile.</p>
+            )}
           </div>
         </div>
         <div className="space-y-6">
