@@ -23,7 +23,16 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast";
 import { colleges } from "@/lib/colleges";
-import { Edit, View } from "lucide-react";
+import { Edit, Eye } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -53,6 +62,8 @@ export default function FacultyAccountsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [facultyAccounts, setFacultyAccounts] = useState<FacultyAccount[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [selectedFaculty, setSelectedFaculty] = useState<FacultyAccount | null>(null);
+
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -297,14 +308,60 @@ export default function FacultyAccountsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                        <div className="flex justify-center gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <View className="h-4 w-4" />
+                      <Dialog>
+                        <DialogTrigger asChild>
+                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedFaculty(account)}>
+                              <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                        </div>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Faculty Details</DialogTitle>
+                            <DialogDescription>
+                              Detailed information about the faculty member.
+                            </DialogDescription>
+                          </DialogHeader>
+                          {selectedFaculty && (
+                            <div className="space-y-4">
+                                <div className="flex items-center space-x-4">
+                                  <Avatar className="h-16 w-16">
+                                      <AvatarImage src={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFaculty.name)}&background=random`} />
+                                      <AvatarFallback>{selectedFaculty.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                      <p className="text-lg font-semibold">{selectedFaculty.name}</p>
+                                      <p className="text-sm text-muted-foreground">{selectedFaculty.email}</p>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                      <p className="text-muted-foreground">College</p>
+                                      <p className="font-medium">{selectedFaculty.college}</p>
+                                  </div>
+                                  <div>
+                                      <p className="text-muted-foreground">Department</p>
+                                      <p className="font-medium">{selectedFaculty.department || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                      <p className="text-muted-foreground">Current Credits</p>
+                                      <p className="font-medium">{selectedFaculty.currentCredit}</p>
+                                  </div>
+                                   <div>
+                                      <p className="text-muted-foreground">Status</p>
+                                      <p className="font-medium">{selectedFaculty.isActive ? 'Active' : 'Inactive'}</p>
+                                  </div>
+                                  <div>
+                                      <p className="text-muted-foreground">Last Submission Date</p>
+                                      <p className="font-medium">N/A</p>
+                                  </div>
+                              </div>
+                            </div>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Edit className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
