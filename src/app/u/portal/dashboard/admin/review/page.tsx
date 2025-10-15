@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import React, { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -23,6 +24,7 @@ type Submission = {
     _id: string;
     name: string;
     department: string;
+    college: string;
   };
   title: string;
   categories: { _id: string; title: string; }[];
@@ -33,16 +35,48 @@ type Submission = {
   points: number;
 };
 
+const getCurrentAcademicYear = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    if (currentMonth >= 5) {
+      return `${currentYear}-${(currentYear + 1).toString()}`;
+    }
+    return `${currentYear - 1}-${currentYear.toString()}`;
+};
+
+const generateYearOptions = () => {
+    const currentYearString = getCurrentAcademicYear();
+    const [startCurrentYear] = currentYearString.split('-').map(Number);
+    
+    const years = [];
+    for (let i = 0; i < 5; i++) {
+        const startYear = startCurrentYear - i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear.toString()}`);
+    }
+    return years;
+};
+
+
 export default function ReviewSubmissionsPage() {
     const { toast } = useToast();
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
     const [statusFilter, setStatusFilter] = useState("pending");
+    const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
+    const [page, setPage] = useState(1);
+    const [limit] = useState(10);
+    const [total, setTotal] = useState(0);
+
     const [adminNotes, setAdminNotes] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const fetchSubmissions = async (status: string) => {
+    const yearOptions = generateYearOptions();
+    const totalPages = Math.ceil(total / limit);
+
+    const fetchSubmissions = async (status: string, year: string, currentPage: number) => {
         setIsLoading(true);
         const token = localStorage.getItem("token");
         if (!token) {
@@ -52,13 +86,23 @@ export default function ReviewSubmissionsPage() {
         }
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?status=${status}&sort=-createdAt`, {
+            const params = new URLSearchParams({
+                status: status,
+                academicYear: year,
+                page: currentPage.toString(),
+                limit: limit.toString(),
+                sort: '-createdAt'
+            });
+
+            const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?${params.toString()}`, {
                 headers: { "Authorization": `Bearer ${token}` },
                 cache: 'no-store'
             });
+
             const data = await response.json();
             if (data.success) {
                 setSubmissions(data.items);
+                setTotal(data.total);
                 if (data.items.length > 0) {
                     setSelectedSubmission(data.items[0]);
                 } else {
@@ -70,14 +114,15 @@ export default function ReviewSubmissionsPage() {
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.message });
             setSubmissions([]);
+            setTotal(0);
         } finally {
             setIsLoading(false);
         }
     };
-
+    
     useEffect(() => {
-        fetchSubmissions(statusFilter);
-    }, [statusFilter, toast]);
+        fetchSubmissions(statusFilter, academicYear, page);
+    }, [statusFilter, academicYear, page, toast]);
 
     useEffect(() => {
       // Clear notes when submission changes
@@ -110,7 +155,7 @@ export default function ReviewSubmissionsPage() {
                     description: "The submission status has been updated.",
                 });
                 // Refresh list
-                fetchSubmissions(statusFilter);
+                fetchSubmissions(statusFilter, academicYear, page);
             } else {
                 throw new Error(data.message || 'Failed to update status');
             }
@@ -145,18 +190,32 @@ export default function ReviewSubmissionsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('pending')}>Pending</Button>
-            <Button variant={statusFilter === 'approved' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('approved')}>Approved</Button>
-            <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
+            <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} onClick={() => { setStatusFilter('pending'); setPage(1); }}>Pending</Button>
+            <Button variant={statusFilter === 'approved' ? 'secondary' : 'ghost'} onClick={() => { setStatusFilter('approved'); setPage(1); }}>Approved</Button>
+            <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} onClick={() => { setStatusFilter('rejected'); setPage(1); }}>Rejected</Button>
           </div>
         </div>
+
+        <div className="mb-4">
+            <Select onValueChange={(value) => { setAcademicYear(value); setPage(1); }} value={academicYear}>
+                <SelectTrigger className="w-full sm:w-[240px]">
+                    <SelectValue placeholder="Select Academic Year" />
+                </SelectTrigger>
+                <SelectContent>
+                    {yearOptions.map(year => (
+                        <SelectItem key={year} value={year}>Academic Year {year}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+
         <div className="bg-card rounded-lg border overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Faculty</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>College</TableHead>
                   <TableHead>Submission Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead><span className="sr-only">View</span></TableHead>
@@ -178,7 +237,7 @@ export default function ReviewSubmissionsPage() {
                         {submission.faculty.name}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {submission.categories.map(c => c.title).join(', ')}
+                          {submission.faculty.college}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {new Date(submission.createdAt).toLocaleDateString()}
@@ -216,6 +275,19 @@ export default function ReviewSubmissionsPage() {
               </TableBody>
             </Table>
           </div>
+           <div className="flex items-center justify-between border-t px-4 py-3 sm:px-6">
+                <div className="text-sm text-muted-foreground">
+                    Page <span className="font-medium text-foreground">{page}</span> of <span className="font-medium text-foreground">{totalPages || 1}</span>
+                </div>
+                <nav aria-label="Pagination" className="isolate inline-flex -space-x-px rounded-lg shadow-sm">
+                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                        Previous
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                        Next
+                    </Button>
+                </nav>
+            </div>
         </div>
       </div>
       <aside className="lg:col-span-1 bg-card rounded-lg border flex flex-col p-6 gap-6 h-fit sticky top-6">
