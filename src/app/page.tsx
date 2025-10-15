@@ -10,19 +10,16 @@ export default function Home() {
   const [timestamp, setTimestamp] = useState('');
 
   useEffect(() => {
-    // Set initial timestamp and update every second
     const updateTimestamp = () => {
-      setTimestamp(format(new Date(), 'yyyy-MM-dd HH:mm:ss'));
+      setTimestamp(format(new Date(), 'HH:mm:ss'));
     };
     updateTimestamp();
     const timer = setInterval(updateTimestamp, 1000);
 
-    // Redirect after a short delay
     const redirectTimer = setTimeout(() => {
       router.push('/u/portal/auth?faculty_login');
-    }, 2000); // 2-second delay
+    }, 2000); 
 
-    // Cleanup timers on component unmount
     return () => {
       clearInterval(timer);
       clearTimeout(redirectTimer);

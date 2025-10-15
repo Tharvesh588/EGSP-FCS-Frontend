@@ -1,6 +1,6 @@
 "use client"
 
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { Button } from "./ui/button";
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const READ_NOTIFICATIONS_KEY = 'readNotificationIds';
+const SESSION_TIMEOUT_SECONDS = 10 * 60; // 10 minutes
 
 type User = {
   name: string;
@@ -22,14 +23,37 @@ type User = {
 
 export function Header({ user }: { user: User }) {
     const pathname = usePathname();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
     const [hasUnread, setHasUnread] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(SESSION_TIMEOUT_SECONDS);
     
     const uid = searchParams.get('uid') || '';
     const notificationsHref = user.role === 'admin' 
         ? `/u/portal/dashboard/admin/notifications?uid=${uid}`
         : `/u/portal/dashboard/notifications?uid=${uid}`;
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTimeLeft(prevTime => {
+                if (prevTime <= 1) {
+                    clearInterval(timer);
+                    // Logout logic
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userRole');
+                    router.push('/u/portal/auth?faculty_login&reason=session_expired');
+                    return 0;
+                }
+                return prevTime - 1;
+            });
+        }, 1000);
+
+        // Reset timer on activity (pathname change)
+        setTimeLeft(SESSION_TIMEOUT_SECONDS);
+
+        return () => clearInterval(timer);
+    }, [pathname, router]);
     
     useEffect(() => {
         const checkNotifications = async () => {
@@ -61,15 +85,17 @@ export function Header({ user }: { user: User }) {
             }
         };
 
-        // Check on initial load and whenever path changes
         checkNotifications();
-
-        // Also check periodically
-        const interval = setInterval(checkNotifications, 60000); // every 60 seconds
+        const interval = setInterval(checkNotifications, 60000);
         return () => clearInterval(interval);
 
     }, [pathname, searchParams, user.role, toast]);
 
+    const formatTime = (seconds: number) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    };
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
@@ -84,6 +110,10 @@ export function Header({ user }: { user: User }) {
         </div>
       </div>
       <div className="flex w-full items-center justify-end gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="material-symbols-outlined text-base">timer</span>
+            <span>{formatTime(timeLeft)}</span>
+          </div>
           <Link href={notificationsHref}>
               <Button variant="ghost" size="icon" className="rounded-full relative text-muted-foreground hover:text-foreground">
                   <span className="material-symbols-outlined">notifications</span>

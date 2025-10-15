@@ -27,7 +27,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const updateTimestamp = () => {
-      setTimestamp(format(new Date(), 'yyyy-MM-dd HH:mm:ss'));
+      setTimestamp(format(new Date(), 'HH:mm:ss'));
     };
     updateTimestamp();
     const timer = setInterval(updateTimestamp, 1000);
