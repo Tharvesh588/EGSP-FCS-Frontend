@@ -15,6 +15,7 @@ import React, { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -69,6 +70,7 @@ export default function ReviewSubmissionsPage() {
     const [page, setPage] = useState(1);
     const [limit] = useState(10);
     const [total, setTotal] = useState(0);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const [adminNotes, setAdminNotes] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,7 +78,7 @@ export default function ReviewSubmissionsPage() {
     const yearOptions = generateYearOptions();
     const totalPages = Math.ceil(total / limit);
 
-    const fetchSubmissions = async (status: string, year: string, currentPage: number) => {
+    const fetchSubmissions = async (status: string, year: string, currentPage: number, search: string) => {
         setIsLoading(true);
         const token = localStorage.getItem("token");
         if (!token) {
@@ -93,6 +95,9 @@ export default function ReviewSubmissionsPage() {
                 limit: limit.toString(),
                 sort: '-createdAt'
             });
+            if (search) {
+              params.append('search', search);
+            }
 
             const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?${params.toString()}`, {
                 headers: { "Authorization": `Bearer ${token}` },
@@ -121,8 +126,11 @@ export default function ReviewSubmissionsPage() {
     };
     
     useEffect(() => {
-        fetchSubmissions(statusFilter, academicYear, page);
-    }, [statusFilter, academicYear, page, toast]);
+        const debounceTimer = setTimeout(() => {
+            fetchSubmissions(statusFilter, academicYear, page, searchTerm);
+        }, 500); // Debounce search to avoid rapid API calls
+        return () => clearTimeout(debounceTimer);
+    }, [statusFilter, academicYear, page, searchTerm, toast]);
 
     useEffect(() => {
       // Clear notes when submission changes
@@ -155,7 +163,7 @@ export default function ReviewSubmissionsPage() {
                     description: "The submission status has been updated.",
                 });
                 // Refresh list
-                fetchSubmissions(statusFilter, academicYear, page);
+                fetchSubmissions(statusFilter, academicYear, page, searchTerm);
             } else {
                 throw new Error(data.message || 'Failed to update status');
             }
@@ -196,7 +204,19 @@ export default function ReviewSubmissionsPage() {
           </div>
         </div>
 
-        <div className="mb-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">search</span>
+                <Input 
+                    placeholder="Search by faculty name or ID..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setPage(1);
+                    }}
+                    className="pl-10"
+                />
+            </div>
             <Select onValueChange={(value) => { setAcademicYear(value); setPage(1); }} value={academicYear}>
                 <SelectTrigger className="w-full sm:w-[240px]">
                     <SelectValue placeholder="Select Academic Year" />
@@ -269,7 +289,7 @@ export default function ReviewSubmissionsPage() {
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="text-center">No submissions found for this status.</TableCell>
+                        <TableCell colSpan={5} className="text-center">No submissions found for this filter.</TableCell>
                     </TableRow>
                 )}
               </TableBody>
@@ -283,7 +303,7 @@ export default function ReviewSubmissionsPage() {
                     <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                         Previous
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0}>
                         Next
                     </Button>
                 </nav>
@@ -379,3 +399,5 @@ export default function ReviewSubmissionsPage() {
     </div>
   )
 }
+
+    
