@@ -10,59 +10,116 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import React from "react"
+import { Textarea } from "@/components/ui/textarea"
+import React, { useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
 
-const submissions = [
-  {
-    id: 1,
-    faculty: "Dr. Arun Kumar",
-    department: "Computer Science",
-    date: "2024-07-26",
-    status: "Pending",
-    description: "Published a research paper in an international conference.",
-    document: "research_paper.pdf",
-  },
-  {
-    id: 2,
-    faculty: "Prof. Priya Sharma",
-    department: "Electrical Engineering",
-    date: "2024-07-25",
-    status: "Pending",
-    description: "Conducted a workshop for students.",
-    document: "workshop_report.pdf",
-  },
-  {
-    id: 3,
-    faculty: "Mr. Rajesh Verma",
-    department: "Mechanical Engineering",
-    date: "2024-07-24",
-    status: "Pending",
-    description: "Filed a patent for a new device.",
-    document: "patent_filing.pdf",
-  },
-  {
-    id: 4,
-    faculty: "Ms. Neha Kapoor",
-    department: "Civil Engineering",
-    date: "2024-07-23",
-    status: "Approved",
-    description: "Received a grant for a research project.",
-    document: "grant_approval.pdf",
-  },
-  {
-    id: 5,
-    faculty: "Dr. Suresh Rao",
-    department: "Electronics and Communication",
-    date: "2024-07-22",
-    status: "Rejected",
-    description: "Attended a faculty development program.",
-    document: "fdp_certificate.pdf",
-  },
-]
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+
+type Submission = {
+  _id: string;
+  faculty: {
+    _id: string;
+    name: string;
+    department: string;
+  };
+  title: string;
+  categories: { title: string }[];
+  description?: string;
+  proof: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  points: number;
+};
 
 export default function ReviewSubmissionsPage() {
-    const [selectedSubmission, setSelectedSubmission] = React.useState(submissions[0]);
+    const { toast } = useToast();
+    const [submissions, setSubmissions] = useState<Submission[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+    const [statusFilter, setStatusFilter] = useState("pending");
+    const [adminNotes, setAdminNotes] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const fetchSubmissions = async (status: string) => {
+        setIsLoading(true);
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast({ variant: "destructive", title: "Authentication Error" });
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?status=${status}&sort=-createdAt`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setSubmissions(data.items);
+                if (data.items.length > 0) {
+                    setSelectedSubmission(data.items[0]);
+                } else {
+                    setSelectedSubmission(null);
+                }
+            } else {
+                throw new Error(data.message || "Failed to fetch submissions");
+            }
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: error.message });
+            setSubmissions([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSubmissions(statusFilter);
+    }, [statusFilter]);
+
+    useEffect(() => {
+      // Clear notes when submission changes
+      setAdminNotes("");
+    }, [selectedSubmission]);
+
+    const handleUpdateStatus = async (newStatus: "approved" | "rejected") => {
+        if (!selectedSubmission) return;
+
+        setIsSubmitting(true);
+        const token = localStorage.getItem("token");
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive/${selectedSubmission._id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    status: newStatus,
+                    notes: adminNotes,
+                }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                toast({
+                    title: `Submission ${newStatus}`,
+                    description: "The submission status has been updated.",
+                });
+                // Refresh list
+                fetchSubmissions(statusFilter);
+            } else {
+                throw new Error(data.message || 'Failed to update status');
+            }
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
 
   return (
     <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-auto">
@@ -77,18 +134,9 @@ export default function ReviewSubmissionsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline">
-              <span className="material-symbols-outlined mr-2 text-base">
-                filter_list
-              </span>
-              Filter
-            </Button>
-            <Button variant="outline">
-              <span className="material-symbols-outlined mr-2 text-base">
-                swap_vert
-              </span>
-              Sort
-            </Button>
+            <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('pending')}>Pending</Button>
+            <Button variant={statusFilter === 'approved' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('approved')}>Approved</Button>
+            <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
           </div>
         </div>
         <div className="bg-card rounded-lg border overflow-hidden">
@@ -97,48 +145,63 @@ export default function ReviewSubmissionsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Faculty</TableHead>
-                  <TableHead>Department</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Submission Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead><span className="sr-only">View</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {submissions.map((submission) => (
-                  <TableRow
-                    key={submission.id}
-                    className={`cursor-pointer ${selectedSubmission?.id === submission.id ? "bg-primary/10" : ""}`}
-                    onClick={() => setSelectedSubmission(submission)}
-                  >
-                    <TableCell className="font-medium">
-                      {submission.faculty}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {submission.department}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {submission.date}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          submission.status === "Pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : submission.status === "Approved"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {submission.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="material-symbols-outlined text-muted-foreground">
-                        chevron_right
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {isLoading ? (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center">Loading submissions...</TableCell>
+                    </TableRow>
+                ) : submissions.length > 0 ? (
+                    submissions.map((submission) => (
+                    <TableRow
+                        key={submission._id}
+                        className={`cursor-pointer ${selectedSubmission?._id === submission._id ? "bg-primary/10" : ""}`}
+                        onClick={() => setSelectedSubmission(submission)}
+                    >
+                        <TableCell className="font-medium">
+                        {submission.faculty.name}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {submission.categories.map(c => c.title).join(', ')}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(submission.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                        <Badge
+                            variant={
+                            submission.status === "approved"
+                                ? "default"
+                                : submission.status === "pending"
+                                ? "secondary"
+                                : "destructive"
+                            }
+                            className={
+                            submission.status === "approved" ? "bg-green-100 text-green-800" :
+                            submission.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                            "bg-red-100 text-red-800"
+                            }
+                        >
+                            {submission.status}
+                        </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                        <span className="material-symbols-outlined text-muted-foreground">
+                            chevron_right
+                        </span>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center">No submissions found for this status.</TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -152,46 +215,68 @@ export default function ReviewSubmissionsPage() {
                     <label className="text-sm font-medium text-muted-foreground">
                     Faculty
                     </label>
-                    <p className="font-semibold">{selectedSubmission.faculty}</p>
+                    <p className="font-semibold">{selectedSubmission.faculty.name}</p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-medium text-muted-foreground">
                     Department
                     </label>
-                    <p>{selectedSubmission.department}</p>
+                    <p>{selectedSubmission.faculty.department}</p>
                 </div>
-                <div className="flex flex-col gap-1.5">
+                 <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-medium text-muted-foreground">
                     Submission Date
                     </label>
-                    <p>{selectedSubmission.date}</p>
+                    <p>{new Date(selectedSubmission.createdAt).toLocaleString()}</p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-medium text-muted-foreground">
-                    Description
+                    Title
                     </label>
-                    <p>{selectedSubmission.description}</p>
+                    <p>{selectedSubmission.title}</p>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-muted-foreground">
+                    Credit Value
+                    </label>
+                    <p className="font-semibold">{selectedSubmission.points} points</p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-medium text-muted-foreground">
                     Supporting Document
                     </label>
-                    <a className="flex items-center gap-2 text-primary hover:underline" href="#">
+                    <a className="flex items-center gap-2 text-primary hover:underline" href={selectedSubmission.proof} target="_blank" rel="noopener noreferrer">
                     <span className="material-symbols-outlined">attach_file</span>
-                    <span>{selectedSubmission.document}</span>
+                    <span>View Document</span>
                     </a>
                 </div>
                 <div className="border-t pt-6 flex flex-col gap-4">
                     <label className="text-sm font-medium text-muted-foreground" htmlFor="credit-value">
-                        Assign Credit Value
+                        Admin Remarks
                     </label>
-                    <Input id="credit-value" placeholder="e.g., 10" type="number" />
+                    <Textarea 
+                      id="admin-notes"
+                      placeholder="Add remarks (optional for approve, recommended for reject)" 
+                      rows={3}
+                      value={adminNotes}
+                      onChange={(e) => setAdminNotes(e.target.value)}
+                      disabled={selectedSubmission.status !== 'pending' || isSubmitting}
+                    />
                     <div className="flex gap-3">
-                        <Button className="flex-1">
+                        <Button 
+                            className="flex-1"
+                            onClick={() => handleUpdateStatus('approved')}
+                            disabled={selectedSubmission.status !== 'pending' || isSubmitting}
+                        >
                             <span className="material-symbols-outlined mr-2">check_circle</span>
                             Approve
                         </Button>
-                        <Button variant="outline" className="flex-1">
+                        <Button 
+                            variant="destructive" 
+                            className="flex-1"
+                            onClick={() => handleUpdateStatus('rejected')}
+                            disabled={selectedSubmission.status !== 'pending' || isSubmitting}
+                        >
                             <span className="material-symbols-outlined mr-2">cancel</span>
                             Reject
                         </Button>
@@ -200,7 +285,7 @@ export default function ReviewSubmissionsPage() {
             </>
         ) : (
             <div className="bg-background p-4 rounded-lg flex items-center justify-center text-center text-muted-foreground h-full">
-                <p>Select a submission to view details</p>
+                <p>{isLoading ? "Loading..." : "Select a submission to view details"}</p>
             </div>
         )}
       </aside>
