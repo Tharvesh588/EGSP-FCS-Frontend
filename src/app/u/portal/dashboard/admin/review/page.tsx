@@ -25,9 +25,9 @@ type Submission = {
     department: string;
   };
   title: string;
-  categories: { title: string }[];
+  categories: { _id: string; title: string; }[];
   description?: string;
-  proof: string;
+  proofUrl: string;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
   points: number;
@@ -246,7 +246,7 @@ export default function ReviewSubmissionsPage() {
                     <label className="text-sm font-medium text-muted-foreground">
                     Supporting Document
                     </label>
-                    <a className="flex items-center gap-2 text-primary hover:underline" href={selectedSubmission.proof} target="_blank" rel="noopener noreferrer">
+                    <a className="flex items-center gap-2 text-primary hover:underline" href={selectedSubmission.proofUrl} target="_blank" rel="noopener noreferrer">
                     <span className="material-symbols-outlined">attach_file</span>
                     <span>View Document</span>
                     </a>
