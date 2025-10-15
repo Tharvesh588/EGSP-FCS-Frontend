@@ -36,24 +36,23 @@ export function Header({ user }: { user: User }) {
 
     useEffect(() => {
         const timer = setInterval(() => {
-            setTimeLeft(prevTime => {
-                if (prevTime <= 1) {
-                    clearInterval(timer);
-                    // Logout logic
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('userRole');
-                    router.push('/u/portal/auth?faculty_login&reason=session_expired');
-                    return 0;
-                }
-                return prevTime - 1;
-            });
+            setTimeLeft(prevTime => (prevTime > 0 ? prevTime - 1 : 0));
         }, 1000);
 
         // Reset timer on activity (pathname change)
         setTimeLeft(SESSION_TIMEOUT_SECONDS);
 
         return () => clearInterval(timer);
-    }, [pathname, router]);
+    }, [pathname]);
+
+    useEffect(() => {
+        if (timeLeft === 0) {
+            // Logout logic
+            localStorage.removeItem('token');
+            localStorage.removeItem('userRole');
+            router.push('/u/portal/auth?faculty_login&reason=session_expired');
+        }
+    }, [timeLeft, router]);
     
     useEffect(() => {
         const checkNotifications = async () => {
