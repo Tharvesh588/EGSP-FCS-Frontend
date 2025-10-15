@@ -199,14 +199,9 @@ export default function ManageRemarksPage() {
       return;
     }
 
-    const selectedTitle = creditTitles.find(ct => ct._id === creditTitleId);
-
     const formData = new FormData();
     formData.append("facultyId", facultyId);
-    // The API doc is ambiguous. Trying with both `title` and `creditTitleId`
-    formData.append("title", selectedTitle?.title || '');
-    formData.append("points", (selectedTitle?.points || 0).toString());
-    // formData.append("creditTitleId", creditTitleId); // Keep this if your backend prefers it
+    formData.append("creditTitleId", creditTitleId);
     formData.append("academicYear", academicYear);
     formData.append("notes", notes);
     formData.append("proof", proof);
