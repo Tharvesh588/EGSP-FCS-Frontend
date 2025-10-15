@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
 export default function LoginPage() {
   const router = useRouter();

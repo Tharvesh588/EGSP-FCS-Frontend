@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
 type CreditTitle = {
   _id: string;

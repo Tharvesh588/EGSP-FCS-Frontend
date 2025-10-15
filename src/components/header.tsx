@@ -10,7 +10,7 @@ import { Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const READ_NOTIFICATIONS_KEY = 'readNotificationIds';
 
 type User = {

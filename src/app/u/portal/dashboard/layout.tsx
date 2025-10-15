@@ -7,7 +7,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
 type User = {
   id: string;

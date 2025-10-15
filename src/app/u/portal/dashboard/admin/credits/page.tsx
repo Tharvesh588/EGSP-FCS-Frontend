@@ -46,7 +46,7 @@ import {
 import { ArrowUpDown, Edit, Trash2 } from "lucide-react";
 
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
 type CreditTitle = {
   _id: string;
@@ -75,6 +75,8 @@ export default function ManageCreditTitlesPage() {
   // State for editing
   const [editingTitle, setEditingTitle] = useState<CreditTitle | null>(null);
   const [isEditLoading, setIsEditLoading] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
 
   const fetchCreditTitles = async () => {
     setIsLoadingTitles(true);
@@ -203,6 +205,7 @@ export default function ManageCreditTitlesPage() {
 
         toast({ title: "Update Successful", description: "Credit title has been updated." });
         setEditingTitle(null);
+        setIsEditDialogOpen(false);
         fetchCreditTitles();
     } catch (error: any) {
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
@@ -349,15 +352,20 @@ export default function ManageCreditTitlesPage() {
                       <TableCell className="text-muted-foreground">{ct.description}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                            <Dialog open={editingTitle?._id === ct._id} onOpenChange={(isOpen) => {
+                            <Dialog open={isEditDialogOpen && editingTitle?._id === ct._id} onOpenChange={(isOpen) => {
                                 if (isOpen) {
                                     setEditingTitle(ct);
+                                    setIsEditDialogOpen(true);
                                 } else {
                                     setEditingTitle(null);
+                                    setIsEditDialogOpen(false);
                                 }
                             }}>
                                 <DialogTrigger asChild>
-                                    <Button variant="ghost" size="icon">
+                                    <Button variant="ghost" size="icon" onClick={() => {
+                                        setEditingTitle(ct);
+                                        setIsEditDialogOpen(true);
+                                    }}>
                                         <Edit className="h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>

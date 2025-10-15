@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { formatDistanceToNow } from 'date-fns';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const READ_NOTIFICATIONS_KEY = 'readNotificationIds';
 
 type Credit = {
@@ -60,9 +60,7 @@ export default function NotificationsPage() {
       
       try {
         const url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=50`;
-        const response = await fetch(url, {
-          headers: { "Authorization": `Bearer ${token}` },
-        });
+        const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
 
         const responseData = await response.json();
         if (!response.ok || !responseData.success) {
@@ -125,15 +123,11 @@ export default function NotificationsPage() {
           };
         });
 
-        setNotifications(generatedNotifications);
+        setNotifications(generatedNotifications.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
 
         if (newUnreadIds.length > 0) {
           const updatedReadIds = [...storedReadIds, ...newUnreadIds];
           localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(updatedReadIds));
-          // Refresh notifications to mark them as read visually
-          setNotifications(prevNotifications => 
-            prevNotifications.map(n => ({...n, read: true}))
-          );
         }
 
       } catch (error: any) {
@@ -154,6 +148,12 @@ export default function NotificationsPage() {
     }
   }, [searchParams, toast]);
 
+  const markAllAsRead = () => {
+    const allIds = notifications.map(n => n.id);
+    localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(allIds));
+    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  };
+
   const filteredNotifications = notifications.filter(n => {
     if (filter === 'all') return true;
     if (filter === 'read') return n.read;
@@ -164,7 +164,10 @@ export default function NotificationsPage() {
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-8">
-        <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
+        <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
+            <Button variant="outline" onClick={markAllAsRead}>Mark all as read</Button>
+        </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -187,7 +190,7 @@ export default function NotificationsPage() {
             filteredNotifications.map((notification) => (
             <div
               key={notification.id}
-              className="group flex cursor-pointer items-start gap-4 rounded-lg bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
+              className={`group flex cursor-pointer items-start gap-4 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${notification.read ? 'bg-card' : 'bg-primary/5'}`}
             >
               <div
                 className={`relative flex shrink-0 items-center justify-center rounded-full size-12 ${
