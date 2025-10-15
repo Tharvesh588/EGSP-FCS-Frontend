@@ -40,9 +40,9 @@ const getCurrentAcademicYear = () => {
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
     if (currentMonth >= 5) {
-      return `${currentYear}-${(currentYear + 1).toString()}`;
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
     }
-    return `${currentYear - 1}-${currentYear.toString()}`;
+    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
 };
 
 const generateYearOptions = () => {
@@ -53,7 +53,7 @@ const generateYearOptions = () => {
     for (let i = 0; i < 5; i++) {
         const startYear = startCurrentYear - i;
         const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString()}`);
+        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
     }
     return years;
 };
