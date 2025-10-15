@@ -77,7 +77,7 @@ export default function ReviewSubmissionsPage() {
 
     useEffect(() => {
         fetchSubmissions(statusFilter);
-    }, [statusFilter]);
+    }, [statusFilter, toast]);
 
     useEffect(() => {
       // Clear notes when submission changes
@@ -119,6 +119,16 @@ export default function ReviewSubmissionsPage() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleViewDocument = () => {
+      if (!selectedSubmission?.proofUrl) return;
+
+      const userConfirmation = window.confirm("You're about to open a new tab. Heads up! If your session has expired, you might need to log in again. Continue?");
+      
+      if (userConfirmation) {
+        window.open(selectedSubmission.proofUrl, '_blank', 'noopener,noreferrer');
+      }
     };
 
 
@@ -246,10 +256,14 @@ export default function ReviewSubmissionsPage() {
                     <label className="text-sm font-medium text-muted-foreground">
                     Supporting Document
                     </label>
-                    <a className="flex items-center gap-2 text-primary hover:underline" href={selectedSubmission.proofUrl} target="_blank" rel="noopener noreferrer">
-                    <span className="material-symbols-outlined">attach_file</span>
-                    <span>View Document</span>
-                    </a>
+                    <button
+                      className="flex items-center gap-2 text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleViewDocument}
+                      disabled={!selectedSubmission.proofUrl}
+                    >
+                      <span className="material-symbols-outlined">attach_file</span>
+                      <span>View Document</span>
+                    </button>
                 </div>
                 <div className="border-t pt-6 flex flex-col gap-4">
                     <label className="text-sm font-medium text-muted-foreground" htmlFor="credit-value">
