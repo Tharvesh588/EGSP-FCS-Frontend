@@ -53,7 +53,8 @@ export default function ReviewSubmissionsPage() {
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?status=${status}&sort=-createdAt`, {
-                headers: { "Authorization": `Bearer ${token}` }
+                headers: { "Authorization": `Bearer ${token}` },
+                cache: 'no-store'
             });
             const data = await response.json();
             if (data.success) {
