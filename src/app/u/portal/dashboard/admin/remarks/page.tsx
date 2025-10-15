@@ -21,6 +21,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -34,6 +35,18 @@ type CreditTitle = {
   title: string;
   points: number;
   type: 'positive' | 'negative';
+};
+
+type NegativeRemark = {
+  _id: string;
+  faculty: {
+    _id: string;
+    name: string;
+  };
+  title: string;
+  points: number;
+  status: string;
+  createdAt: string;
 };
 
 const getCurrentAcademicYear = () => {
@@ -60,32 +73,11 @@ const generateYearOptions = () => {
     return years;
 };
 
-const remarks = [
-  {
-    faculty: "Dr. Priya Sharma",
-    severity: "High",
-    description: "Repeatedly late for classes",
-    date: "2024-07-26",
-    status: "Active",
-  },
-  {
-    faculty: "Prof. Arjun Verma",
-    severity: "Medium",
-    description: "Incomplete syllabus coverage",
-    date: "2024-07-20",
-    status: "Active",
-  },
-  {
-    faculty: "Ms. Neha Kapoor",
-    severity: "Low",
-    description: "Minor administrative oversight",
-    date: "2024-07-15",
-    status: "Active",
-  },
-]
-
 export default function ManageRemarksPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+
+  // Form state
   const [facultyId, setFacultyId] = useState("");
   const [creditTitleId, setCreditTitleId] = useState("");
   const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
@@ -94,58 +86,98 @@ export default function ManageRemarksPage() {
   const [fileName, setFileName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Data for dropdowns
   const [facultyList, setFacultyList] = useState<User[]>([]);
   const [creditTitles, setCreditTitles] = useState<CreditTitle[]>([]);
 
-  useEffect(() => {
-    const adminToken = localStorage.getItem("token");
+  // Data for table
+  const [remarks, setRemarks] = useState<NegativeRemark[]>([]);
+  const [isLoadingRemarks, setIsLoadingRemarks] = useState(true);
+
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+  const uid = searchParams.get('uid');
+
+  const fetchDropdownData = async () => {
     if (!adminToken) {
       toast({ variant: "destructive", title: "Authentication Error" });
       return;
     }
 
-    const fetchFaculty = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
-          headers: { Authorization: `Bearer ${adminToken}` },
-        });
-        const data = await response.json();
-        if (data.success) {
-          setFacultyList(data.items);
-        } else {
-          throw new Error(data.message || "Failed to fetch faculty");
-        }
-      } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message });
+    try {
+      // Fetch faculty
+      const facultyResponse = await fetch(`${API_BASE_URL}/api/v1/users?limit=1000`, { // Fetch all faculty
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const facultyData = await facultyResponse.json();
+      if (facultyData.success) {
+        setFacultyList(facultyData.items);
+      } else {
+        throw new Error(facultyData.message || "Failed to fetch faculty");
       }
-    };
 
-    const fetchCreditTitles = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title`, {
-          headers: { Authorization: `Bearer ${adminToken}` },
-        });
-        const data = await response.json();
-        if (data.success) {
-          // Assuming negative titles can be identified, if not, all will be shown.
-          // For now, filtering by a convention if one exists, e.g., points < 0 or type === 'negative'
-          setCreditTitles(data.items.filter((ct: CreditTitle) => ct.type === 'negative'));
-        } else {
-          throw new Error(data.message || "Failed to fetch credit titles");
-        }
-      } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message });
+      // Fetch negative credit titles
+      const creditTitlesResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const creditTitlesData = await creditTitlesResponse.json();
+      if (creditTitlesData.success) {
+        setCreditTitles(creditTitlesData.items.filter((ct: CreditTitle) => ct.type === 'negative'));
+      } else {
+        throw new Error(creditTitlesData.message || "Failed to fetch credit titles");
       }
-    };
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error fetching initial data", description: error.message });
+    }
+  };
 
-    fetchFaculty();
-    fetchCreditTitles();
-  }, [toast]);
+  const fetchRemarks = async () => {
+    setIsLoadingRemarks(true);
+    if (!adminToken) {
+      setIsLoadingRemarks(false);
+      return;
+    }
+
+    try {
+      // This is a placeholder. You might need a specific endpoint to get ALL negative remarks.
+      // I'll fetch for the admin user, assuming an admin can see all.
+      const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${uid}?type=negative&limit=50`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setRemarks(data.items.filter((item: any) => item.type === 'negative' || item.points < 0));
+      } else {
+        // If that fails, try to get all submissions and filter, as a fallback.
+        // This is not ideal for performance.
+        console.warn("Could not fetch negative remarks directly. Trying a wider search.");
+        const allResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?limit=200`, { headers: { Authorization: `Bearer ${adminToken}` } });
+        const allData = await allResponse.json();
+        if(allData.success) {
+             setRemarks(allData.items.filter((item: any) => item.type === 'negative' || item.points < 0));
+        } else {
+             throw new Error(data.message || "Failed to fetch remarks");
+        }
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
+      setRemarks([]);
+    } finally {
+      setIsLoadingRemarks(false);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchDropdownData();
+    fetchRemarks();
+  }, [uid, adminToken]);
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      setProof(event.target.files[0]);
-      setFileName(event.target.files[0].name);
+      const file = event.target.files[0];
+      // You might want to add file size validation here
+      setProof(file);
+      setFileName(file.name);
     }
   };
 
@@ -161,16 +193,20 @@ export default function ManageRemarksPage() {
     }
     setIsLoading(true);
 
-    const adminToken = localStorage.getItem("token");
     if (!adminToken) {
       toast({ variant: "destructive", title: "Authentication Error" });
       setIsLoading(false);
       return;
     }
 
+    const selectedTitle = creditTitles.find(ct => ct._id === creditTitleId);
+
     const formData = new FormData();
     formData.append("facultyId", facultyId);
-    formData.append("creditTitleId", creditTitleId);
+    // The API doc is ambiguous. Trying with both `title` and `creditTitleId`
+    formData.append("title", selectedTitle?.title || '');
+    formData.append("points", (selectedTitle?.points || 0).toString());
+    // formData.append("creditTitleId", creditTitleId); // Keep this if your backend prefers it
     formData.append("academicYear", academicYear);
     formData.append("notes", notes);
     formData.append("proof", proof);
@@ -195,13 +231,14 @@ export default function ManageRemarksPage() {
         description: "The negative remark has been successfully recorded.",
       });
 
-      // Reset form
+      // Reset form and refetch remarks
       setFacultyId("");
       setCreditTitleId("");
       setAcademicYear(getCurrentAcademicYear());
       setNotes("");
       setProof(null);
       setFileName("");
+      fetchRemarks();
 
     } catch (error: any) {
       toast({
@@ -216,19 +253,19 @@ export default function ManageRemarksPage() {
 
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-7xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">
           Manage Negative Remarks
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create and manage negative remarks against faculty members.
+          Issue and manage negative remarks against faculty members.
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="space-y-6 rounded-lg bg-card p-6">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+        <div className="space-y-6 rounded-lg bg-card p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-foreground">
-            Create New Remark
+            Issue New Remark
           </h2>
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
@@ -298,7 +335,7 @@ export default function ManageRemarksPage() {
               </label>
               <Textarea
                 id="notes"
-                placeholder="Enter detailed notes"
+                placeholder="Enter detailed notes about the incident"
                 rows={4}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -306,13 +343,13 @@ export default function ManageRemarksPage() {
             </div>
             <div>
               <label
-                className="block text-sm font-medium text-muted-foreground"
+                className="block text-sm font-medium text-muted-foreground mb-1"
               >
-                Upload Document
+                Upload Proof Document
               </label>
                <label
                   htmlFor="file-upload"
-                  className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-border px-6 pt-5 pb-6 cursor-pointer hover:border-primary transition-colors"
+                  className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-border px-6 py-5 cursor-pointer hover:border-primary transition-colors"
                 >
                 <div className="space-y-1 text-center">
                   <span className="material-symbols-outlined text-4xl text-muted-foreground/50">
@@ -327,9 +364,9 @@ export default function ManageRemarksPage() {
                     <p className="pl-1">or drag and drop</p>
                   </div>
                    <p className="text-xs text-muted-foreground/80">
-                    PNG, JPG, PDF, DOCX, ZIP up to 10MB
+                    PDF, DOCX, ZIP etc. up to 10MB
                   </p>
-                  {fileName && <p className="text-sm text-green-600 mt-2">{fileName}</p>}
+                  {fileName && <p className="text-sm text-green-600 mt-2 truncate max-w-xs">{fileName}</p>}
                    <Input
                         id="file-upload"
                         name="file-upload"
@@ -340,54 +377,48 @@ export default function ManageRemarksPage() {
                 </div>
               </label>
             </div>
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Submitting..." : "Submit Remark"}
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading ? "Submitting Remark..." : "Submit Remark"}
               </Button>
             </div>
           </form>
         </div>
-        <div className="space-y-6 rounded-lg bg-card p-6">
+        <div className="space-y-6 rounded-lg bg-card p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-foreground">
-            Active Remarks
+            Issued Remarks History
           </h2>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto border rounded-lg">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Faculty Member</TableHead>
-                  <TableHead>Severity</TableHead>
+                  <TableHead>Faculty</TableHead>
+                  <TableHead>Remark Title</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Points</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {remarks.map((remark, index) => (
-                  <TableRow key={index}>
+                {isLoadingRemarks ? (
+                   <TableRow>
+                      <TableCell colSpan={4} className="text-center">Loading remarks...</TableCell>
+                    </TableRow>
+                ) : remarks.length > 0 ? (
+                  remarks.map((remark) => (
+                  <TableRow key={remark._id}>
                     <TableCell className="font-medium text-foreground">
-                      {remark.faculty}
+                      {remark.faculty.name}
                     </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          remark.severity === "High"
-                            ? "bg-red-100 text-red-800"
-                            : remark.severity === "Medium"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {remark.severity}
-                      </span>
-                    </TableCell>
-                    <TableCell>{remark.date}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                        {remark.status}
-                      </span>
-                    </TableCell>
+                    <TableCell>{remark.title}</TableCell>
+                    <TableCell>{new Date(remark.createdAt).toLocaleDateString()}</TableCell>
+                     <TableCell className="text-right font-semibold text-destructive">{remark.points}</TableCell>
                   </TableRow>
-                ))}
+                ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center">No remarks found.</TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
