@@ -124,7 +124,7 @@ export default function ReviewSubmissionsPage() {
     const handleViewDocument = () => {
       if (!selectedSubmission?.proofUrl) return;
 
-      const userConfirmation = window.confirm("You're about to open a new tab. Heads up! If your session has expired, you might need to log in again. Continue?");
+      const userConfirmation = window.confirm("You are being redirected to an external website. Please note that this application cannot be held responsible for external websites' content & privacy policies.");
       
       if (userConfirmation) {
         window.open(selectedSubmission.proofUrl, '_blank', 'noopener,noreferrer');
