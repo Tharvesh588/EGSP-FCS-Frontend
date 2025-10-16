@@ -385,7 +385,7 @@ export default function ReviewSubmissionsPage() {
                             disabled={selectedSubmission.status !== 'pending' || isSubmitting}
                         >
                             <span className="material-symbols-outlined mr-2">cancel</span>
-                            Reject
+                            Not Satisfied
                         </Button>
                     </div>
                 </div>
@@ -399,5 +399,3 @@ export default function ReviewSubmissionsPage() {
     </div>
   )
 }
-
-    
