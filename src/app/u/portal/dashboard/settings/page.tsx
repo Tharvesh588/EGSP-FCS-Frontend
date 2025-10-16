@@ -10,6 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
+import { colleges } from "@/lib/colleges";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -22,6 +24,10 @@ type UserProfile = {
   avatar: string;
 };
 
+type Departments = {
+    [key: string]: string[];
+};
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -29,6 +35,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<Departments>({});
 
   const fetchUser = async () => {
     const token = localStorage.getItem("token");
@@ -44,15 +51,20 @@ export default function SettingsPage() {
       const responseData = await response.json();
       if (responseData.success) {
         const userData = responseData.data;
-        setUser({
+        const userProfile: UserProfile = {
           name: userData.name || "",
           email: userData.email || "",
           phone: userData.phone || "",
           college: userData.college || "",
           department: userData.department || "",
           avatar: userData.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`
-        });
-        setPreviewImage(userData.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`);
+        };
+        setUser(userProfile);
+        setPreviewImage(userProfile.avatar);
+
+        if (userProfile.college && colleges[userProfile.college as keyof typeof colleges]) {
+          setDepartments(colleges[userProfile.college as keyof typeof colleges]);
+        }
       } else {
         throw new Error(responseData.message || "Failed to fetch user data");
       }
@@ -71,6 +83,11 @@ export default function SettingsPage() {
     if (!user) return;
     const { name, value } = e.target;
     setUser({ ...user, [name]: value });
+  };
+  
+  const handleDepartmentChange = (value: string) => {
+    if (!user) return;
+    setUser({ ...user, department: value });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,6 +113,9 @@ export default function SettingsPage() {
     formData.append('name', user.name);
     formData.append('email', user.email);
     formData.append('phone', user.phone);
+    if(user.department) {
+      formData.append('department', user.department);
+    }
     if (profileImage) {
         formData.append('profileImage', profileImage);
     }
@@ -166,8 +186,22 @@ export default function SettingsPage() {
                             <Input value={user.college} disabled />
                         </div>
                         <div>
-                            <Label>Department</Label>
-                            <Input value={user.department} disabled />
+                          <Label htmlFor="department">Department</Label>
+                          <Select onValueChange={handleDepartmentChange} value={user.department}>
+                              <SelectTrigger id="department">
+                                  <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {Object.entries(departments).map(([group, courses]) => (
+                                      <SelectGroup key={group}>
+                                          <SelectLabel>{group}</SelectLabel>
+                                          {courses.map(course => (
+                                              <SelectItem key={course} value={course}>{course}</SelectItem>
+                                          ))}
+                                      </SelectGroup>
+                                  ))}
+                              </SelectContent>
+                          </Select>
                         </div>
                     </div>
                 </div>
