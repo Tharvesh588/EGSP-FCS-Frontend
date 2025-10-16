@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -26,6 +28,7 @@ type Submission = {
     name: string;
     department: string;
     college: string;
+    profileImage?: string;
   };
   title: string;
   categories: { _id: string; title: string; }[];
@@ -310,55 +313,58 @@ export default function ReviewSubmissionsPage() {
             </div>
         </div>
       </div>
-      <aside className="lg:col-span-1 bg-card rounded-lg border flex flex-col p-6 gap-6 h-fit sticky top-6">
+      <aside className="lg:col-span-1 flex flex-col gap-6 h-fit sticky top-6">
         {selectedSubmission ? (
-            <>
-                <h3 className="text-xl font-bold">Submission Details</h3>
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-muted-foreground">
-                    Faculty
-                    </label>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Faculty Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <Avatar>
+                    <AvatarImage src={selectedSubmission.faculty.profileImage} />
+                    <AvatarFallback>{selectedSubmission.faculty.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
                     <p className="font-semibold">{selectedSubmission.faculty.name}</p>
+                    <p className="text-sm text-muted-foreground">{selectedSubmission.faculty.department}</p>
+                    <p className="text-xs text-muted-foreground">{selectedSubmission.faculty.college}</p>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-muted-foreground">
-                    Department
-                    </label>
-                    <p>{selectedSubmission.faculty.department}</p>
+                <div className="text-sm text-muted-foreground mt-4">
+                  Submitted on: {new Date(selectedSubmission.createdAt).toLocaleString()}
                 </div>
-                 <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-muted-foreground">
-                    Submission Date
-                    </label>
-                    <p>{new Date(selectedSubmission.createdAt).toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Submission Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Title</p>
+                  <p className="font-semibold">{selectedSubmission.title}</p>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-muted-foreground">
-                    Title
-                    </label>
-                    <p>{selectedSubmission.title}</p>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Credit Value</p>
+                  <p className="font-semibold">{selectedSubmission.points} points</p>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-muted-foreground">
-                    Credit Value
-                    </label>
-                    <p className="font-semibold">{selectedSubmission.points} points</p>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-muted-foreground">
-                    Supporting Document
-                    </label>
-                    <button
-                      className="flex items-center gap-2 text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Supporting Document</p>
+                  <Button
+                      variant="link"
+                      className="p-0 h-auto flex items-center gap-2 text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handleViewDocument}
                       disabled={!selectedSubmission.proofUrl}
                     >
                       <span className="material-symbols-outlined">attach_file</span>
                       <span>View Document</span>
-                    </button>
+                    </Button>
                 </div>
-                <div className="border-t pt-6 flex flex-col gap-4">
-                    <label className="text-sm font-medium text-muted-foreground" htmlFor="credit-value">
+                <div>
+                    <label className="text-sm font-medium text-muted-foreground" htmlFor="admin-notes">
                         Admin Remarks
                     </label>
                     <Textarea 
@@ -368,32 +374,39 @@ export default function ReviewSubmissionsPage() {
                       value={adminNotes}
                       onChange={(e) => setAdminNotes(e.target.value)}
                       disabled={selectedSubmission.status !== 'pending' || isSubmitting}
+                      className="mt-1"
                     />
-                    <div className="flex gap-3">
-                        <Button 
-                            className="flex-1"
-                            onClick={() => handleUpdateStatus('approved')}
-                            disabled={selectedSubmission.status !== 'pending' || isSubmitting}
-                        >
-                            <span className="material-symbols-outlined mr-2">check_circle</span>
-                            Approve
-                        </Button>
-                        <Button 
-                            variant="destructive" 
-                            className="flex-1"
-                            onClick={() => handleUpdateStatus('rejected')}
-                            disabled={selectedSubmission.status !== 'pending' || isSubmitting}
-                        >
-                            <span className="material-symbols-outlined mr-2">cancel</span>
-                            Not Satisfied
-                        </Button>
-                    </div>
                 </div>
-            </>
+              </CardContent>
+              {selectedSubmission.status === 'pending' && (
+                <CardFooter className="flex gap-3">
+                    <Button 
+                        className="flex-1"
+                        onClick={() => handleUpdateStatus('approved')}
+                        disabled={isSubmitting}
+                    >
+                        <span className="material-symbols-outlined mr-2">check_circle</span>
+                        Approve
+                    </Button>
+                    <Button 
+                        variant="destructive" 
+                        className="flex-1"
+                        onClick={() => handleUpdateStatus('rejected')}
+                        disabled={isSubmitting}
+                    >
+                        <span className="material-symbols-outlined mr-2">cancel</span>
+                        Not Satisfied
+                    </Button>
+                </CardFooter>
+              )}
+            </Card>
+          </div>
         ) : (
-            <div className="bg-background p-4 rounded-lg flex items-center justify-center text-center text-muted-foreground h-full">
-                <p>{isLoading ? "Loading..." : "Select a submission to view details"}</p>
-            </div>
+            <Card className="flex items-center justify-center h-full">
+                <CardContent className="text-center text-muted-foreground p-6">
+                    <p>{isLoading ? "Loading..." : "Select a submission to view details"}</p>
+                </CardContent>
+            </Card>
         )}
       </aside>
     </div>
