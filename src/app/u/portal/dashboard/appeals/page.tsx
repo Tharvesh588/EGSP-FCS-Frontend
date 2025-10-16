@@ -75,9 +75,8 @@ export default function AppealsPage() {
   const fetchAppeals = async () => {
       setIsLoading(true);
       const token = localStorage.getItem("token");
-      const facultyId = searchParams.get('uid');
 
-      if (!token || !facultyId) {
+      if (!token) {
         toast({ variant: "destructive", title: "Authentication Error" });
         setIsLoading(false);
         return;
@@ -92,8 +91,9 @@ export default function AppealsPage() {
         if (resData.success) {
             setAppeals(resData.items);
             if (resData.items.length > 0) {
-              // Select the first appeal by default
               setSelectedAppeal(resData.items[0]);
+            } else {
+              setSelectedAppeal(null);
             }
         } else {
             throw new Error(resData.message || "Failed to fetch appeals.");
@@ -130,7 +130,7 @@ export default function AppealsPage() {
     if (searchParams.get('uid')) {
         fetchAppeals();
     }
-  }, [searchParams, toast]);
+  }, [searchParams]);
 
   useEffect(() => {
     if(isAppealDialogOpen) {
@@ -187,7 +187,7 @@ export default function AppealsPage() {
     }
   };
 
-  const filteredAppeals = appeals.filter(appeal => filter === 'all' || appeal.status.replace('_', '-') === filter);
+  const filteredAppeals = appeals.filter(appeal => filter === 'all' || appeal.status.replace(/_/g, '-') === filter);
   
   const getStatusVariant = (status: Appeal['status']) => {
       switch (status) {
@@ -211,7 +211,7 @@ export default function AppealsPage() {
   
   const getTimelineIcon = (status: Appeal['status'] | 'submitted', currentStatus: Appeal['status']) => {
       const statusHierarchy = ['submitted', 'pending', 'under_review', 'approved', 'rejected'];
-      const currentIndex = statusHierarchy.indexOf(currentStatus === 'rejected' ? 'rejected' : currentStatus);
+      const currentIndex = statusHierarchy.indexOf(currentStatus);
       const itemIndex = statusHierarchy.indexOf(status);
 
       let icon = 'radio_button_unchecked';
@@ -231,7 +231,37 @@ export default function AppealsPage() {
             icon = 'timelapse';
             color = 'text-primary animate-pulse';
           }
+      } else if (currentStatus === 'approved' && status === 'approved') {
+          icon = 'check_circle';
+          color = 'text-green-600';
+      } else if (currentStatus === 'rejected' && status === 'rejected') {
+          icon = 'cancel';
+          color = 'text-destructive';
       }
+
+      const timelineStatus = status === 'approved' || status === 'rejected' ? 'decision' : status;
+      const currentTimelineStatus = currentStatus === 'approved' || currentStatus === 'rejected' ? 'decision' : currentStatus;
+      
+      const timelineHierarchy = ['submitted', 'pending', 'under_review', 'decision'];
+      const currentTimelineIndex = timelineHierarchy.indexOf(currentTimelineStatus);
+      const itemTimelineIndex = timelineHierarchy.indexOf(timelineStatus);
+
+      if (itemTimelineIndex < currentTimelineIndex) {
+          icon = 'check_circle';
+          color = 'text-primary';
+      } else if (itemTimelineIndex === currentTimelineIndex) {
+          if (currentStatus === 'approved') {
+            icon = 'check_circle';
+            color = 'text-green-600';
+          } else if (currentStatus === 'rejected') {
+            icon = 'cancel';
+            color = 'text-destructive';
+          } else {
+            icon = 'timelapse';
+            color = 'text-primary animate-pulse';
+          }
+      }
+
       return <span className={`material-symbols-outlined ${color}`}>{icon}</span>;
   }
 
@@ -282,7 +312,7 @@ export default function AppealsPage() {
                         <TableCell className="text-muted-foreground">{new Date(appeal.submittedAt).toLocaleDateString()}</TableCell>
                         <TableCell>
                             <Badge variant={getStatusVariant(appeal.status)} className={getStatusColor(appeal.status)}>
-                                {appeal.status.replace('_', ' ')}
+                                {appeal.status.replace(/_/g, ' ')}
                             </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -325,7 +355,7 @@ export default function AppealsPage() {
                         </CardContent>
                     </Card>
 
-                    {selectedAppeal.decision && (
+                    {selectedAppeal.decision?.notes && (
                        <Card>
                          <CardHeader className="pb-2">
                            <CardTitle className="text-base">Final Decision</CardTitle>
@@ -341,7 +371,7 @@ export default function AppealsPage() {
                 <div className="border-t pt-6">
                   <h4 className="font-semibold mb-4">Appeal Timeline</h4>
                   <div className="relative pl-4 space-y-6">
-                        <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-border"></div>
+                        <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-border -translate-x-1/2"></div>
                         <div className="relative flex items-start gap-4">
                           {getTimelineIcon('submitted', selectedAppeal.status)}
                           <div>
@@ -353,11 +383,11 @@ export default function AppealsPage() {
                            {getTimelineIcon('under_review', selectedAppeal.status)}
                           <div>
                             <p className="font-medium">Under Review</p>
-                             {selectedAppeal.status === 'under_review' && <p className="text-sm text-muted-foreground">Your appeal is being reviewed by the committee.</p>}
+                             {(selectedAppeal.status === 'under_review' || selectedAppeal.status === 'approved' || selectedAppeal.status === 'rejected') && <p className="text-sm text-muted-foreground">Your appeal is being reviewed.</p>}
                           </div>
                         </div>
                         <div className="relative flex items-start gap-4">
-                           {getTimelineIcon(selectedAppeal.status, selectedAppeal.status)}
+                           {getTimelineIcon(selectedAppeal.status === 'approved' ? 'approved' : 'rejected', selectedAppeal.status)}
                           <div>
                             <p className="font-medium">Decision</p>
                              {(selectedAppeal.status === 'approved' || selectedAppeal.status === 'rejected') && (
