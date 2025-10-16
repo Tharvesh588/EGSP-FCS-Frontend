@@ -33,6 +33,7 @@ type GoodWork = {
   status: "approved" | "pending" | "rejected";
   points: number;
   academicYear: string;
+  type: 'positive' | 'negative';
 };
 
 const getCurrentAcademicYear = () => {
@@ -103,8 +104,9 @@ export default function GoodWorksPage() {
         throw new Error(responseData.message || "Failed to fetch good works.");
       }
 
-      setGoodWorks(responseData.items);
-      setTotal(responseData.total);
+      const positiveWorks = responseData.items.filter((work: GoodWork) => work.type === 'positive');
+      setGoodWorks(positiveWorks);
+      setTotal(positiveWorks.length);
     } catch (error: any) {
       toast({
         variant: "destructive",
