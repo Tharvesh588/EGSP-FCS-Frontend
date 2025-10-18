@@ -90,7 +90,7 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
         
         // Optimistic update
         const optimisticMessage: Message = {
-            _id: `temp-${Date.now()}`,
+            _id: `temp-${Date.now()}-${Math.random()}`,
             sender: currentUserId,
             senderSnapshot: { name: "You" },
             type: 'positive',
