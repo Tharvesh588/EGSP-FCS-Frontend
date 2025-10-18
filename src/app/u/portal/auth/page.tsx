@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -45,9 +46,21 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      // Check if the response is JSON before parsing
+      const contentType = response.headers.get("content-type");
+      if (!response.ok) {
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Login failed");
+        } else {
+          const errorText = await response.text();
+          throw new Error(errorText || "An unknown server error occurred.");
+        }
+      }
+
       const responseData = await response.json();
 
-      if (!response.ok || !responseData.success) {
+      if (!responseData.success) {
         throw new Error(responseData.message || "Login failed");
       }
       
