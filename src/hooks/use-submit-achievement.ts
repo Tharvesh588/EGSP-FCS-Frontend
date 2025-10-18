@@ -17,7 +17,7 @@ export function useSubmitAchievement() {
       throw new Error("Authentication error. Please log in again.");
     }
     
-    const { title, creditTitleId, academicYear, proof, csrfToken } = formData;
+    const { title, creditTitleId, academicYear, proof } = formData;
     
     // Corrected the fetch URL to the proper endpoint
     const creditTitleResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title/${creditTitleId}`, {
@@ -36,7 +36,6 @@ export function useSubmitAchievement() {
     submissionData.append("categories", creditTitleId);
     submissionData.append("academicYear", academicYear);
     submissionData.append("proof", proof);
-    submissionData.append("_csrf", csrfToken);
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive`, {
@@ -54,7 +53,7 @@ export function useSubmitAchievement() {
         if (responseData.message) {
             errorMessage = responseData.message;
         } else if (response.status === 403) {
-            errorMessage = "Invalid security token. Please refresh the page and try again.";
+            errorMessage = "A security error occurred. Please refresh the page and try again.";
         }
         throw new Error(errorMessage);
       }

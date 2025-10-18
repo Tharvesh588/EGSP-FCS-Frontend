@@ -46,7 +46,6 @@ export type AchievementFormData = {
   creditTitleId: string;
   academicYear: string;
   proof: File;
-  csrfToken: string;
 };
 
 type AchievementFormProps = {
@@ -56,31 +55,11 @@ type AchievementFormProps = {
 };
 
 export function AchievementForm({ creditTitles, onSubmit, isLoading }: AchievementFormProps) {
-  const [csrfToken, setCsrfToken] = useState<string>("");
   const [title, setTitle] = useState("");
   const [selectedCreditTitleId, setSelectedCreditTitleId] = useState("");
   const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [proof, setProof] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const fetchCsrfToken = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/csrf-token`);
-      const data = await response.json();
-      if (data.success) {
-        setCsrfToken(data.csrfToken);
-      } else {
-        throw new Error("Could not retrieve CSRF token.");
-      }
-    } catch (error) {
-      console.error("CSRF token fetch error:", error);
-      setErrors((prev) => ({...prev, form: "Could not initialize secure form. Please refresh."}));
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCsrfToken();
-  }, [fetchCsrfToken]);
 
   const selectedCreditTitle = useMemo(() => 
     creditTitles.find(ct => ct._id === selectedCreditTitleId),
@@ -93,7 +72,6 @@ export function AchievementForm({ creditTitles, onSubmit, isLoading }: Achieveme
     if (!selectedCreditTitleId) newErrors.category = "Category is required.";
     if (!academicYear) newErrors.academicYear = "Academic year is required.";
     if (!proof) newErrors.proof = "A proof document is required.";
-    if (!csrfToken) newErrors.form = "Security token is missing. Please refresh.";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -108,7 +86,6 @@ export function AchievementForm({ creditTitles, onSubmit, isLoading }: Achieveme
       creditTitleId: selectedCreditTitleId,
       academicYear,
       proof: proof!,
-      csrfToken,
     });
   };
 
