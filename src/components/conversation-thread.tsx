@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,7 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
+    const [chatSearchTerm, setChatSearchTerm] = useState('');
     const searchParams = useSearchParams();
     const currentUserId = searchParams.get('uid');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -83,7 +84,7 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
     
     useEffect(() => {
         scrollToBottom();
-    }, [messages]);
+    }, [messages, chatSearchTerm]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -132,15 +133,32 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
         }
     };
 
+    const filteredMessages = useMemo(() => {
+        return messages.filter(message =>
+            message.content.text.toLowerCase().includes(chatSearchTerm.toLowerCase())
+        );
+    }, [messages, chatSearchTerm]);
+
     return (
         <div className="flex flex-col h-full bg-card">
-            <header className="p-4 border-b flex items-center gap-3">
-                 <Avatar>
-                    <AvatarFallback>C</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="font-semibold">Conversation</p>
-                    <p className="text-xs text-muted-foreground">Online</p>
+            <header className="p-4 border-b flex items-center justify-between gap-3">
+                 <div className="flex items-center gap-3">
+                    <Avatar>
+                        <AvatarFallback>C</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-semibold">Conversation</p>
+                        <p className="text-xs text-muted-foreground">Online</p>
+                    </div>
+                </div>
+                 <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4">search</span>
+                    <Input
+                        placeholder="Search chat..."
+                        className="pl-10 h-9 w-48"
+                        value={chatSearchTerm}
+                        onChange={(e) => setChatSearchTerm(e.target.value)}
+                    />
                 </div>
             </header>
             <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
@@ -151,15 +169,15 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
                         <Skeleton className="h-20 w-1/2 rounded-lg" />
                          <Skeleton className="h-16 w-3/4 rounded-lg" />
                     </div>
-                ) : messages.length === 0 ? (
+                ) : filteredMessages.length === 0 ? (
                     <div className="flex h-full items-center justify-center">
                         <div className="text-center text-muted-foreground">
                             <span className="material-symbols-outlined text-5xl">chat_bubble</span>
-                            <p className="mt-2">No messages yet. <br/> Start the conversation!</p>
+                            <p className="mt-2">{chatSearchTerm ? "No messages match your search." : "No messages yet. Start the conversation!"}</p>
                         </div>
                     </div>
                 ) : (
-                    messages.map(message => {
+                    filteredMessages.map(message => {
                         const isSender = message.sender === currentUserId;
                         return (
                             <div key={message._id} className={cn("flex items-end gap-3", isSender ? "justify-end" : "justify-start")}>

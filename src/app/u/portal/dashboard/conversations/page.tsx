@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -34,6 +35,7 @@ export default function ConversationsPage() {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
     const searchParams = useSearchParams();
     const currentUserId = searchParams.get('uid');
 
@@ -89,6 +91,14 @@ export default function ConversationsPage() {
             fetchConversations();
         }
     }, [toast, currentUserId]);
+    
+    const filteredConversations = conversations.filter(convo => {
+        const term = searchTerm.toLowerCase();
+        return (
+            convo.credit.title.toLowerCase().includes(term) ||
+            (convo.lastMessage?.text && convo.lastMessage.text.toLowerCase().includes(term))
+        );
+    });
 
     return (
       <div className="h-full flex flex-col">
@@ -99,7 +109,15 @@ export default function ConversationsPage() {
         <div className="flex-1 grid grid-cols-[300px_1fr] gap-0 overflow-hidden h-[calc(100vh-150px)] border bg-card rounded-t-xl">
           <aside className="border-r flex flex-col">
               <div className="p-4 border-b">
-                <h2 className="text-lg font-semibold">Inbox</h2>
+                <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4">search</span>
+                    <Input
+                        placeholder="Search conversations..."
+                        className="pl-10 h-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto">
                   {isLoading ? (
@@ -108,13 +126,13 @@ export default function ConversationsPage() {
                           <Skeleton className="h-16 w-full" />
                           <Skeleton className="h-16 w-full" />
                       </div>
-                  ) : conversations.length === 0 ? (
+                  ) : filteredConversations.length === 0 ? (
                       <div className="flex items-center justify-center h-full text-center text-muted-foreground p-4">
-                        <p>No conversations found.</p>
+                        <p>{searchTerm ? "No conversations match your search." : "No conversations found."}</p>
                       </div>
                   ) : (
                     <div className="flex flex-col">
-                      {conversations.map(convo => {
+                      {filteredConversations.map(convo => {
                           const otherParticipant = "Admin";
                           return (
                           <button
