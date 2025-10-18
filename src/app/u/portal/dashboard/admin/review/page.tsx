@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ConversationThread } from "@/components/conversation-thread"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -38,6 +39,11 @@ type Submission = {
   createdAt: string;
   points: number;
 };
+
+type Conversation = {
+  _id: string;
+  // other fields as needed
+}
 
 const getCurrentAcademicYear = () => {
     const today = new Date();
@@ -77,6 +83,10 @@ export default function ReviewSubmissionsPage() {
 
     const [adminNotes, setAdminNotes] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+    const [isStartingConversation, setIsStartingConversation] = useState(false);
+
 
     const yearOptions = generateYearOptions();
     const totalPages = Math.ceil(total / limit);
@@ -136,8 +146,9 @@ export default function ReviewSubmissionsPage() {
     }, [statusFilter, academicYear, page, searchTerm, toast]);
 
     useEffect(() => {
-      // Clear notes when submission changes
+      // Clear notes and conversation when submission changes
       setAdminNotes("");
+      setActiveConversation(null);
     }, [selectedSubmission]);
 
     const handleUpdateStatus = async (newStatus: "approved" | "rejected") => {
@@ -176,6 +187,34 @@ export default function ReviewSubmissionsPage() {
             setIsSubmitting(false);
         }
     };
+    
+    const handleStartConversation = async () => {
+        if (!selectedSubmission) return;
+        setIsStartingConversation(true);
+        const token = localStorage.getItem("token");
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ creditId: selectedSubmission._id }),
+            });
+            const data = await response.json();
+            if (data.conversation) {
+                setActiveConversation(data.conversation);
+            } else {
+                throw new Error(data.message || "Failed to start conversation.");
+            }
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Conversation Error", description: error.message });
+        } finally {
+            setIsStartingConversation(false);
+        }
+    };
+
 
     const handleViewDocument = () => {
       if (!selectedSubmission?.proofUrl) return;
@@ -226,7 +265,7 @@ export default function ReviewSubmissionsPage() {
                 </SelectTrigger>
                 <SelectContent>
                     {yearOptions.map(year => (
-                        <SelectItem key={year} value={year}>Academic Year {year}</SelectItem>
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
                     ))}
                 </SelectContent>
             </Select>
@@ -363,39 +402,54 @@ export default function ReviewSubmissionsPage() {
                       <span>View Document</span>
                     </Button>
                 </div>
-                <div>
-                    <label className="text-sm font-medium text-muted-foreground" htmlFor="admin-notes">
-                        Admin Remarks
-                    </label>
-                    <Textarea 
-                      id="admin-notes"
-                      placeholder="Add remarks (optional for approve, recommended for reject)" 
-                      rows={3}
-                      value={adminNotes}
-                      onChange={(e) => setAdminNotes(e.target.value)}
-                      disabled={selectedSubmission.status !== 'pending' || isSubmitting}
-                      className="mt-1"
-                    />
-                </div>
+                 {activeConversation ? (
+                    <ConversationThread conversationId={activeConversation._id} />
+                ) : (
+                    <div>
+                        <label className="text-sm font-medium text-muted-foreground" htmlFor="admin-notes">
+                            Admin Remarks
+                        </label>
+                        <Textarea 
+                          id="admin-notes"
+                          placeholder="Add remarks (optional for approve, recommended for reject)" 
+                          rows={3}
+                          value={adminNotes}
+                          onChange={(e) => setAdminNotes(e.target.value)}
+                          disabled={selectedSubmission.status !== 'pending' || isSubmitting}
+                          className="mt-1"
+                        />
+                    </div>
+                )}
               </CardContent>
-              {selectedSubmission.status === 'pending' && (
-                <CardFooter className="flex gap-3">
-                    <Button 
-                        className="flex-1"
-                        onClick={() => handleUpdateStatus('approved')}
-                        disabled={isSubmitting}
+              {selectedSubmission.status === 'pending' && !activeConversation && (
+                <CardFooter className="flex flex-col gap-3">
+                    <div className="flex gap-3 w-full">
+                        <Button 
+                            className="flex-1"
+                            onClick={() => handleUpdateStatus('approved')}
+                            disabled={isSubmitting}
+                        >
+                            <span className="material-symbols-outlined mr-2">check_circle</span>
+                            Approve
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            className="flex-1"
+                            onClick={() => handleUpdateStatus('rejected')}
+                            disabled={isSubmitting}
+                        >
+                            <span className="material-symbols-outlined mr-2">cancel</span>
+                            Not Satisfied
+                        </Button>
+                    </div>
+                     <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={handleStartConversation}
+                        disabled={isStartingConversation}
                     >
-                        <span className="material-symbols-outlined mr-2">check_circle</span>
-                        Approve
-                    </Button>
-                    <Button 
-                        variant="destructive" 
-                        className="flex-1"
-                        onClick={() => handleUpdateStatus('rejected')}
-                        disabled={isSubmitting}
-                    >
-                        <span className="material-symbols-outlined mr-2">cancel</span>
-                        Not Satisfied
+                       <span className="material-symbols-outlined mr-2">forum</span>
+                        {isStartingConversation ? "Starting..." : "Start Conversation"}
                     </Button>
                 </CardFooter>
               )}

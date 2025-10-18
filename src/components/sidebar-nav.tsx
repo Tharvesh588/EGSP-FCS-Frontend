@@ -26,6 +26,7 @@ const getFacultyNav = (uid: string) => [
   { name: "Good Works", href: `/u/portal/dashboard/good-works?uid=${uid}`, icon: Award },
   { name: "Submit", href: `/u/portal/dashboard/good-works/submit?uid=${uid}`, icon: Files },
   { name: "Appeals", href: `/u/portal/dashboard/appeals?uid=${uid}`, icon: ShieldCheck },
+  { name: "Conversations", href: `/u/portal/dashboard/conversations?uid=${uid}`, icon: GanttChart },
   { name: "Notifications", href: `/u/portal/dashboard/notifications?uid=${uid}`, icon: Bell },
   { name: "Settings", href: `/u/portal/dashboard/settings?uid=${uid}`, icon: Settings },
 ];
@@ -35,6 +36,7 @@ const getAdminNav = (uid: string) => [
   { name: "Faculty Accounts", href: `/u/portal/dashboard/admin/users?uid=${uid}`, icon: Users },
   { name: "Credit Titles", href: `/u/portal/dashboard/admin/credits?uid=${uid}`, icon: ListPlus },
   { name: "Submissions", href: `/u/portal/dashboard/admin/review?uid=${uid}`, icon: FolderKanban },
+  { name: "Conversations", href: `/u/portal/dashboard/conversations?uid=${uid}`, icon: GanttChart },
   { name: "Negative Remarks", href: `/u/portal/dashboard/admin/remarks?uid=${uid}`, icon: MessageSquareWarning },
   { name: "Appeals", href: `/u/portal/dashboard/admin/appeals?uid=${uid}`, icon: ShieldAlert },
   { name: "Reports", href: `/u/portal/dashboard/admin/reports?uid=${uid}`, icon: BarChart3 },
