@@ -91,74 +91,78 @@ export default function ConversationsPage() {
     }, [toast, currentUserId]);
 
     return (
-        <div className="h-full flex flex-col">
-            <div className="mb-4">
-                 <h1 className="text-3xl font-bold tracking-tight text-foreground">Conversations</h1>
-                 <p className="mt-1 text-muted-foreground">Review your recent conversations and messages.</p>
-            </div>
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6 overflow-hidden h-[calc(100vh-150px)]">
-                <div className="lg:col-span-1 flex flex-col gap-2 overflow-y-auto pr-2">
-                    {isLoading ? (
-                        <div className="space-y-2">
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-24 w-full" />
-                        </div>
-                    ) : conversations.length === 0 ? (
-                        <Card className="flex items-center justify-center h-full">
-                           <CardContent className="text-center text-muted-foreground p-6">
-                            <p>No conversations found.</p>
-                           </CardContent>
-                        </Card>
-                    ) : (
-                        conversations.map(convo => {
-                            // Since we only have IDs, we'll show a generic avatar.
-                            // The actual name will be visible inside the thread from senderSnapshot.
-                            return (
-                            <div
-                                key={convo._id}
-                                className={cn(
-                                    "p-4 rounded-lg cursor-pointer border-l-4 transition-colors",
-                                    selectedConversation?._id === convo._id
-                                        ? "bg-primary/10 border-primary"
-                                        : "bg-card hover:bg-muted/50 border-transparent"
-                                )}
-                                onClick={() => setSelectedConversation(convo)}
-                            >
-                                <div className="flex items-center gap-3 mb-2">
-                                     <Avatar className="h-10 w-10">
-                                        <AvatarFallback>C</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 overflow-hidden">
-                                        <p className="font-bold truncate">{convo.credit.title}</p>
-                                        <p className="text-sm text-muted-foreground truncate">{convo.lastMessage?.text || 'No messages yet'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                                    <span>{convo.totalMessages} messages</span>
-                                    {convo.lastMessage?.createdAt && (
-                                        <span>
-                                            {formatDistanceToNow(new Date(convo.lastMessage.createdAt), { addSuffix: true })}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            )
-                        })
-                    )}
-                </div>
-                <div className="lg:col-span-1 h-full">
-                    {selectedConversation ? (
-                        <ConversationThread key={selectedConversation._id} conversationId={selectedConversation._id} />
-                    ) : (
-                        <Card className="h-full flex items-center justify-center">
-                            <CardContent className="text-center text-muted-foreground p-6">
-                                <p>{isLoading ? "Loading..." : "Select a conversation to view messages"}</p>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-            </div>
+      <div className="h-full flex flex-col">
+        <header className="px-4 py-6">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Conversations</h1>
+          <p className="text-sm text-muted-foreground">Review your recent conversations and messages.</p>
+        </header>
+        <div className="flex-1 grid grid-cols-[300px_1fr] gap-0 overflow-hidden h-[calc(100vh-150px)] border bg-card rounded-t-xl">
+          <aside className="border-r flex flex-col">
+              <div className="p-4 border-b">
+                <h2 className="text-lg font-semibold">Inbox</h2>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                  {isLoading ? (
+                      <div className="p-2 space-y-2">
+                          <Skeleton className="h-16 w-full" />
+                          <Skeleton className="h-16 w-full" />
+                          <Skeleton className="h-16 w-full" />
+                      </div>
+                  ) : conversations.length === 0 ? (
+                      <div className="flex items-center justify-center h-full text-center text-muted-foreground p-4">
+                        <p>No conversations found.</p>
+                      </div>
+                  ) : (
+                    <div className="flex flex-col">
+                      {conversations.map(convo => {
+                          const otherParticipant = "Admin";
+                          return (
+                          <button
+                              key={convo._id}
+                              className={cn(
+                                  "w-full text-left p-4 border-b border-l-4 transition-colors",
+                                  selectedConversation?._id === convo._id
+                                      ? "bg-muted border-primary"
+                                      : "bg-transparent border-transparent hover:bg-muted/50"
+                              )}
+                              onClick={() => setSelectedConversation(convo)}
+                          >
+                              <div className="flex items-center gap-3">
+                                  <Avatar className="h-10 w-10">
+                                      <AvatarFallback>{otherParticipant.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 overflow-hidden">
+                                      <div className="flex justify-between items-baseline">
+                                        <p className="font-semibold truncate pr-2">{convo.credit.title}</p>
+                                        {convo.lastMessage?.createdAt && (
+                                            <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                                {formatDistanceToNow(new Date(convo.lastMessage.createdAt), { addSuffix: true })}
+                                            </p>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-muted-foreground truncate">{convo.lastMessage?.text || 'No messages yet'}</p>
+                                  </div>
+                              </div>
+                          </button>
+                          )
+                      })}
+                    </div>
+                  )}
+              </div>
+          </aside>
+          <main className="flex flex-col h-full">
+              {selectedConversation ? (
+                  <ConversationThread key={selectedConversation._id} conversationId={selectedConversation._id} />
+              ) : (
+                  <div className="flex items-center justify-center h-full">
+                      <div className="text-center text-muted-foreground">
+                          <span className="material-symbols-outlined text-6xl">forum</span>
+                          <p className="mt-4">{isLoading ? "Loading conversations..." : "Select a conversation to start chatting"}</p>
+                      </div>
+                  </div>
+              )}
+          </main>
         </div>
+      </div>
     );
 }

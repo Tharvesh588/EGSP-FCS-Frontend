@@ -133,34 +133,49 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
     };
 
     return (
-        <div className="flex flex-col h-full bg-card border rounded-lg">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex flex-col h-full bg-card">
+            <header className="p-4 border-b flex items-center gap-3">
+                 <Avatar>
+                    <AvatarFallback>C</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="font-semibold">Conversation</p>
+                    <p className="text-xs text-muted-foreground">Online</p>
+                </div>
+            </header>
+            <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
                 {isLoading ? (
                     <div className="space-y-4">
-                        <Skeleton className="h-12 w-3/4" />
-                        <Skeleton className="h-12 w-3/4 ml-auto" />
-                        <Skeleton className="h-16 w-1/2" />
+                        <Skeleton className="h-16 w-3/4 rounded-lg" />
+                        <Skeleton className="h-16 w-3/4 rounded-lg ml-auto" />
+                        <Skeleton className="h-20 w-1/2 rounded-lg" />
+                         <Skeleton className="h-16 w-3/4 rounded-lg" />
                     </div>
                 ) : messages.length === 0 ? (
                     <div className="flex h-full items-center justify-center">
-                        <p className="text-center text-muted-foreground">No messages yet. Start the conversation!</p>
+                        <div className="text-center text-muted-foreground">
+                            <span className="material-symbols-outlined text-5xl">chat_bubble</span>
+                            <p className="mt-2">No messages yet. <br/> Start the conversation!</p>
+                        </div>
                     </div>
                 ) : (
                     messages.map(message => {
                         const isSender = message.sender === currentUserId;
                         return (
-                            <div key={message._id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                            <div key={message._id} className={cn("flex items-end gap-3", isSender ? "justify-end" : "justify-start")}>
                                 {!isSender && (
                                     <Avatar className="h-8 w-8">
                                         <AvatarFallback>{message.senderSnapshot.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                 )}
-                                <div className={cn("max-w-xs md:max-w-md rounded-lg px-3 py-2 text-sm", 
-                                    isSender ? "bg-primary text-primary-foreground" : "bg-muted"
+                                <div className={cn(
+                                    "max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-2.5", 
+                                    isSender 
+                                        ? "bg-primary text-primary-foreground rounded-br-none" 
+                                        : "bg-muted rounded-bl-none"
                                 )}>
-                                    <p className="font-bold text-xs mb-1">{isSender ? "You" : message.senderSnapshot.name}</p>
-                                    <p>{message.content.text}</p>
-                                    <p className="text-right text-xs opacity-70 mt-1">
+                                    <p className="text-sm">{message.content.text}</p>
+                                    <p className="text-right text-xs opacity-70 mt-1.5">
                                         {format(new Date(message.createdAt), 'p')}
                                     </p>
                                 </div>
@@ -175,16 +190,17 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
                 )}
                  <div ref={messagesEndRef} />
             </div>
-            <div className="border-t p-4">
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+            <div className="border-t bg-background/80 p-4">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                     <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message..."
                         disabled={isSending || isLoading}
                         autoComplete="off"
+                        className="h-11 rounded-full bg-muted focus-visible:ring-primary px-5"
                     />
-                    <Button type="submit" disabled={isSending || isLoading}>
+                    <Button type="submit" size="icon" className="rounded-full h-11 w-11" disabled={isSending || isLoading || !newMessage.trim()}>
                         <span className="material-symbols-outlined">send</span>
                     </Button>
                 </form>
