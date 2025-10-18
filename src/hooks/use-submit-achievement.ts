@@ -18,9 +18,12 @@ export function useSubmitAchievement() {
     }
     
     const { title, creditTitleId, academicYear, proof, csrfToken } = formData;
-    const creditTitle = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title/${creditTitleId}`, {
+    
+    // Corrected the fetch URL to the proper endpoint
+    const creditTitleResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title/${creditTitleId}`, {
         headers: { "Authorization": `Bearer ${token}` }
-    }).then(res => res.json());
+    });
+    const creditTitle = await creditTitleResponse.json();
 
     if (!creditTitle.success) {
         setIsLoading(false);
