@@ -20,7 +20,7 @@ type Conversation = {
         title: string;
         academicYear: string;
     };
-    participants: { _id: string, name: string }[];
+    participants: string[]; // Corrected: Array of user ID strings
     lastMessage?: {
         text: string;
         sender: string;
@@ -61,7 +61,14 @@ export default function ConversationsPage() {
                 if (data.conversations) {
                     const sortedConversations = data.conversations.sort((a: Conversation, b: Conversation) => {
                         if (!a.lastMessage || !b.lastMessage) return 0;
-                        return new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime()
+                        try {
+                            const dateA = new Date(a.lastMessage.createdAt).getTime();
+                            const dateB = new Date(b.lastMessage.createdAt).getTime();
+                            if(isNaN(dateA) || isNaN(dateB)) return 0;
+                            return dateB - dateA;
+                        } catch(e) {
+                            return 0;
+                        }
                     });
                     setConversations(sortedConversations);
                     if (sortedConversations.length > 0) {
@@ -105,7 +112,8 @@ export default function ConversationsPage() {
                         </Card>
                     ) : (
                         conversations.map(convo => {
-                            const otherParticipant = convo.participants.find(p => p._id !== currentUserId);
+                            // Since we only have IDs, we'll show a generic avatar.
+                            // The actual name will be visible inside the thread from senderSnapshot.
                             return (
                             <div
                                 key={convo._id}
@@ -119,7 +127,7 @@ export default function ConversationsPage() {
                             >
                                 <div className="flex items-center gap-3 mb-2">
                                      <Avatar className="h-10 w-10">
-                                        <AvatarFallback>{otherParticipant ? otherParticipant.name.charAt(0) : 'U'}</AvatarFallback>
+                                        <AvatarFallback>C</AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 overflow-hidden">
                                         <p className="font-bold truncate">{convo.credit.title}</p>
@@ -128,7 +136,11 @@ export default function ConversationsPage() {
                                 </div>
                                 <div className="flex justify-between items-center text-xs text-muted-foreground">
                                     <span>{convo.totalMessages} messages</span>
-                                    {convo.lastMessage && <span>{formatDistanceToNow(new Date(convo.lastMessage.createdAt), { addSuffix: true })}</span>}
+                                    {convo.lastMessage?.createdAt && (
+                                        <span>
+                                            {formatDistanceToNow(new Date(convo.lastMessage.createdAt), { addSuffix: true })}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             )
