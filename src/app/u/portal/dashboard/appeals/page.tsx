@@ -24,7 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { ConversationThread } from "@/components/conversation-thread";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -58,6 +59,11 @@ type Appeal = {
     }
 };
 
+type Conversation = {
+  _id: string;
+};
+
+
 export default function AppealsPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -71,6 +77,10 @@ export default function AppealsPage() {
   const [selectedRemarkId, setSelectedRemarkId] = useState("");
   const [appealReason, setAppealReason] = useState("");
   const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
+  
+  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
+
 
   const fetchAppeals = async () => {
       setIsLoading(true);
@@ -91,7 +101,8 @@ export default function AppealsPage() {
         if (resData.success) {
             setAppeals(resData.items);
             if (resData.items.length > 0) {
-              setSelectedAppeal(resData.items[0]);
+              const currentSelection = resData.items.find((item: Appeal) => item._id === selectedAppeal?._id) || resData.items[0];
+              setSelectedAppeal(currentSelection);
             } else {
               setSelectedAppeal(null);
             }
@@ -137,6 +148,10 @@ export default function AppealsPage() {
       fetchAppealableRemarks();
     }
   }, [isAppealDialogOpen]);
+  
+  useEffect(() => {
+    setActiveConversation(null);
+  }, [selectedAppeal]);
 
 
   const handleAppealSubmit = async () => {
@@ -186,6 +201,34 @@ export default function AppealsPage() {
         setIsSubmittingAppeal(false);
     }
   };
+  
+  const handleStartConversation = async () => {
+    if (!selectedAppeal) return;
+    setIsStartingConversation(true);
+    const token = localStorage.getItem("token");
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ creditId: selectedAppeal.creditId }),
+        });
+        const data = await response.json();
+        if (data.conversation) {
+            setActiveConversation(data.conversation);
+        } else {
+            throw new Error(data.message || "Failed to start conversation.");
+        }
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Conversation Error", description: error.message });
+    } finally {
+        setIsStartingConversation(false);
+    }
+  };
+
 
   const filteredAppeals = appeals.filter(appeal => filter === 'all' || appeal.status.replace(/_/g, '-') === filter);
   
@@ -330,76 +373,94 @@ export default function AppealsPage() {
       </div>
       <aside className="lg:col-span-1 bg-card rounded-lg border flex flex-col p-6 gap-6 h-fit sticky top-6">
         {selectedAppeal ? (
-            <>
-                <h3 className="text-xl font-bold">Appeal Details</h3>
+            <div className="flex flex-col h-full">
+                <h3 className="text-xl font-bold mb-4">Appeal Details</h3>
                 
-                <div className="space-y-4">
-                    <Card>
-                        <CardHeader className="pb-2">
-                           <CardTitle className="text-base">Original Remark</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                            <p className="font-semibold">{selectedAppeal.originalRemark.title} ({selectedAppeal.originalRemark.points} points)</p>
-                            <p className="text-muted-foreground italic">"{selectedAppeal.originalRemark.notes}"</p>
-                            <p className="text-xs text-muted-foreground">Issued on: {new Date(selectedAppeal.originalRemark.issuedAt).toLocaleString()}</p>
-                        </CardContent>
-                    </Card>
+                {activeConversation ? (
+                    <ConversationThread conversationId={activeConversation._id} />
+                ) : (
+                    <>
+                        <div className="space-y-4">
+                            <Card>
+                                <CardHeader className="pb-2">
+                                <CardTitle className="text-base">Original Remark</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                    <p className="font-semibold">{selectedAppeal.originalRemark.title} ({selectedAppeal.originalRemark.points} points)</p>
+                                    <p className="text-muted-foreground italic">"{selectedAppeal.originalRemark.notes}"</p>
+                                    <p className="text-xs text-muted-foreground">Issued on: {new Date(selectedAppeal.originalRemark.issuedAt).toLocaleString()}</p>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                         <CardHeader className="pb-2">
-                           <CardTitle className="text-base">Your Appeal</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                            <p className="text-muted-foreground italic">"{selectedAppeal.reason}"</p>
-                            <p className="text-xs text-muted-foreground">Submitted on: {new Date(selectedAppeal.submittedAt).toLocaleString()}</p>
-                        </CardContent>
-                    </Card>
+                            <Card>
+                                <CardHeader className="pb-2">
+                                <CardTitle className="text-base">Your Appeal</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                    <p className="text-muted-foreground italic">"{selectedAppeal.reason}"</p>
+                                    <p className="text-xs text-muted-foreground">Submitted on: {new Date(selectedAppeal.submittedAt).toLocaleString()}</p>
+                                </CardContent>
+                            </Card>
 
-                    {selectedAppeal.decision?.notes && (
-                       <Card>
-                         <CardHeader className="pb-2">
-                           <CardTitle className="text-base">Final Decision</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-2 text-sm">
-                              <p className="text-muted-foreground italic">"{selectedAppeal.decision.notes}"</p>
-                              <p className="text-xs text-muted-foreground">Decided on: {new Date(selectedAppeal.decision.decidedAt).toLocaleString()}</p>
-                          </CardContent>
-                      </Card>
-                    )}
-                </div>
+                            {selectedAppeal.decision?.notes && (
+                            <Card>
+                                <CardHeader className="pb-2">
+                                <CardTitle className="text-base">Final Decision</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                    <p className="text-muted-foreground italic">"{selectedAppeal.decision.notes}"</p>
+                                    <p className="text-xs text-muted-foreground">Decided on: {new Date(selectedAppeal.decision.decidedAt).toLocaleString()}</p>
+                                </CardContent>
+                            </Card>
+                            )}
+                        </div>
 
-                <div className="border-t pt-6">
-                  <h4 className="font-semibold mb-4">Appeal Timeline</h4>
-                  <div className="relative pl-4 space-y-6">
-                        <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-border -translate-x-1/2"></div>
-                        <div className="relative flex items-start gap-4">
-                          {getTimelineIcon('submitted', selectedAppeal.status)}
-                          <div>
-                            <p className="font-medium">Appeal Submitted</p>
-                            <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.submittedAt).toDateString()}</p>
+                        <div className="border-t pt-6 mt-6">
+                          <h4 className="font-semibold mb-4">Appeal Timeline</h4>
+                          <div className="relative pl-4 space-y-6">
+                                <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-border -translate-x-1/2"></div>
+                                <div className="relative flex items-start gap-4">
+                                  {getTimelineIcon('submitted', selectedAppeal.status)}
+                                  <div>
+                                    <p className="font-medium">Appeal Submitted</p>
+                                    <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.submittedAt).toDateString()}</p>
+                                  </div>
+                                </div>
+                                <div className="relative flex items-start gap-4">
+                                   {getTimelineIcon('under_review', selectedAppeal.status)}
+                                  <div>
+                                    <p className="font-medium">Under Review</p>
+                                     {(selectedAppeal.status === 'under_review' || selectedAppeal.status === 'approved' || selectedAppeal.status === 'rejected') && <p className="text-sm text-muted-foreground">Your appeal is being reviewed.</p>}
+                                  </div>
+                                </div>
+                                <div className="relative flex items-start gap-4">
+                                   {getTimelineIcon(selectedAppeal.status === 'approved' ? 'approved' : 'rejected', selectedAppeal.status)}
+                                  <div>
+                                    <p className="font-medium">Decision</p>
+                                     {(selectedAppeal.status === 'approved' || selectedAppeal.status === 'rejected') && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedAppeal.status === 'approved' ? 'Your appeal was approved.' : 'Your appeal was rejected.'}
+                                        </p>
+                                     )}
+                                  </div>
+                                </div>
                           </div>
                         </div>
-                        <div className="relative flex items-start gap-4">
-                           {getTimelineIcon('under_review', selectedAppeal.status)}
-                          <div>
-                            <p className="font-medium">Under Review</p>
-                             {(selectedAppeal.status === 'under_review' || selectedAppeal.status === 'approved' || selectedAppeal.status === 'rejected') && <p className="text-sm text-muted-foreground">Your appeal is being reviewed.</p>}
-                          </div>
-                        </div>
-                        <div className="relative flex items-start gap-4">
-                           {getTimelineIcon(selectedAppeal.status === 'approved' ? 'approved' : 'rejected', selectedAppeal.status)}
-                          <div>
-                            <p className="font-medium">Decision</p>
-                             {(selectedAppeal.status === 'approved' || selectedAppeal.status === 'rejected') && (
-                                <p className="text-sm text-muted-foreground">
-                                    {selectedAppeal.status === 'approved' ? 'Your appeal was approved.' : 'Your appeal was rejected.'}
-                                </p>
-                             )}
-                          </div>
-                        </div>
-                  </div>
-                </div>
-            </>
+                    </>
+                )}
+                
+                <CardFooter className="mt-auto pt-6">
+                    <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={handleStartConversation}
+                        disabled={isStartingConversation || !!activeConversation}
+                    >
+                        <span className="material-symbols-outlined mr-2">forum</span>
+                        {isStartingConversation ? "Starting..." : (activeConversation ? "Conversation Active" : "Discuss with Admin")}
+                    </Button>
+                </CardFooter>
+            </div>
         ) : (
             <div className="bg-background p-4 rounded-lg flex items-center justify-center text-center text-muted-foreground h-full">
                 <p>{isLoading ? "Loading..." : "Select an appeal to view details"}</p>
