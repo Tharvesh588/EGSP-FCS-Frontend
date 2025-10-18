@@ -48,6 +48,10 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
     };
 
     const fetchMessages = async () => {
+        if (!conversationId) {
+            setIsLoading(false);
+            return;
+        }
         const token = localStorage.getItem("token");
         if (!token) {
              if (isLoading) setIsLoading(false);
@@ -78,8 +82,6 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
         if (conversationId) {
             setIsLoading(true);
             fetchMessages();
-            const interval = setInterval(fetchMessages, 5000); // Poll every 5 seconds
-            return () => clearInterval(interval);
         }
     }, [conversationId]);
     
@@ -121,8 +123,10 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
             }
 
             const data = await response.json();
-            if (data.ok && data.message) {
-                setMessages(prev => prev.map(msg => msg._id === optimisticMessage._id ? data.message : msg));
+            // The API response for a sent message doesn't contain the full message object with an _id.
+            // We'll just refetch messages to get the updated list.
+            if (data.ok) {
+                fetchMessages();
             } else {
                 throw new Error(data.message || 'Failed to send message');
             }
