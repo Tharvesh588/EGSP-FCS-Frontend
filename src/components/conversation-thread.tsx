@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -180,7 +181,7 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
                     filteredMessages.map(message => {
                         const isSender = message.sender === currentUserId;
                         return (
-                            <div key={message._id} className={cn("flex items-end gap-3", isSender ? "justify-end" : "justify-start")}>
+                            <div key={message._id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                                 {!isSender && (
                                     <Avatar className="h-8 w-8">
                                         <AvatarFallback>{message.senderSnapshot.name.charAt(0)}</AvatarFallback>
@@ -208,18 +209,23 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
                 )}
                  <div ref={messagesEndRef} />
             </div>
-            <div className="border-t bg-background/80 p-4">
-                <form onSubmit={handleSendMessage} className="flex items-center gap-3">
+             <div className="border-t bg-background/80 p-4">
+                <form onSubmit={handleSendMessage} className="relative">
                     <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message..."
                         disabled={isSending || isLoading}
                         autoComplete="off"
-                        className="h-11 rounded-full bg-muted focus-visible:ring-primary px-5"
+                        className="h-12 rounded-full bg-muted focus-visible:ring-primary pl-5 pr-14"
                     />
-                    <Button type="submit" size="icon" className="rounded-full h-11 w-11" disabled={isSending || isLoading || !newMessage.trim()}>
-                        <span className="material-symbols-outlined">send</span>
+                    <Button 
+                        type="submit" 
+                        size="icon" 
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full h-9 w-9" 
+                        disabled={isSending || isLoading || !newMessage.trim()}
+                    >
+                        <span className="material-symbols-outlined text-lg">send</span>
                     </Button>
                 </form>
             </div>
