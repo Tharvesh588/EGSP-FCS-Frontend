@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { Award, BarChart3, BotMessageSquare, GanttChart, LayoutDashboard, ShieldCheck, Users, Files, LogOut, Settings, Bell, History, MessageSquareWarning, FolderKanban, ShieldAlert, ListPlus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -43,13 +43,18 @@ const getAdminNav = (uid: string) => [
 export function SidebarNav({ role }: SidebarNavProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const uid = searchParams.get('uid') || '';
 
   const navItems = role === "admin" ? getAdminNav(uid) : getFacultyNav(uid);
 
-  const getLoginUrl = () => {
-    return role === 'admin' ? '/u/portal/auth?admin' : '/u/portal/auth?faculty_login';
-  }
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('sessionExpiresAt');
+    const loginUrl = role === 'admin' ? '/u/portal/auth?admin' : '/u/portal/auth?faculty_login';
+    router.push(loginUrl);
+  };
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
@@ -85,12 +90,10 @@ export function SidebarNav({ role }: SidebarNavProps) {
         <SidebarSeparator />
          <SidebarMenu>
             <SidebarMenuItem>
-                <Link href={getLoginUrl()} onClick={() => localStorage.removeItem('userRole')}>
-                    <SidebarMenuButton tooltip="Logout" className="justify-start">
-                        <LogOut className="h-5 w-5" />
-                        <span className="group-data-[collapsible=icon]:hidden">Logout</span>
-                    </SidebarMenuButton>
-                </Link>
+                <SidebarMenuButton tooltip="Logout" className="justify-start" onClick={handleLogout}>
+                    <LogOut className="h-5 w-5" />
+                    <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+                </SidebarMenuButton>
             </SidebarMenuItem>
          </SidebarMenu>
       </SidebarFooter>

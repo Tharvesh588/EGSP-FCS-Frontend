@@ -19,17 +19,18 @@ type User = {
     role: "faculty" | "admin";
 }
 
-export function UserNav({ user }: { user: User }) {
+type UserNavProps = {
+  user: User;
+  logout: () => void;
+};
+
+export function UserNav({ user, logout }: UserNavProps) {
   const searchParams = useSearchParams();
   const uid = searchParams.get('uid') || '';
 
   const settingsHref = user.role === 'admin'
     ? `/u/portal/dashboard/admin/settings?uid=${uid}`
     : `/u/portal/dashboard/settings?uid=${uid}`;
-  
-  const loginHref = user.role === 'admin'
-    ? '/u/portal/auth?admin'
-    : '/u/portal/auth?faculty_login';
     
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
 
@@ -70,14 +71,9 @@ export function UserNav({ user }: { user: User }) {
             </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <Link href={loginHref} onClick={() => {
-          localStorage.removeItem('token');
-          localStorage.removeItem('userRole');
-        }}>
-            <DropdownMenuItem>
+        <DropdownMenuItem onClick={logout}>
             Log out
-            </DropdownMenuItem>
-        </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

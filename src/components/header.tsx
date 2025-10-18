@@ -75,7 +75,7 @@ export function Header({ user }: { user: User }) {
                 setIsTimeoutWarningOpen(true);
             }
 
-            if (remaining === 0) {
+            if (remaining <= 0) {
                 logout();
             }
         }, 1000);
@@ -154,7 +154,7 @@ export function Header({ user }: { user: User }) {
                   <span className="sr-only">Toggle notifications</span>
               </Button>
           </Link>
-        <UserNav user={user} />
+        <UserNav user={user} logout={logout} />
       </div>
     </header>
     <AlertDialog open={isTimeoutWarningOpen} onOpenChange={setIsTimeoutWarningOpen}>
@@ -166,7 +166,7 @@ export function Header({ user }: { user: User }) {
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogAction onClick={logout}>Logout</AlertDialogAction>
+            <AlertDialogCancel onClick={logout}>Logout</AlertDialogCancel>
             <AlertDialogAction onClick={resetSession}>Continue Session</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>

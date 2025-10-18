@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,6 +55,11 @@ export default function LoginPage() {
 
       localStorage.setItem("token", token);
       localStorage.setItem("userRole", role);
+      
+      // Set session expiration
+      const sessionExpiresAt = Date.now() + SESSION_DURATION_SECONDS * 1000;
+      localStorage.setItem("sessionExpiresAt", sessionExpiresAt.toString());
+
 
       const redirectUrl = role === 'admin' 
         ? `/u/portal/dashboard/admin?uid=${id}`
