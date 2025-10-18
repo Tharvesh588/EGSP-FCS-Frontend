@@ -81,6 +81,7 @@ export default function AppealsPage() {
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [isStartingConversation, setIsStartingConversation] = useState(false);
 
+  const facultyId = searchParams.get('uid');
 
   const fetchAppeals = async () => {
       setIsLoading(true);
@@ -119,11 +120,11 @@ export default function AppealsPage() {
 
   const fetchAppealableRemarks = async () => {
       const token = localStorage.getItem("token");
-      const facultyId = searchParams.get('uid');
-      if (!token || !facultyId) return;
+      const currentFacultyId = searchParams.get('uid');
+      if (!token || !currentFacultyId) return;
 
        try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?type=negative&appealable=true`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${currentFacultyId}?type=negative&appealable=true`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const responseData = await response.json();
@@ -203,18 +204,21 @@ export default function AppealsPage() {
   };
   
   const handleStartConversation = async () => {
-    if (!selectedAppeal) return;
+    if (!selectedAppeal || !facultyId) return;
     setIsStartingConversation(true);
     const token = localStorage.getItem("token");
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ creditId: selectedAppeal.creditId }),
+            body: JSON.stringify({ 
+                creditId: selectedAppeal.creditId,
+                participantIds: [facultyId]
+            }),
         });
         const data = await response.json();
         if (data.conversation) {

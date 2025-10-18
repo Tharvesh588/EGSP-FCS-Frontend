@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ConversationThread } from "@/components/conversation-thread"
+import { useSearchParams } from "next/navigation"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -56,8 +57,8 @@ const getCurrentAcademicYear = () => {
 };
 
 const generateYearOptions = () => {
-    const currentYearString = getCurrentAcademicYear();
-    const [startCurrentYear] = currentYearString.split('-').map(Number);
+    const today = new Date();
+    const startCurrentYear = today.getMonth() >= 5 ? today.getFullYear() : today.getFullYear() - 1;
     
     const years = [];
     for (let i = 0; i < 5; i++) {
@@ -71,6 +72,7 @@ const generateYearOptions = () => {
 
 export default function ReviewSubmissionsPage() {
     const { toast } = useToast();
+    const searchParams = useSearchParams();
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
@@ -87,6 +89,7 @@ export default function ReviewSubmissionsPage() {
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
     const [isStartingConversation, setIsStartingConversation] = useState(false);
 
+    const adminId = searchParams.get('uid');
 
     const yearOptions = generateYearOptions();
     const totalPages = Math.ceil(total / limit);
@@ -189,18 +192,21 @@ export default function ReviewSubmissionsPage() {
     };
     
     const handleStartConversation = async () => {
-        if (!selectedSubmission) return;
+        if (!selectedSubmission || !adminId) return;
         setIsStartingConversation(true);
         const token = localStorage.getItem("token");
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ creditId: selectedSubmission._id }),
+                body: JSON.stringify({ 
+                    creditId: selectedSubmission._id,
+                    participantIds: [selectedSubmission.faculty._id, adminId],
+                 }),
             });
             const data = await response.json();
             if (data.conversation) {
