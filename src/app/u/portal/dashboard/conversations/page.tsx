@@ -21,7 +21,7 @@ type Conversation = {
         academicYear: string;
     };
     participants: { _id: string, name: string }[];
-    lastMessage: {
+    lastMessage?: {
         text: string;
         sender: string;
         createdAt: string;
@@ -59,9 +59,10 @@ export default function ConversationsPage() {
                 const data = await response.json();
 
                 if (data.conversations) {
-                    const sortedConversations = data.conversations.sort((a: Conversation, b: Conversation) => 
-                        new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime()
-                    );
+                    const sortedConversations = data.conversations.sort((a: Conversation, b: Conversation) => {
+                        if (!a.lastMessage || !b.lastMessage) return 0;
+                        return new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime()
+                    });
                     setConversations(sortedConversations);
                     if (sortedConversations.length > 0) {
                         setSelectedConversation(sortedConversations[0]);
@@ -122,12 +123,12 @@ export default function ConversationsPage() {
                                     </Avatar>
                                     <div className="flex-1 overflow-hidden">
                                         <p className="font-bold truncate">{convo.credit.title}</p>
-                                        <p className="text-sm text-muted-foreground truncate">{convo.lastMessage.text}</p>
+                                        <p className="text-sm text-muted-foreground truncate">{convo.lastMessage?.text || 'No messages yet'}</p>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center text-xs text-muted-foreground">
                                     <span>{convo.totalMessages} messages</span>
-                                    <span>{formatDistanceToNow(new Date(convo.lastMessage.createdAt), { addSuffix: true })}</span>
+                                    {convo.lastMessage && <span>{formatDistanceToNow(new Date(convo.lastMessage.createdAt), { addSuffix: true })}</span>}
                                 </div>
                             </div>
                             )
