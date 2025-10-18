@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Skeleton } from './ui/skeleton';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -16,7 +17,7 @@ type Message = {
     sender: string;
     senderSnapshot: {
         name: string;
-        facultyID?: string; // Or whatever identifier is available
+        facultyID?: string;
     };
     type: 'positive' | 'negative' | 'neutral';
     content: {
@@ -45,8 +46,11 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
     };
 
     const fetchMessages = async () => {
-        // No need to set loading to true here to avoid UI flicker during polling
         const token = localStorage.getItem("token");
+        if (!token) {
+             if (isLoading) setIsLoading(false);
+            return;
+        }
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/messages?limit=100`, {
                 headers: { "Authorization": `Bearer ${token}` }
@@ -88,7 +92,6 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
         setIsSending(true);
         const token = localStorage.getItem("token");
         
-        // Optimistic update
         const optimisticMessage: Message = {
             _id: `temp-${Date.now()}-${Math.random()}`,
             sender: currentUserId,
@@ -117,14 +120,12 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
 
             const data = await response.json();
             if (data.ok && data.message) {
-                // Replace optimistic message with actual message from server
                 setMessages(prev => prev.map(msg => msg._id === optimisticMessage._id ? data.message : msg));
             } else {
                 throw new Error(data.message || 'Failed to send message');
             }
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error sending message", description: error.message });
-            // Revert optimistic update on failure
             setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
         } finally {
             setIsSending(false);
@@ -135,9 +136,15 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
         <div className="flex flex-col h-full bg-card border rounded-lg">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {isLoading ? (
-                    <p className="text-center text-muted-foreground">Loading conversation...</p>
+                    <div className="space-y-4">
+                        <Skeleton className="h-12 w-3/4" />
+                        <Skeleton className="h-12 w-3/4 ml-auto" />
+                        <Skeleton className="h-16 w-1/2" />
+                    </div>
                 ) : messages.length === 0 ? (
-                    <p className="text-center text-muted-foreground">No messages yet. Start the conversation!</p>
+                    <div className="flex h-full items-center justify-center">
+                        <p className="text-center text-muted-foreground">No messages yet. Start the conversation!</p>
+                    </div>
                 ) : (
                     messages.map(message => {
                         const isSender = message.sender === currentUserId;
@@ -154,12 +161,12 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
                                     <p className="font-bold text-xs mb-1">{isSender ? "You" : message.senderSnapshot.name}</p>
                                     <p>{message.content.text}</p>
                                     <p className="text-right text-xs opacity-70 mt-1">
-                                        {format(new Date(message.createdAt), 'h:mm a')}
+                                        {format(new Date(message.createdAt), 'p')}
                                     </p>
                                 </div>
                                 {isSender && (
                                     <Avatar className="h-8 w-8">
-                                         <AvatarFallback>{message.senderSnapshot.name.charAt(0)}</AvatarFallback>
+                                         <AvatarFallback>Y</AvatarFallback>
                                     </Avatar>
                                 )}
                             </div>
@@ -174,9 +181,10 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message..."
-                        disabled={isSending}
+                        disabled={isSending || isLoading}
+                        autoComplete="off"
                     />
-                    <Button type="submit" disabled={isSending}>
+                    <Button type="submit" disabled={isSending || isLoading}>
                         <span className="material-symbols-outlined">send</span>
                     </Button>
                 </form>
