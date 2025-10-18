@@ -45,26 +45,32 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
     };
 
     const fetchMessages = async () => {
+        // No need to set loading to true here to avoid UI flicker during polling
         const token = localStorage.getItem("token");
         try {
-            const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/messages?limit=100`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/messages?limit=100`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
+            if (!response.ok) {
+                throw new Error("Failed to fetch messages from server.");
+            }
             const data = await response.json();
             if (data.messages) {
-                setMessages(data.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+                const sortedMessages = data.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                setMessages(sortedMessages);
             } else {
                 throw new Error(data.message || 'Failed to fetch messages');
             }
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error fetching messages", description: error.message });
         } finally {
-            setIsLoading(false);
+            if (isLoading) setIsLoading(false);
         }
     };
 
     useEffect(() => {
         if (conversationId) {
+            setIsLoading(true);
             fetchMessages();
             const interval = setInterval(fetchMessages, 5000); // Poll every 5 seconds
             return () => clearInterval(interval);
@@ -77,28 +83,49 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim()) return;
+        if (!newMessage.trim() || !currentUserId) return;
 
         setIsSending(true);
         const token = localStorage.getItem("token");
+        
+        // Optimistic update
+        const optimisticMessage: Message = {
+            _id: `temp-${Date.now()}`,
+            sender: currentUserId,
+            senderSnapshot: { name: "You" },
+            type: 'positive',
+            content: { text: newMessage },
+            createdAt: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, optimisticMessage]);
+        setNewMessage('');
+
+
         try {
-            const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/message`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/message`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text: newMessage, type: 'positive' }),
+                body: JSON.stringify({ text: newMessage, type: 'positive', meta: {} }),
             });
+
+            if (!response.ok) {
+                 throw new Error("Server failed to process message.");
+            }
+
             const data = await response.json();
             if (data.ok && data.message) {
-                setMessages(prev => [...prev, data.message]);
-                setNewMessage('');
+                // Replace optimistic message with actual message from server
+                setMessages(prev => prev.map(msg => msg._id === optimisticMessage._id ? data.message : msg));
             } else {
                 throw new Error(data.message || 'Failed to send message');
             }
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error sending message", description: error.message });
+            // Revert optimistic update on failure
+            setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
         } finally {
             setIsSending(false);
         }

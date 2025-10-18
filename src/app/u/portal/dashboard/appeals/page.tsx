@@ -217,9 +217,20 @@ export default function AppealsPage() {
             },
             body: JSON.stringify({ 
                 creditId: selectedAppeal.creditId,
-                participantIds: [facultyId]
+                participantIds: [facultyId] // The backend will add the other participant (admin/issuer)
             }),
         });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(errorJson.message || "Server returned an error");
+            } catch (e) {
+               throw new Error("Could not start conversation. Invalid response from server.");
+            }
+       }
+
         const data = await response.json();
         if (data.conversation) {
             setActiveConversation(data.conversation);
