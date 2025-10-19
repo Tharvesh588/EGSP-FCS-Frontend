@@ -44,9 +44,9 @@ const getCurrentAcademicYear = () => {
     const currentYear = today.getFullYear();
     // Academic year starts in June (index 5)
     if (currentMonth >= 5) {
-      return `${currentYear}-${(currentYear + 1).toString()}`;
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
     }
-    return `${currentYear - 1}-${currentYear.toString()}`;
+    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
 };
 
 const generateYearOptions = () => {
@@ -56,8 +56,8 @@ const generateYearOptions = () => {
     const years = [];
     for (let i = 0; i < 5; i++) {
         const startYear = startCurrentYear - i;
-        const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString()}`);
+        const endYear = (startYear + 1).toString().slice(-2);
+        years.push(`${startYear}-${endYear}`);
     }
     return years;
 };
@@ -74,7 +74,7 @@ export default function GoodWorksPage() {
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
 
-  const fetchGoodWorks = async (currentPage: number, currentYear: string) => {
+  const fetchGoodWorks = async (currentPage: number, currentYear: string, currentStatus: string) => {
     setIsLoading(true);
     const token = localStorage.getItem("token");
     const facultyId = searchParams.get('uid');
@@ -89,10 +89,19 @@ export default function GoodWorksPage() {
       return;
     }
     
-    let url = `${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?page=${currentPage}&limit=${limit}`;
+    const params = new URLSearchParams({
+      page: currentPage.toString(),
+      limit: limit.toString(),
+    });
+    
     if (currentYear) {
-      url += `&academicYear=${currentYear}`;
+      params.append('academicYear', currentYear);
     }
+    if (currentStatus && currentStatus !== 'all') {
+      params.append('status', currentStatus);
+    }
+
+    let url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?${params.toString()}`;
 
     try {
       const response = await fetch(url, {
@@ -103,11 +112,9 @@ export default function GoodWorksPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        // Check if the error is HTML (like a 404 page)
         if (errorText.trim().startsWith("<!DOCTYPE html>")) {
            throw new Error(`API endpoint not found. Please check the URL. Status: ${response.status}`);
         }
-        // Try to parse as JSON
         try {
           const errorJson = JSON.parse(errorText);
           throw new Error(errorJson.message || "An unknown server error occurred.");
@@ -124,7 +131,7 @@ export default function GoodWorksPage() {
 
       const positiveWorks = responseData.items.filter((work: GoodWork) => work.type === 'positive');
       setGoodWorks(positiveWorks);
-      setTotal(responseData.total); // Use total from API for pagination
+      setTotal(responseData.total);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -141,9 +148,9 @@ export default function GoodWorksPage() {
   useEffect(() => {
     const uid = searchParams.get('uid');
     if (uid) {
-        fetchGoodWorks(page, academicYear);
+        fetchGoodWorks(page, academicYear, statusFilter);
     }
-  }, [page, academicYear, searchParams]);
+  }, [page, academicYear, statusFilter, searchParams]);
 
   const handleViewDocument = (proofUrl: string) => {
     const userConfirmation = window.confirm("You are being redirected to an external website. This application is not responsible for the content of external sites.");
@@ -157,7 +164,8 @@ export default function GoodWorksPage() {
       work.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (work.description && work.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesStatus = statusFilter === 'all' || work.status === statusFilter;
+    // Status filter is now handled by the API, but we keep this for search filtering
+    const matchesStatus = statusFilter === 'all' || work.status.toLowerCase() === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -198,10 +206,10 @@ export default function GoodWorksPage() {
                     ))}
                 </SelectContent>
             </Select>
-          <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('all')}>All</Button>
-          <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('pending')}>Pending</Button>
-          <Button variant={statusFilter === 'approved' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('approved')}>Approved</Button>
-          <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
+          <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} onClick={() => { setStatusFilter('all'); setPage(1); }}>All</Button>
+          <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} onClick={() => { setStatusFilter('pending'); setPage(1); }}>Pending</Button>
+          <Button variant={statusFilter === 'approved' ? 'secondary' : 'ghost'} onClick={() => { setStatusFilter('approved'); setPage(1); }}>Approved</Button>
+          <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} onClick={() => { setStatusFilter('rejected'); setPage(1); }}>Rejected</Button>
         </div>
       </div>
       <div className="overflow-hidden rounded-lg bg-card shadow-sm border">
@@ -303,5 +311,3 @@ export default function GoodWorksPage() {
     </div>
   )
 }
-
-    
