@@ -123,7 +123,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             "flex-1",
             isConversationPage
               ? "flex flex-col overflow-hidden"
-              : "overflow-auto p-4 md:p-6 lg:p-8"
+              : "overflow-y-auto p-4 md:p-6 lg:p-8"
           )}
         >
           {children}
