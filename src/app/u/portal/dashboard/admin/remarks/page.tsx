@@ -23,6 +23,19 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
 import { FileUpload } from "@/components/file-upload";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { PlusCircle } from "lucide-react";
+
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -86,6 +99,7 @@ export default function ManageRemarksPage() {
   const [notes, setNotes] = useState("");
   const [proof, setProof] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Data for dropdowns
   const [facultyList, setFacultyList] = useState<User[]>([]);
@@ -149,7 +163,7 @@ export default function ManageRemarksPage() {
               limit: limit.toString(),
               sort: '-createdAt'
           });
-          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?${params.toString()}`, {
+          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative?${params.toString()}`, {
               headers: { Authorization: `Bearer ${adminToken}` },
           });
   
@@ -251,6 +265,7 @@ export default function ManageRemarksPage() {
       setProof(null);
       fetchRemarks(1); // refetch and go to first page
       setPage(1);
+      setIsFormOpen(false);
 
     } catch (error: any) {
       toast({
@@ -265,75 +280,91 @@ export default function ManageRemarksPage() {
 
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">
-          Manage Negative Remarks
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Issue and monitor negative credit adjustments for faculty members.
-        </p>
-      </header>
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
-        <div className="space-y-6 rounded-lg bg-card p-6 shadow-sm lg:col-span-1">
-          <h2 className="text-xl font-semibold text-foreground">
-            Issue New Remark
-          </h2>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground" htmlFor="faculty">Faculty Member</label>
-              <Select value={facultyId} onValueChange={setFacultyId}>
-                <SelectTrigger id="faculty"><SelectValue placeholder="Select Faculty Member" /></SelectTrigger>
-                <SelectContent>
-                  {facultyList.map(faculty => (<SelectItem key={faculty._id} value={faculty._id}>{faculty.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
-             <div>
-              <label className="block text-sm font-medium text-muted-foreground" htmlFor="creditTitle">Remark Template (Optional)</label>
-              <Select value={creditTitleId} onValueChange={setCreditTitleId}>
-                <SelectTrigger id="creditTitle"><SelectValue placeholder="Select a template" /></SelectTrigger>
-                <SelectContent>
-                   {creditTitles.map(ct => (<SelectItem key={ct._id} value={ct._id}>{ct.title}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-muted-foreground" htmlFor="title">Title</label>
-                <Input id="title" placeholder="e.g., 'Missed department meeting'" value={title} onChange={(e) => setTitle(e.target.value)} required />
-            </div>
-             <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-muted-foreground" htmlFor="points">Points</label>
-                    <Input id="points" type="number" placeholder="e.g., -5" value={points} onChange={(e) => setPoints(Number(e.target.value))} required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground" htmlFor="academicYear">Academic Year</label>
-                  <Select value={academicYear} onValueChange={setAcademicYear}>
-                    <SelectTrigger id="academicYear"><SelectValue placeholder="Select Year" /></SelectTrigger>
-                    <SelectContent>{generateYearOptions().map(year => (<SelectItem key={year} value={year}>{year}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground" htmlFor="notes">Notes / Rationale</label>
-              <Textarea id="notes" placeholder="Enter detailed notes about the incident" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">Upload Proof (Optional)</label>
-              <FileUpload onFileSelect={setProof} />
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-                {isLoading ? "Submitting..." : "Issue Remark"}
-              </Button>
-            </div>
-          </form>
+    <div className="mx-auto max-w-7xl space-y-8">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">
+            Manage Negative Remarks
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            Issue and monitor negative credit adjustments for faculty members.
+          </p>
         </div>
-        <div className="space-y-6 rounded-lg bg-card p-6 shadow-sm lg:col-span-2">
-          <h2 className="text-xl font-semibold text-foreground">
-            Issued Remarks History
-          </h2>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Issue New Remark
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+                 <DialogHeader>
+                    <DialogTitle>Issue New Remark</DialogTitle>
+                    <DialogDescription>Fill out the details below to issue a negative credit to a faculty member.</DialogDescription>
+                </DialogHeader>
+                <form className="space-y-4 pt-4" onSubmit={handleSubmit}>
+                    <div>
+                    <label className="block text-sm font-medium text-muted-foreground" htmlFor="faculty">Faculty Member</label>
+                    <Select value={facultyId} onValueChange={setFacultyId}>
+                        <SelectTrigger id="faculty"><SelectValue placeholder="Select Faculty Member" /></SelectTrigger>
+                        <SelectContent>
+                        {facultyList.map(faculty => (<SelectItem key={faculty._id} value={faculty._id}>{faculty.name}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-muted-foreground" htmlFor="creditTitle">Remark Template (Optional)</label>
+                    <Select value={creditTitleId} onValueChange={setCreditTitleId}>
+                        <SelectTrigger id="creditTitle"><SelectValue placeholder="Select a template" /></SelectTrigger>
+                        <SelectContent>
+                        {creditTitles.map(ct => (<SelectItem key={ct._id} value={ct._id}>{ct.title}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-muted-foreground" htmlFor="title">Title</label>
+                        <Input id="title" placeholder="e.g., 'Missed department meeting'" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground" htmlFor="points">Points</label>
+                            <Input id="points" type="number" placeholder="e.g., -5" value={points} onChange={(e) => setPoints(Number(e.target.value))} required />
+                        </div>
+                        <div>
+                        <label className="block text-sm font-medium text-muted-foreground" htmlFor="academicYear">Academic Year</label>
+                        <Select value={academicYear} onValueChange={setAcademicYear}>
+                            <SelectTrigger id="academicYear"><SelectValue placeholder="Select Year" /></SelectTrigger>
+                            <SelectContent>{generateYearOptions().map(year => (<SelectItem key={year} value={year}>{year}</SelectItem>))}</SelectContent>
+                        </Select>
+                        </div>
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-muted-foreground" htmlFor="notes">Notes / Rationale</label>
+                    <Textarea id="notes" placeholder="Enter detailed notes about the incident" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Upload Proof (Optional)</label>
+                    <FileUpload onFileSelect={setProof} />
+                    </div>
+                    <DialogFooter className="pt-4">
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+                            {isLoading ? "Submitting..." : "Issue Remark"}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+      </header>
+        
+      <Card>
+        <CardHeader>
+            <CardTitle>Issued Remarks History</CardTitle>
+            <CardDescription>A log of all negative remarks that have been issued.</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="overflow-x-auto border rounded-lg">
             <Table>
               <TableHeader>
@@ -362,21 +393,21 @@ export default function ManageRemarksPage() {
               </TableBody>
             </Table>
           </div>
-           <div className="flex items-center justify-between pt-2">
-                <div className="text-sm text-muted-foreground">
-                    Page {page} of {totalPages || 1}
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                        Previous
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
-                        Next
-                    </Button>
-                </div>
+        </CardContent>
+        <CardFooter className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages || 1}
             </div>
-        </div>
-      </div>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                    Previous
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                    Next
+                </Button>
+            </div>
+        </CardFooter>
+      </Card>
     </div>
   )
 }
