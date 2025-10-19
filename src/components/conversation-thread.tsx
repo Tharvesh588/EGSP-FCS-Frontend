@@ -64,8 +64,8 @@ function DayDivider({ date }: { date: string }) {
 }
 
 type RenderableItem = 
-    | { type: 'message'; message: Message }
-    | { type: 'divider'; date: string };
+    | { type: 'message'; message: Message; id: string; }
+    | { type: 'divider'; date: string; id: string; };
 
 
 export function ConversationThread({ conversationId, conversationDetails, socket, currentUserId, onBack }: ConversationThreadProps) {
@@ -202,45 +202,48 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         messages.forEach(message => {
             const messageDate = new Date(message.createdAt).toDateString();
             if (lastDate !== messageDate) {
-                renderableItems.push({ type: 'divider', date: message.createdAt });
+                renderableItems.push({ type: 'divider', date: message.createdAt, id: `divider-${messageDate}` });
                 lastDate = messageDate;
             }
-            renderableItems.push({ type: 'message', message });
+            renderableItems.push({ type: 'message', message, id: message._id });
         });
 
-        return renderableItems.map((item, index) => {
-            if (item.type === 'divider') {
-                return <DayDivider key={`divider-${item.date}`} date={item.date} />;
-            }
+        return renderableItems.map((item) => {
+            switch (item.type) {
+                case 'divider':
+                    return <DayDivider key={item.id} date={item.date} />;
+                case 'message':
+                    const { message } = item;
+                    const isSender = message.sender === currentUserId;
+                    const links = message.content.text.match(urlRegex);
+                    const firstLink = links ? links[0] : null;
 
-            const { message } = item;
-            const isSender = message.sender === currentUserId;
-            const links = message.content.text.match(urlRegex);
-            const firstLink = links ? links[0] : null;
-
-            return (
-                <div key={message._id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
-                    {!isSender && (
-                        <Avatar className="h-8 w-8 self-end mb-1">
-                             <AvatarImage src={message.senderSnapshot?.profileImage} />
-                            <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) ?? '?'}</AvatarFallback>
-                        </Avatar>
-                    )}
-                    <div className={cn(
-                        "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative",
-                        isSender
-                            ? "bg-primary text-primary-foreground rounded-br-lg"
-                            : "bg-muted rounded-bl-lg",
-                        message.__optimistic ? "opacity-60" : ""
-                    )}>
-                        <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
-                        {firstLink && <LinkPreviewCard url={firstLink} />}
-                        <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
-                           {format(parseISO(message.createdAt), 'p')}
+                    return (
+                        <div key={item.id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                            {!isSender && (
+                                <Avatar className="h-8 w-8 self-end mb-1">
+                                     <AvatarImage src={message.senderSnapshot?.profileImage} />
+                                    <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) ?? '?'}</AvatarFallback>
+                                </Avatar>
+                            )}
+                            <div className={cn(
+                                "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative",
+                                isSender
+                                    ? "bg-primary text-primary-foreground rounded-br-lg"
+                                    : "bg-muted rounded-bl-lg",
+                                message.__optimistic ? "opacity-60" : ""
+                            )}>
+                                <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
+                                {firstLink && <LinkPreviewCard url={firstLink} />}
+                                <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
+                                   {format(parseISO(message.createdAt), 'p')}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            );
+                    );
+                default:
+                    return null;
+            }
         });
     };
 
@@ -313,3 +316,5 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
+
+    
