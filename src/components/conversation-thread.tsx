@@ -63,6 +63,7 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
             return;
         }
         
+        setIsLoading(true);
         try {
             // Fetch conversation details (participants, etc.)
             const detailsResponse = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}`, {
@@ -86,19 +87,20 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
             if (messagesData.messages) {
                 const sortedMessages = messagesData.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                 setMessages(sortedMessages);
+            } else if (messagesData.success && messagesData.messages.length === 0) {
+                setMessages([]);
             } else {
                 throw new Error(messagesData.message || 'Failed to fetch messages');
             }
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error fetching data", description: error.message });
         } finally {
-            if (isLoading) setIsLoading(false);
+            setIsLoading(false);
         }
     };
     
     useEffect(() => {
         if (conversationId) {
-            setIsLoading(true);
             setMessages([]);
             setConversationDetails(null);
             fetchConversationData();
@@ -117,6 +119,10 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
 
         socket.on('message:new', (msg: Message) => {
             setMessages(prev => {
+                // Avoid adding duplicate optimistic messages
+                if (prev.some(m => m._id === msg._id)) {
+                    return prev;
+                }
                 const optimisticMessage = prev.find(m => m.__optimistic && m.content.text === msg.content.text);
                 if (optimisticMessage) {
                     return prev.map(m => m._id === optimisticMessage._id ? { ...msg, __optimistic: false } : m);
@@ -143,24 +149,26 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
         if (!text || !currentUserId || !socketRef.current) return;
 
         setIsSending(true);
+        setNewMessage('');
 
         const optimisticMessage: Message = {
             _id: `optimistic-${Date.now()}-${Math.random()}`,
             sender: currentUserId,
-            senderSnapshot: { name: "You" },
-            type: 'positive',
-            content: { text: newMessage },
+            senderSnapshot: { name: "You", profileImage: conversationDetails?.participants.find((p:any) => p._id === currentUserId)?.profileImage },
+            type: 'neutral',
+            content: { text },
             createdAt: new Date().toISOString(),
             __optimistic: true,
         };
         setMessages(prev => [...prev, optimisticMessage]);
-        setNewMessage('');
-
-        socketRef.current?.emit('message', { conversationId, text }, (ack: any) => {
+        
+        socketRef.current?.emit('message:send', { conversationId, content: { text } }, (ack: any) => {
           if (ack?.error) {
             console.error('socket send error', ack.error);
             toast({ variant: "destructive", title: "Error sending message", description: ack.error });
             setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
+          } else {
+             // The server will broadcast the message back, which will replace the optimistic one.
           }
         });
 
@@ -231,15 +239,16 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
                             <div key={message._id || Math.random()} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                                 {!isSender && (
                                     <Avatar className="h-8 w-8 self-end mb-1">
-                                         <AvatarImage src={message.senderSnapshot.profileImage} />
-                                        <AvatarFallback>{message.senderSnapshot.name.charAt(0)}</AvatarFallback>
+                                         <AvatarImage src={message.senderSnapshot?.profileImage} />
+                                        <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) || '?'}</AvatarFallback>
                                     </Avatar>
                                 )}
                                 <div className={cn(
                                     "max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-2.5 flex flex-col", 
                                     isSender 
                                         ? "bg-primary text-primary-foreground rounded-br-none" 
-                                        : "bg-muted rounded-bl-none"
+                                        : "bg-muted rounded-bl-none",
+                                    message.__optimistic ? "opacity-70" : ""
                                 )}>
                                     <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
                                     {firstLink && <LinkPreviewCard url={firstLink} />}
@@ -249,8 +258,8 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
                                 </div>
                                 {isSender && (
                                     <Avatar className="h-8 w-8 self-end mb-1">
-                                        <AvatarImage src={message.senderSnapshot.profileImage} />
-                                        <AvatarFallback>Y</AvatarFallback>
+                                        <AvatarImage src={message.senderSnapshot?.profileImage} />
+                                        <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) || 'Y'}</AvatarFallback>
                                     </Avatar>
                                 )}
                             </div>
@@ -287,3 +296,5 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
         </div>
     );
 }
+
+    
