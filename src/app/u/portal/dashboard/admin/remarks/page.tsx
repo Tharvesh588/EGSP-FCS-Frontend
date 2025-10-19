@@ -34,7 +34,7 @@ import {
   DialogClose,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { PlusCircle, Eye } from "lucide-react";
+import { PlusCircle, Eye, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { io, type Socket } from "socket.io-client";
 
@@ -101,7 +101,6 @@ export default function ManageRemarksPage() {
   const [creditTitleId, setCreditTitleId] = useState("");
   const [points, setPoints] = useState<number | string>("");
   const [title, setTitle] = useState("");
-  const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [notes, setNotes] = useState("");
   const [proof, setProof] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -111,12 +110,16 @@ export default function ManageRemarksPage() {
   const [facultyList, setFacultyList] = useState<User[]>([]);
   const [creditTitles, setCreditTitles] = useState<CreditTitle[]>([]);
 
-  // Data for table
+  // Data for table and filters
   const [remarks, setRemarks] = useState<NegativeRemark[]>([]);
   const [isLoadingRemarks, setIsLoadingRemarks] = useState(true);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [academicYearFilter, setAcademicYearFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [facultyFilter, setFacultyFilter] = useState("all");
   
   // Details view state
   const [selectedRemark, setSelectedRemark] = useState<NegativeRemark | null>(null);
@@ -173,6 +176,11 @@ export default function ManageRemarksPage() {
               sort: '-createdAt'
           });
 
+          if (searchTerm) params.append('search', searchTerm);
+          if (academicYearFilter !== 'all') params.append('academicYear', academicYearFilter);
+          if (statusFilter !== 'all') params.append('status', statusFilter);
+          if (facultyFilter !== 'all') params.append('facultyId', facultyFilter);
+
           const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative?${params.toString()}`, {
               headers: { Authorization: `Bearer ${adminToken}` },
           });
@@ -201,10 +209,17 @@ export default function ManageRemarksPage() {
   }, [uid, adminToken, toast]);
 
   useEffect(() => {
-    if(adminToken) {
-      fetchRemarks(page);
-    }
-  }, [page, adminToken]);
+    const timer = setTimeout(() => {
+        if (adminToken) {
+            fetchRemarks(page);
+        }
+    }, 500); // Debounce API call
+    return () => clearTimeout(timer);
+  }, [page, adminToken, searchTerm, academicYearFilter, statusFilter, facultyFilter]);
+  
+  useEffect(() => {
+    setPage(1); // Reset to first page whenever filters change
+  }, [searchTerm, academicYearFilter, statusFilter, facultyFilter]);
   
   useEffect(() => {
     const selectedTitle = creditTitles.find(ct => ct._id === creditTitleId);
@@ -220,7 +235,7 @@ export default function ManageRemarksPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!facultyId || !points || !academicYear || !title) {
+    if (!facultyId || !points || !title) {
       toast({
         variant: "destructive",
         title: "Incomplete Form",
@@ -239,7 +254,7 @@ export default function ManageRemarksPage() {
     const formData = new FormData();
     formData.append("facultyId", facultyId);
     formData.append("points", points.toString());
-    formData.append("academicYear", academicYear);
+    formData.append("academicYear", getCurrentAcademicYear());
     formData.append("title", title);
     if (creditTitleId) formData.append("creditTitleId", creditTitleId);
     if (notes) formData.append("notes", notes);
@@ -270,7 +285,6 @@ export default function ManageRemarksPage() {
       setCreditTitleId("");
       setTitle("");
       setPoints("");
-      setAcademicYear(getCurrentAcademicYear());
       setNotes("");
       setProof(null);
       fetchRemarks(1); // refetch and go to first page
@@ -392,7 +406,7 @@ export default function ManageRemarksPage() {
                         </div>
                         <div>
                         <label className="block text-sm font-medium text-muted-foreground" htmlFor="academicYear">Academic Year</label>
-                        <Select value={academicYear} onValueChange={setAcademicYear}>
+                        <Select value={getCurrentAcademicYear()} disabled>
                             <SelectTrigger id="academicYear"><SelectValue placeholder="Select Year" /></SelectTrigger>
                             <SelectContent>{generateYearOptions().map(year => (<SelectItem key={year} value={year}>{year}</SelectItem>))}</SelectContent>
                         </Select>
@@ -425,6 +439,47 @@ export default function ManageRemarksPage() {
             <CardDescription>A log of all negative remarks that have been issued.</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                      placeholder="Search by title, faculty..." 
+                      className="pl-10"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+              </div>
+              <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
+                  <SelectTrigger className="w-full md:w-[200px]">
+                      <SelectValue placeholder="Select Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Years</SelectItem>
+                      {generateYearOptions().map(year => (<SelectItem key={year} value={year}>{year}</SelectItem>))}
+                  </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="appealed">Appealed</SelectItem>
+                  </SelectContent>
+              </Select>
+               <Select value={facultyFilter} onValueChange={setFacultyFilter}>
+                  <SelectTrigger className="w-full md:w-[220px]">
+                      <SelectValue placeholder="Select Faculty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Faculty</SelectItem>
+                      {facultyList.map(faculty => (<SelectItem key={faculty._id} value={faculty._id}>{faculty.name}</SelectItem>))}
+                  </SelectContent>
+              </Select>
+          </div>
           <div className="overflow-x-auto border rounded-lg">
             <Table>
               <TableHeader>
@@ -503,7 +558,7 @@ export default function ManageRemarksPage() {
                   </TableRow>
                 ))
                 ) : (
-                    <TableRow><TableCell colSpan={5} className="text-center h-24">No remarks found.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">No remarks found for the selected filters.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
