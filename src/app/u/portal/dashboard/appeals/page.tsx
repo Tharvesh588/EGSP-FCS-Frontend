@@ -39,20 +39,19 @@ type NegativeReport = {
   proof: string;
 };
 
-// Represents an appeal submitted by the faculty
 type Appeal = {
     _id: string;
-    facultyId: string;
-    creditId: string;
+    faculty: string;
+    credit: {
+      _id: string;
+      title: string;
+      notes: string;
+      points: number;
+      createdAt: string;
+    };
     reason: string;
     status: 'pending' | 'under_review' | 'approved' | 'rejected';
-    submittedAt: string;
-    originalRemark: {
-      title: string;
-      points: number;
-      notes: string;
-      issuedAt: string;
-    };
+    createdAt: string;
     decision?: {
         notes: string;
         decidedAt: string;
@@ -62,7 +61,6 @@ type Appeal = {
 type Conversation = {
   _id: string;
 };
-
 
 export default function AppealsPage() {
   const { toast } = useToast();
@@ -82,12 +80,11 @@ export default function AppealsPage() {
   const [isStartingConversation, setIsStartingConversation] = useState(false);
 
   const facultyId = searchParams.get('uid');
+  const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
 
   const fetchAppeals = async () => {
       setIsLoading(true);
-      const token = localStorage.getItem("token");
-
-      if (!token) {
+      if (!token || !facultyId) {
         toast({ variant: "destructive", title: "Authentication Error" });
         setIsLoading(false);
         return;
@@ -119,12 +116,9 @@ export default function AppealsPage() {
   };
 
   const fetchAppealableRemarks = async () => {
-      const token = localStorage.getItem("token");
-      const currentFacultyId = searchParams.get('uid');
-      if (!token || !currentFacultyId) return;
-
+      if (!token || !facultyId) return;
        try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${currentFacultyId}?type=negative&appealable=true`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?type=negative&appealable=true`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const responseData = await response.json();
@@ -139,10 +133,10 @@ export default function AppealsPage() {
   };
   
   useEffect(() => {
-    if (searchParams.get('uid')) {
+    if (facultyId) {
         fetchAppeals();
     }
-  }, [searchParams]);
+  }, [facultyId]);
 
   useEffect(() => {
     if(isAppealDialogOpen) {
@@ -154,7 +148,6 @@ export default function AppealsPage() {
     setActiveConversation(null);
   }, [selectedAppeal]);
 
-
   const handleAppealSubmit = async () => {
     if (!selectedRemarkId || !appealReason) {
         toast({
@@ -165,8 +158,7 @@ export default function AppealsPage() {
         return;
     }
     setIsSubmittingAppeal(true);
-    const token = localStorage.getItem("token");
-
+    
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/credits/${selectedRemarkId}/appeal`, {
             method: "POST",
@@ -206,7 +198,6 @@ export default function AppealsPage() {
   const handleStartConversation = async () => {
     if (!selectedAppeal || !facultyId) return;
     setIsStartingConversation(true);
-    const token = localStorage.getItem("token");
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
@@ -216,7 +207,7 @@ export default function AppealsPage() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
-                creditId: selectedAppeal.creditId,
+                creditId: selectedAppeal.credit._id,
                 participantIds: [facultyId] // The backend will add the other participant (admin/issuer)
             }),
         });
@@ -244,7 +235,6 @@ export default function AppealsPage() {
     }
   };
 
-
   const filteredAppeals = appeals.filter(appeal => filter === 'all' || appeal.status.replace(/_/g, '-') === filter);
   
   const getStatusVariant = (status: Appeal['status']) => {
@@ -269,40 +259,16 @@ export default function AppealsPage() {
   
   const getTimelineIcon = (status: Appeal['status'] | 'submitted', currentStatus: Appeal['status']) => {
       const statusHierarchy = ['submitted', 'pending', 'under_review', 'approved', 'rejected'];
-      const currentIndex = statusHierarchy.indexOf(currentStatus);
-      const itemIndex = statusHierarchy.indexOf(status);
-
-      let icon = 'radio_button_unchecked';
-      let color = 'text-muted-foreground';
-
-      if (itemIndex < currentIndex) {
-          icon = 'check_circle';
-          color = 'text-primary';
-      } else if (itemIndex === currentIndex) {
-          if (currentStatus === 'approved') {
-            icon = 'check_circle';
-            color = 'text-green-600';
-          } else if (currentStatus === 'rejected') {
-            icon = 'cancel';
-            color = 'text-destructive';
-          } else {
-            icon = 'timelapse';
-            color = 'text-primary animate-pulse';
-          }
-      } else if (currentStatus === 'approved' && status === 'approved') {
-          icon = 'check_circle';
-          color = 'text-green-600';
-      } else if (currentStatus === 'rejected' && status === 'rejected') {
-          icon = 'cancel';
-          color = 'text-destructive';
-      }
-
+      
       const timelineStatus = status === 'approved' || status === 'rejected' ? 'decision' : status;
       const currentTimelineStatus = currentStatus === 'approved' || currentStatus === 'rejected' ? 'decision' : currentStatus;
       
       const timelineHierarchy = ['submitted', 'pending', 'under_review', 'decision'];
       const currentTimelineIndex = timelineHierarchy.indexOf(currentTimelineStatus);
       const itemTimelineIndex = timelineHierarchy.indexOf(timelineStatus);
+
+      let icon = 'radio_button_unchecked';
+      let color = 'text-muted-foreground';
 
       if (itemTimelineIndex < currentTimelineIndex) {
           icon = 'check_circle';
@@ -366,8 +332,8 @@ export default function AppealsPage() {
                         className={`cursor-pointer ${selectedAppeal?._id === appeal._id ? "bg-primary/5" : ""}`}
                         onClick={() => setSelectedAppeal(appeal)}
                     >
-                        <TableCell className="font-medium">{appeal.originalRemark.title}</TableCell>
-                        <TableCell className="text-muted-foreground">{new Date(appeal.submittedAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="font-medium">{appeal.credit.title}</TableCell>
+                        <TableCell className="text-muted-foreground">{new Date(appeal.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell>
                             <Badge variant={getStatusVariant(appeal.status)} className={getStatusColor(appeal.status)}>
                                 {appeal.status.replace(/_/g, ' ')}
@@ -392,7 +358,7 @@ export default function AppealsPage() {
                 <h3 className="text-xl font-bold mb-4">Appeal Details</h3>
                 
                 {activeConversation ? (
-                    <ConversationThread conversationId={activeConversation._id} />
+                    <ConversationThread conversationId={activeConversation._id} conversationDetails={{_id: activeConversation._id, participants: [], credit: {title: selectedAppeal.credit.title}}} socket={null} currentUserId={facultyId} onBack={() => setActiveConversation(null)} />
                 ) : (
                     <>
                         <div className="space-y-4">
@@ -401,9 +367,9 @@ export default function AppealsPage() {
                                 <CardTitle className="text-base">Original Remark</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm">
-                                    <p className="font-semibold">{selectedAppeal.originalRemark.title} ({selectedAppeal.originalRemark.points} points)</p>
-                                    <p className="text-muted-foreground italic">"{selectedAppeal.originalRemark.notes}"</p>
-                                    <p className="text-xs text-muted-foreground">Issued on: {new Date(selectedAppeal.originalRemark.issuedAt).toLocaleString()}</p>
+                                    <p className="font-semibold">{selectedAppeal.credit.title} ({selectedAppeal.credit.points} points)</p>
+                                    <p className="text-muted-foreground italic">"{selectedAppeal.credit.notes}"</p>
+                                    <p className="text-xs text-muted-foreground">Issued on: {new Date(selectedAppeal.credit.createdAt).toLocaleString()}</p>
                                 </CardContent>
                             </Card>
 
@@ -413,7 +379,7 @@ export default function AppealsPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm">
                                     <p className="text-muted-foreground italic">"{selectedAppeal.reason}"</p>
-                                    <p className="text-xs text-muted-foreground">Submitted on: {new Date(selectedAppeal.submittedAt).toLocaleString()}</p>
+                                    <p className="text-xs text-muted-foreground">Submitted on: {new Date(selectedAppeal.createdAt).toLocaleString()}</p>
                                 </CardContent>
                             </Card>
 
@@ -438,7 +404,7 @@ export default function AppealsPage() {
                                   {getTimelineIcon('submitted', selectedAppeal.status)}
                                   <div>
                                     <p className="font-medium">Appeal Submitted</p>
-                                    <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.submittedAt).toDateString()}</p>
+                                    <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.createdAt).toDateString()}</p>
                                   </div>
                                 </div>
                                 <div className="relative flex items-start gap-4">

@@ -55,9 +55,9 @@ const getCurrentAcademicYear = () => {
     const currentYear = today.getFullYear();
     // Academic year starts in June (index 5)
     if (currentMonth >= 5) {
-      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+      return `${currentYear}-${(currentYear + 1).toString()}`;
     }
-    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
+    return `${currentYear - 1}-${currentYear.toString()}`;
 };
 
 const generateYearOptions = () => {
@@ -68,7 +68,7 @@ const generateYearOptions = () => {
     for (let i = 0; i < 5; i++) {
         const startYear = startCurrentYear - i;
         const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
+        years.push(`${startYear}-${endYear.toString()}`);
     }
     return years;
 };
@@ -132,45 +132,44 @@ export default function ManageRemarksPage() {
 
   const fetchRemarks = async () => {
     setIsLoadingRemarks(true);
-    if (!adminToken) {
-      setIsLoadingRemarks(false);
-      return;
+    if (!adminToken || !uid) {
+        setIsLoadingRemarks(false);
+        return;
     }
 
     try {
-      // This is a placeholder. You might need a specific endpoint to get ALL negative remarks.
-      // I'll fetch for the admin user, assuming an admin can see all.
-      const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${uid}?type=negative&limit=50`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setRemarks(data.items.filter((item: any) => item.type === 'negative' || item.points < 0));
-      } else {
-        // If that fails, try to get all submissions and filter, as a fallback.
-        // This is not ideal for performance.
-        console.warn("Could not fetch negative remarks directly. Trying a wider search.");
-        const allResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?limit=200`, { headers: { Authorization: `Bearer ${adminToken}` } });
-        const allData = await allResponse.json();
-        if(allData.success) {
-             setRemarks(allData.items.filter((item: any) => item.type === 'negative' || item.points < 0));
+        const response = await fetch(`${API_BASE_URL}/api/v1/admin/faculty/${uid}/credits/negative`, {
+            headers: { Authorization: `Bearer ${adminToken}` },
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            setRemarks(data.items);
         } else {
-             throw new Error(data.message || "Failed to fetch remarks");
+            console.warn("Could not fetch negative remarks for the current user. Trying to fetch all positive credits and filter as a fallback.");
+            const allCreditsResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?limit=200`, { headers: { Authorization: `Bearer ${adminToken}` } });
+            const allCreditsData = await allCreditsResponse.json();
+            if (allCreditsData.success) {
+                setRemarks(allCreditsData.items.filter((item: any) => item.type === 'negative'));
+            } else {
+                throw new Error(data.message || "Failed to fetch remarks");
+            }
         }
-      }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
-      setRemarks([]);
+        toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
+        setRemarks([]);
     } finally {
-      setIsLoadingRemarks(false);
+        setIsLoadingRemarks(false);
     }
-  };
+};
 
 
   useEffect(() => {
-    fetchDropdownData();
-    fetchRemarks();
-  }, [uid, adminToken]);
+    if (adminToken) {
+      fetchDropdownData();
+      fetchRemarks();
+    }
+  }, [uid, adminToken, toast]);
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -183,7 +182,9 @@ export default function ManageRemarksPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!facultyId || !creditTitleId || !academicYear || !notes || !proof) {
+    const selectedTitle = creditTitles.find(ct => ct._id === creditTitleId);
+
+    if (!facultyId || !creditTitleId || !academicYear || !notes || !proof || !selectedTitle) {
       toast({
         variant: "destructive",
         title: "Incomplete Form",
@@ -205,9 +206,11 @@ export default function ManageRemarksPage() {
     formData.append("academicYear", academicYear);
     formData.append("notes", notes);
     formData.append("proof", proof);
+    formData.append("title", selectedTitle.title);
+    formData.append("points", selectedTitle.points.toString());
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/negative-credit`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${adminToken}`,
