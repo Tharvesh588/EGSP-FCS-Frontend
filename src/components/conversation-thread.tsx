@@ -106,10 +106,16 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (msg.conversationId === conversationId) {
                  setMessages(prev => {
                     if (prev.some(m => m._id === msg._id)) {
-                        // If message with same ID exists, update it (e.g. from optimistic to confirmed)
                         return prev.map(m => m._id === msg._id ? msg : m);
                     }
-                    return [...prev, msg]; // Otherwise, add new message
+                    // Replace optimistic message if it exists
+                    const optimisticIndex = prev.findIndex(m => m.__optimistic);
+                    if (optimisticIndex > -1) {
+                        const newMessages = [...prev];
+                        newMessages[optimisticIndex] = msg;
+                        return newMessages;
+                    }
+                    return [...prev, msg];
                 });
             }
         };
@@ -169,6 +175,8 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (response && response.error) {
                 toast({ variant: "destructive", title: "Error sending message", description: response.error });
                 setMessages(prev => prev.filter(msg => msg._id !== optimisticId));
+            } else if (response && response.ok) {
+                // The 'message:new' event will handle replacing the optimistic message
             }
         });
     };
@@ -183,46 +191,52 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const otherParticipant = conversationDetails?.participants.find(p => p._id !== currentUserId);
 
     const renderMessages = () => {
+        if (messages.length === 0) return [];
+
+        const elements = [];
         let lastDate: string | null = null;
 
-        return messages.map((message) => {
+        for (const message of messages) {
             const messageDate = new Date(message.createdAt).toDateString();
-            let dayDivider = null;
-
             if (lastDate !== messageDate) {
-                dayDivider = <DayDivider key={`divider-${messageDate}`} date={message.createdAt} />;
+                elements.push({ type: 'divider', date: message.createdAt, id: `divider-${messageDate}` });
                 lastDate = messageDate;
             }
+            elements.push({ type: 'message', message });
+        }
 
+        return elements.map(elem => {
+            if (elem.type === 'divider') {
+                return <DayDivider key={elem.id} date={elem.date} />;
+            }
+            
+            const message = elem.message as Message;
             const isSender = message.sender === currentUserId;
             const links = message.content.text.match(urlRegex);
             const firstLink = links ? links[0] : null;
 
             return (
-                <Fragment key={message._id}>
-                    {dayDivider}
-                    <div className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
-                        {!isSender && (
-                            <Avatar className="h-8 w-8 self-end mb-1">
-                                <AvatarImage src={message.senderSnapshot?.profileImage} />
-                                <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) ?? '?'}</AvatarFallback>
-                            </Avatar>
-                        )}
-                        <div className={cn(
-                            "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative",
-                            isSender
-                                ? "bg-primary text-primary-foreground rounded-br-lg"
-                                : "bg-muted rounded-bl-lg",
-                            message.__optimistic ? "opacity-60" : ""
-                        )}>
-                            <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
-                            {firstLink && <LinkPreviewCard url={firstLink} />}
-                            <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
-                               {format(parseISO(message.createdAt), 'p')}
-                            </div>
+                <div key={message._id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                    {!isSender && (
+                        <Avatar className="h-8 w-8 self-end mb-1">
+                             <AvatarImage src={message.senderSnapshot?.profileImage} />
+                            <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) ?? '?'}</AvatarFallback>
+                        </Avatar>
+                    )}
+                    <div className={cn(
+                        "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative",
+                        isSender
+                            ? "bg-primary text-primary-foreground rounded-br-lg"
+                            : "bg-muted rounded-bl-lg",
+                        message.__optimistic ? "opacity-60" : ""
+                    )}>
+                        <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
+                        {firstLink && <LinkPreviewCard url={firstLink} />}
+                        <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
+                           {format(parseISO(message.createdAt), 'p')}
                         </div>
                     </div>
-                </Fragment>
+                </div>
             );
         });
     };
@@ -295,3 +309,5 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
+
+    
