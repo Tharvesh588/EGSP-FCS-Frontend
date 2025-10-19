@@ -28,7 +28,7 @@ export function useCreditTitles() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credit-title`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -40,7 +40,7 @@ export function useCreditTitles() {
                 const errorJson = JSON.parse(errorText);
                 throw new Error(errorJson.message || `Server returned status ${response.status}`);
             } catch (e) {
-                 throw new Error("Failed to fetch credit titles. Please check your connection.");
+                 throw new Error("Failed to fetch credit titles. The API endpoint may be incorrect.");
             }
         }
 
