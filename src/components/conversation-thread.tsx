@@ -107,20 +107,25 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     useEffect(() => {
         if (!socket || !conversationId) return;
         
-        const handleNewMessage = (msg: any) => {
+        const handleNewMessage = (msg: Message & { __optimisticId?: string }) => {
             if (msg.conversationId === conversationId) {
-                 setMessages(prev => {
-                    // Replace optimistic message if it exists
-                    const optimisticIndex = prev.findIndex(m => m.__optimistic && m.content.text === msg.content.text);
-                    if (optimisticIndex > -1) {
-                        const newMessages = [...prev];
-                        newMessages[optimisticIndex] = msg;
+                setMessages(prev => {
+                    // If an optimistic message ID is present, find and replace it
+                    if (msg.__optimisticId) {
+                        const newMessages = prev.map(m => m._id === msg.__optimisticId ? msg : m);
+                        // If it wasn't found (e.g., race condition), add it if not already present by real ID
+                        if (!newMessages.some(m => m._id === msg._id)) {
+                            return [...newMessages, msg];
+                        }
                         return newMessages;
                     }
-                    if (prev.some(m => m._id === msg._id)) {
-                        return prev; // Already have this message
+                    
+                    // If it's a new message from someone else, just add it if not already present
+                    if (!prev.some(m => m._id === msg._id)) {
+                        return [...prev, msg];
                     }
-                    return [...prev, msg];
+    
+                    return prev;
                 });
             }
         };
@@ -157,9 +162,9 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         const optimisticId = `optimistic-${Date.now()}`;
         const optimisticMessage: Message = {
-            _id: optimisticId, // Use optimistic ID here
+            _id: optimisticId,
             sender: currentUserId,
-            senderSnapshot: { name: "You" }, // Placeholder, actual user data should be available
+            senderSnapshot: { name: "You" },
             type: 'neutral',
             content: { text },
             createdAt: new Date().toISOString(),
@@ -172,7 +177,8 @@ export function ConversationThread({ conversationId, conversationDetails, socket
           conversationId,
           text,
           type: 'neutral',
-          meta: {}
+          meta: {},
+          __optimisticId: optimisticId, // Send optimistic ID to backend
         };
         
         socket.emit('message', payload, (response: any) => {
@@ -201,13 +207,14 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             if (lastDate !== messageDate) {
-                renderableItems.push({ type: 'divider', date: message.createdAt, id: `divider-${messageDate}` });
+                const dividerId = `divider-${messageDate}`;
+                renderableItems.push({ type: 'divider', date: message.createdAt, id: dividerId });
                 lastDate = messageDate;
             }
             renderableItems.push({ type: 'message', message, id: message._id });
         });
 
-        return renderableItems.map((item, index) => {
+        return renderableItems.map(item => {
              switch (item.type) {
                 case 'divider':
                     return <DayDivider key={item.id} date={item.date} />;
@@ -218,7 +225,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                     const firstLink = links ? links[0] : null;
 
                     return (
-                        <div key={item.id || `message-${index}`} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                        <div key={item.id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                             {!isSender && (
                                 <Avatar className="h-8 w-8 self-end mb-1">
                                      <AvatarImage src={message.senderSnapshot?.profileImage} />
@@ -315,3 +322,5 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
+
+    
