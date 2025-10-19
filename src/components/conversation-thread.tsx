@@ -159,14 +159,16 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         const optimisticId = `optimistic-${Date.now()}`;
         const optimisticMessage: Message = {
-            _id: optimisticId, // Use the temporary ID for the key
+            _id: optimisticId,
             sender: currentUserId,
             senderSnapshot: { name: "You" },
             type: 'neutral',
             content: { text },
             createdAt: new Date().toISOString(),
             __optimistic: true,
+            __optimisticId: optimisticId, // Important for replacement
         };
+
         setMessages(prev => [...prev, optimisticMessage]);
         setNewMessage('');
         
@@ -175,14 +177,14 @@ export function ConversationThread({ conversationId, conversationDetails, socket
           text,
           type: 'neutral',
           meta: {},
-          __optimisticId: optimisticId, // Send optimistic ID to backend
+          __optimisticId: optimisticId,
         };
         
         socket.emit('message', payload, (response: any) => {
             if (response && response.error) {
                 toast({ variant: "destructive", title: "Error sending message", description: response.error });
-                // Rollback optimistic UI
                 setMessages(prev => prev.filter(msg => msg._id !== optimisticId));
+                setNewMessage(text); // Put message back in input
             }
         });
     };
@@ -213,7 +215,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             renderableItems.push({ type: 'message', id: message._id, message });
         });
 
-        return renderableItems.map((item, index) => {
+        return renderableItems.map((item) => {
             if (item.type === 'divider') {
                 return <DayDivider key={item.id} date={item.date} />;
             }

@@ -115,7 +115,6 @@ export default function ConversationsPage() {
      useEffect(() => {
         if (!token) return;
 
-        // Initialize socket connection
         const socket = io(API_BASE_URL, {
             auth: { token },
             transports: ['websocket'] 
@@ -123,7 +122,7 @@ export default function ConversationsPage() {
         socketRef.current = socket;
 
         socket.on('connect', () => {
-          console.log('Socket connected. Details:', socket);
+          console.log('Socket connected for admin conversations.');
         });
         
         socket.on('connect_error', (err) => {
@@ -131,7 +130,7 @@ export default function ConversationsPage() {
             toast({ variant: 'destructive', title: 'Chat connection failed', description: 'Could not connect to the real-time server.' });
         });
 
-        const handleNewMessage = (newMessage: any) => {
+        const handleNewMessage = (newMessage: { conversationId: string, content: { text: string }, sender: string, createdAt: string }) => {
             setConversations(prevConvos => {
                 const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
                 if (convoIndex === -1) return prevConvos;
@@ -148,13 +147,9 @@ export default function ConversationsPage() {
                 
                 const newConvos = [...prevConvos];
                 newConvos.splice(convoIndex, 1);
-                newConvos.unshift(updatedConvo);
+                newConvos.unshift(updatedConvo); // Move to top
                 return newConvos;
             });
-
-            if (selectedConversation?._id === newMessage.conversationId) {
-                // This event will be handled inside ConversationThread
-            }
         };
 
         socket.on('message:new', handleNewMessage);
@@ -166,7 +161,7 @@ export default function ConversationsPage() {
             socket.disconnect();
             socketRef.current = null;
         };
-    }, [token, selectedConversation?._id]);
+    }, [token]);
 
 
     const filteredConversations = conversations.filter(convo => {
@@ -274,5 +269,3 @@ export default function ConversationsPage() {
         </div>
     );
 }
-
-    
