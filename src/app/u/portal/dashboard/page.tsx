@@ -98,7 +98,7 @@ export default function FacultyDashboard() {
         }
 
         // Fetch recent activities
-        const activitiesResponse = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=5`, {
+        const activitiesResponse = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?limit=5`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const activitiesData = await activitiesResponse.json();
@@ -109,7 +109,7 @@ export default function FacultyDashboard() {
         }
         
         // Fetch and process credit history
-        const historyResponse = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=100`, {
+        const historyResponse = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?limit=100`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
         const historyData = await historyResponse.json();
@@ -202,7 +202,7 @@ export default function FacultyDashboard() {
           </SelectTrigger>
           <SelectContent>
              {yearOptions.map(year => (
-                <SelectItem key={year} value={year}>Academic Year {year}</SelectItem>
+                <SelectItem key={year} value={year}>{year}</SelectItem>
             ))}
           </SelectContent>
         </Select>
