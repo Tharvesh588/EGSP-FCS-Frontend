@@ -105,15 +105,15 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: any) => {
             if (msg.conversationId === conversationId) {
                  setMessages(prev => {
-                    if (prev.some(m => m._id === msg._id)) {
-                        return prev.map(m => m._id === msg._id ? msg : m);
-                    }
                     // Replace optimistic message if it exists
-                    const optimisticIndex = prev.findIndex(m => m.__optimistic);
+                    const optimisticIndex = prev.findIndex(m => m.__optimistic && m.content.text === msg.content.text);
                     if (optimisticIndex > -1) {
                         const newMessages = [...prev];
                         newMessages[optimisticIndex] = msg;
                         return newMessages;
+                    }
+                    if (prev.some(m => m._id === msg._id)) {
+                        return prev; // Already have this message
                     }
                     return [...prev, msg];
                 });
@@ -150,19 +150,18 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const text = newMessage.trim();
         if (!text || !currentUserId || !socket || !conversationDetails) return;
 
-        setNewMessage('');
-        
         const optimisticId = `optimistic-${Date.now()}`;
         const optimisticMessage: Message = {
             _id: optimisticId,
             sender: currentUserId,
-            senderSnapshot: { name: "You" }, // This should be replaced by actual user data
+            senderSnapshot: { name: "You" }, // Placeholder, actual user data should be available
             type: 'neutral',
             content: { text },
             createdAt: new Date().toISOString(),
             __optimistic: true,
         };
         setMessages(prev => [...prev, optimisticMessage]);
+        setNewMessage('');
         
         const payload = {
           conversationId,
@@ -174,9 +173,8 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         socket.emit('message', payload, (response: any) => {
             if (response && response.error) {
                 toast({ variant: "destructive", title: "Error sending message", description: response.error });
+                // Rollback optimistic UI
                 setMessages(prev => prev.filter(msg => msg._id !== optimisticId));
-            } else if (response && response.ok) {
-                // The 'message:new' event will handle replacing the optimistic message
             }
         });
     };
@@ -191,26 +189,26 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const otherParticipant = conversationDetails?.participants.find(p => p._id !== currentUserId);
 
     const renderMessages = () => {
-        if (messages.length === 0) return [];
+        if (messages.length === 0) return null;
 
-        const elements = [];
+        const messageElements: (Message | { type: 'divider'; date: string, id: string })[] = [];
         let lastDate: string | null = null;
 
-        for (const message of messages) {
+        messages.forEach(message => {
             const messageDate = new Date(message.createdAt).toDateString();
             if (lastDate !== messageDate) {
-                elements.push({ type: 'divider', date: message.createdAt, id: `divider-${messageDate}` });
+                messageElements.push({ type: 'divider', date: message.createdAt, id: `divider-${messageDate}` });
                 lastDate = messageDate;
             }
-            elements.push({ type: 'message', message });
-        }
+            messageElements.push(message);
+        });
 
-        return elements.map(elem => {
-            if (elem.type === 'divider') {
-                return <DayDivider key={elem.id} date={elem.date} />;
+        return messageElements.map((item) => {
+            if ('type' in item && item.type === 'divider') {
+                return <DayDivider key={item.id} date={item.date} />;
             }
             
-            const message = elem.message as Message;
+            const message = item as Message;
             const isSender = message.sender === currentUserId;
             const links = message.content.text.match(urlRegex);
             const firstLink = links ? links[0] : null;
@@ -309,5 +307,3 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
-    
