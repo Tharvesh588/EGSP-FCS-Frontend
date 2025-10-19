@@ -63,6 +63,11 @@ function DayDivider({ date }: { date: string }) {
     );
 }
 
+type RenderableItem = 
+    | { type: 'message'; message: Message }
+    | { type: 'divider'; date: string };
+
+
 export function ConversationThread({ conversationId, conversationDetails, socket, currentUserId, onBack }: ConversationThreadProps) {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
@@ -189,26 +194,26 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const otherParticipant = conversationDetails?.participants.find(p => p._id !== currentUserId);
 
     const renderMessages = () => {
-        if (messages.length === 0) return null;
+        if (!messages.length) return null;
 
-        const messageElements: (Message | { type: 'divider'; date: string, id: string })[] = [];
+        const renderableItems: RenderableItem[] = [];
         let lastDate: string | null = null;
 
         messages.forEach(message => {
             const messageDate = new Date(message.createdAt).toDateString();
             if (lastDate !== messageDate) {
-                messageElements.push({ type: 'divider', date: message.createdAt, id: `divider-${messageDate}` });
+                renderableItems.push({ type: 'divider', date: message.createdAt });
                 lastDate = messageDate;
             }
-            messageElements.push(message);
+            renderableItems.push({ type: 'message', message });
         });
 
-        return messageElements.map((item) => {
-            if ('type' in item && item.type === 'divider') {
-                return <DayDivider key={item.id} date={item.date} />;
+        return renderableItems.map((item, index) => {
+            if (item.type === 'divider') {
+                return <DayDivider key={`divider-${item.date}`} date={item.date} />;
             }
-            
-            const message = item as Message;
+
+            const { message } = item;
             const isSender = message.sender === currentUserId;
             const links = message.content.text.match(urlRegex);
             const firstLink = links ? links[0] : null;
@@ -238,6 +243,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             );
         });
     };
+
 
     return (
         <div className="flex flex-col h-full bg-background">
