@@ -158,7 +158,7 @@ export default function ConversationsPage() {
                           >
                               <div className="flex items-center gap-3">
                                   <Avatar className="h-10 w-10">
-                                      <AvatarFallback>{otherParticipant ? otherParticipant.name.charAt(0) : '?'}</AvatarFallback>
+                                      <AvatarFallback>{otherParticipant?.name?.charAt(0) ?? '?'}</AvatarFallback>
                                   </Avatar>
                                   <div className="flex-1 overflow-hidden">
                                       <p className="font-semibold truncate pr-2">{otherParticipant?.name || "Unknown User"}</p>
