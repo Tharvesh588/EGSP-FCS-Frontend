@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -25,7 +26,6 @@ export function useSubmitAchievement() {
     submissionData.append("academicYear", academicYear);
     submissionData.append("proof", proof);
     if (creditTitleId) {
-      // The API expects 'categories'
       submissionData.append("categories", creditTitleId);
     }
     if (notes) {
@@ -34,7 +34,7 @@ export function useSubmitAchievement() {
     
     try {
       // The correct endpoint is /api/v1/credits/credits/positive
-      const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/positive`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
