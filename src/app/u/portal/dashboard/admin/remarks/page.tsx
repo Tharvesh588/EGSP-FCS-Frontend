@@ -17,6 +17,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
@@ -37,6 +39,7 @@ import {
 import { PlusCircle, Eye, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { io, type Socket } from "socket.io-client";
+import { colleges } from "@/lib/colleges";
 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -67,6 +70,10 @@ type NegativeRemark = {
   proofUrl?: string;
   createdAt: string;
   academicYear: string;
+};
+
+type Departments = {
+    [key: string]: string[];
 };
 
 const getCurrentAcademicYear = () => {
@@ -119,7 +126,9 @@ export default function ManageRemarksPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [academicYearFilter, setAcademicYearFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [facultyFilter, setFacultyFilter] = useState("all");
+  const [collegeFilter, setCollegeFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [filteredDepartments, setFilteredDepartments] = useState<Departments>({});
   
   // Details view state
   const [selectedRemark, setSelectedRemark] = useState<NegativeRemark | null>(null);
@@ -173,13 +182,14 @@ export default function ManageRemarksPage() {
           const params = new URLSearchParams({
               page: currentPage.toString(),
               limit: limit.toString(),
-              sort: '-createdAt'
+              sort: '-createdAt',
           });
 
           if (searchTerm) params.append('search', searchTerm);
           if (academicYearFilter !== 'all') params.append('academicYear', academicYearFilter);
           if (statusFilter !== 'all') params.append('status', statusFilter);
-          if (facultyFilter !== 'all') params.append('facultyId', facultyFilter);
+          if (collegeFilter !== 'all') params.append('college', collegeFilter);
+          if (departmentFilter !== 'all') params.append('department', departmentFilter);
 
           const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative?${params.toString()}`, {
               headers: { Authorization: `Bearer ${adminToken}` },
@@ -215,11 +225,11 @@ export default function ManageRemarksPage() {
         }
     }, 500); // Debounce API call
     return () => clearTimeout(timer);
-  }, [page, adminToken, searchTerm, academicYearFilter, statusFilter, facultyFilter]);
+  }, [page, adminToken, searchTerm, academicYearFilter, statusFilter, collegeFilter, departmentFilter]);
   
   useEffect(() => {
     setPage(1); // Reset to first page whenever filters change
-  }, [searchTerm, academicYearFilter, statusFilter, facultyFilter]);
+  }, [searchTerm, academicYearFilter, statusFilter, collegeFilter, departmentFilter]);
   
   useEffect(() => {
     const selectedTitle = creditTitles.find(ct => ct._id === creditTitleId);
@@ -231,6 +241,16 @@ export default function ManageRemarksPage() {
       setPoints("");
     }
   }, [creditTitleId, creditTitles]);
+
+  useEffect(() => {
+    if (collegeFilter !== 'all' && colleges[collegeFilter as keyof typeof colleges]) {
+      setFilteredDepartments(colleges[collegeFilter as keyof typeof colleges]);
+      setDepartmentFilter("all"); 
+    } else {
+      setFilteredDepartments({});
+      setDepartmentFilter("all");
+    }
+  }, [collegeFilter]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -437,8 +457,8 @@ export default function ManageRemarksPage() {
             <CardDescription>A log of all negative remarks that have been issued.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
-              <div className="relative flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div className="relative lg:col-span-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                       placeholder="Search by title, faculty..." 
@@ -448,7 +468,7 @@ export default function ManageRemarksPage() {
                   />
               </div>
               <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
-                  <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectTrigger>
                       <SelectValue placeholder="Select Year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -456,25 +476,29 @@ export default function ManageRemarksPage() {
                       {generateYearOptions().map(year => (<SelectItem key={year} value={year}>{year}</SelectItem>))}
                   </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-[180px]">
-                      <SelectValue placeholder="Select Status" />
+              <Select value={collegeFilter} onValueChange={setCollegeFilter}>
+                  <SelectTrigger>
+                      <SelectValue placeholder="Select College" />
                   </SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                      <SelectItem value="appealed">Appealed</SelectItem>
+                      <SelectItem value="all">All Colleges</SelectItem>
+                      {Object.keys(colleges).map(college => (<SelectItem key={college} value={college}>{college}</SelectItem>))}
                   </SelectContent>
               </Select>
-               <Select value={facultyFilter} onValueChange={setFacultyFilter}>
-                  <SelectTrigger className="w-full md:w-[220px]">
-                      <SelectValue placeholder="Select Faculty" />
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled={!filteredDepartments || Object.keys(filteredDepartments).length === 0}>
+                  <SelectTrigger>
+                      <SelectValue placeholder="Select Department" />
                   </SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="all">All Faculty</SelectItem>
-                      {facultyList.map(faculty => (<SelectItem key={faculty._id} value={faculty._id}>{faculty.name}</SelectItem>))}
+                      <SelectItem value="all">All Departments</SelectItem>
+                       {Object.entries(filteredDepartments).map(([group, courses]) => (
+                          <SelectGroup key={group}>
+                              <SelectLabel>{group}</SelectLabel>
+                              {courses.map(course => (
+                                  <SelectItem key={course} value={course}>{course}</SelectItem>
+                              ))}
+                          </SelectGroup>
+                      ))}
                   </SelectContent>
               </Select>
           </div>
