@@ -22,6 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -152,10 +159,47 @@ export default function GoodWorksPage() {
     }
   }, [page, academicYear, statusFilter, searchParams]);
 
-  const handleViewDocument = (proofUrl: string) => {
+  const handleViewDetails = (proofUrl: string) => {
     const userConfirmation = window.confirm("You are being redirected to an external website. This application is not responsible for the content of external sites.");
     if (userConfirmation) {
       window.open(proofUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleStartConversation = async (creditId: string) => {
+    const facultyId = searchParams.get('uid');
+    const token = localStorage.getItem("token");
+
+    if (!facultyId || !token) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not start conversation. User or token not found.' });
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                creditId,
+                participantIds: [facultyId],
+            }),
+        });
+        
+        const data = await response.json();
+
+        if (data.conversation) {
+            toast({ title: 'Success', description: 'Conversation started. You can find it in the Conversations tab.' });
+            // Potentially redirect to conversations page or open a chat modal
+            // router.push(`/u/portal/dashboard/conversations?uid=${facultyId}&convoId=${data.conversation._id}`)
+        } else {
+            throw new Error(data.message || 'Failed to start conversation.');
+        }
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Conversation Error', description: error.message });
     }
   };
 
@@ -262,14 +306,25 @@ export default function GoodWorksPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button 
-                        variant="link" 
-                        className="p-0 h-auto text-primary"
-                        onClick={() => work.proofUrl && handleViewDocument(work.proofUrl)}
-                        disabled={!work.proofUrl}
-                      >
-                        View Document
-                      </Button>
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                  onClick={() => work.proofUrl && handleViewDetails(work.proofUrl)}
+                                  disabled={!work.proofUrl}
+                              >
+                                  View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStartConversation(work._id)}>
+                                  Start Conversation
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
