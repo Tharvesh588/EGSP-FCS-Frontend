@@ -122,18 +122,14 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: Message & { tempId?: string }) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
-                    // If the new message has a tempId, it's a confirmation of an optimistic message.
                     if (msg.tempId && prev.some(m => m.tempId === msg.tempId)) {
-                        // Replace the optimistic message with the confirmed one from the server.
                         return prev.map(m => m.tempId === msg.tempId ? msg : m);
                     }
-                    // If it's a new message from another user (no tempId match), just add it.
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
                     return prev;
                 });
-                // Acknowledge receipt of the message
                 socket.emit('message:ack', { conversationId, messageId: msg._id });
             }
         };
@@ -166,8 +162,8 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     }, [isLoading]);
 
     const handleTypingChange = () => {
-        if (!socket) return;
-        
+        if (!socket || !socket.connected) return;
+
         socket.emit('typing:start', { conversationId });
 
         if (typingTimeoutRef.current) {
@@ -176,9 +172,9 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         typingTimeoutRef.current = setTimeout(() => {
             socket.emit('typing:stop', { conversationId });
-        }, 2000); // Stop typing after 2 seconds of inactivity
+        }, 3000); // Stop typing after 3 seconds of inactivity
     };
-
+    
     const handleSendMessage = async (e: React.FormEvent, retryMessage?: Message) => {
         e.preventDefault();
         const text = retryMessage?.content.text || newMessage.trim();
@@ -214,15 +210,13 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const payload = {
           conversationId,
           text,
-          tempId, // Send tempId to server for it to be included in the broadcasted message
+          tempId,
         };
         
         socket.emit('message', payload, (resp: { ok: boolean; message?: Message, error?: string }) => {
             if (resp && resp.ok && resp.message) {
-                // Server confirmed, replace optimistic message with the real one
                  setMessages(prev => prev.map(m => m.tempId === tempId ? resp.message! : m));
             } else {
-                // Handle send failure
                 toast({ variant: "destructive", title: "Error sending message", description: resp?.error });
                 setMessages(prev => prev.map(m => m.tempId === tempId ? { ...m, isPending: false, error: resp?.error || "Failed to send" } : m));
             }
@@ -360,7 +354,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
-                        disabled={isLoading || !socket?.connected}
+                        disabled={isLoading}
                         autoComplete="off"
                         maxRows={5}
                         className="w-full resize-none bg-transparent border-none focus-visible:ring-0 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
@@ -378,3 +372,5 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
+
+    
