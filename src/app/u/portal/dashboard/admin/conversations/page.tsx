@@ -133,7 +133,7 @@ export default function ConversationsPage() {
         const handleNewMessage = (newMessage: { conversationId: string, content: { text: string }, sender: string, createdAt: string }) => {
             setConversations(prevConvos => {
                 const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
-                if (convoIndex === -1) return prevConvos;
+                if (convoIndex === -1) return prevConvos; // Should not happen if user is in room
 
                 const updatedConvo = {
                     ...prevConvos[convoIndex],
@@ -145,9 +145,12 @@ export default function ConversationsPage() {
                     updatedAt: newMessage.createdAt,
                 };
                 
-                const newConvos = [...prevConvos];
-                newConvos.splice(convoIndex, 1);
-                newConvos.unshift(updatedConvo); // Move to top
+                // Remove the old conversation and add the updated one to the top
+                const newConvos = [
+                    updatedConvo,
+                    ...prevConvos.slice(0, convoIndex),
+                    ...prevConvos.slice(convoIndex + 1)
+                ];
                 return newConvos;
             });
         };
@@ -161,7 +164,7 @@ export default function ConversationsPage() {
             socket.disconnect();
             socketRef.current = null;
         };
-    }, [token]);
+    }, [token, toast]);
 
 
     const filteredConversations = conversations.filter(convo => {

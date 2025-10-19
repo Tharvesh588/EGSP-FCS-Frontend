@@ -112,9 +112,10 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: Message) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
+                    const optimisticId = msg.__optimisticId;
                     // If an optimistic message ID is present, find and replace it
-                    if (msg.__optimisticId && prev.some(m => m._id === msg.__optimisticId)) {
-                        return prev.map(m => m._id === msg.__optimisticId ? { ...msg, __optimistic: false } : m);
+                    if (optimisticId && prev.some(m => m.__optimisticId === optimisticId)) {
+                        return prev.map(m => m.__optimisticId === optimisticId ? { ...msg, __optimistic: false } : m);
                     }
                     
                     // If it's a new message from someone else, just add it if not already present
@@ -323,5 +324,3 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
-    

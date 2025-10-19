@@ -147,9 +147,11 @@ export default function ConversationsPage() {
                     updatedAt: newMessage.createdAt,
                 };
                 
-                const newConvos = [...prevConvos];
-                newConvos.splice(convoIndex, 1);
-                newConvos.unshift(updatedConvo); // Move to top
+                const newConvos = [
+                    updatedConvo,
+                    ...prevConvos.slice(0, convoIndex),
+                    ...prevConvos.slice(convoIndex + 1)
+                ];
                 return newConvos;
             });
         };
@@ -163,7 +165,7 @@ export default function ConversationsPage() {
             socket.disconnect();
             socketRef.current = null;
         };
-    }, [token]);
+    }, [token, toast]);
     
     const filteredConversations = conversations.filter(convo => {
         const term = searchTerm.toLowerCase();
