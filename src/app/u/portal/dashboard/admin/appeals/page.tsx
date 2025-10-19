@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useEffect, useRef, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -49,7 +50,7 @@ export default function AppealReviewPage() {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?limit=200`, { // Fetch all credits
+      const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive?status=appealed`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -66,7 +67,7 @@ export default function AppealReviewPage() {
       const data = await response.json();
       if (data.success) {
         const fetchedAppeals = data.items
-          .filter((item: any) => item.status === 'appealed' && item.appeal) // Filter for appealed credits
+          .filter((item: any) => item.status === 'appealed' && item.appeal) // Ensure it has an appeal object
           .map((item: any) => ({
             _id: item._id,
             faculty: {
@@ -86,7 +87,8 @@ export default function AppealReviewPage() {
 
         setAppeals(fetchedAppeals);
         if (fetchedAppeals.length > 0) {
-          setSelectedAppeal(fetchedAppeals[0]);
+          const currentSelection = fetchedAppeals.find((a: Appeal) => a._id === selectedAppeal?._id);
+          setSelectedAppeal(currentSelection || fetchedAppeals[0]);
         } else {
           setSelectedAppeal(null);
         }
@@ -134,22 +136,34 @@ export default function AppealReviewPage() {
     if (!selectedAppeal) return;
     const token = localStorage.getItem("token");
     if (!token) return;
-    
-    // In a real app, this would be a PUT request to an endpoint like:
-    // `/api/v1/admin/appeals/${selectedAppeal._id}/status`
-    // with a body of { status: decision, notes: comments }
-    
-    console.log(`Making decision: ${decision} for appeal on credit ${selectedAppeal.credit._id}`);
-    console.log("With rationale:", comments);
 
-    toast({ title: "Decision Submitted", description: `The appeal has been marked as ${decision}.`});
-    
-    // Optimistic update: Remove from the list and select the next one
-    setAppeals(prev => prev.filter(a => a._id !== selectedAppeal._id));
-    const currentIndex = appeals.findIndex(a => a._id === selectedAppeal._id);
-    const nextAppeal = appeals[currentIndex + 1] || appeals[0] || null;
-    setSelectedAppeal(nextAppeal === selectedAppeal ? null : nextAppeal);
-    setComments("");
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive/${selectedAppeal.credit._id}/status`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                status: decision, 
+                notes: comments || `Appeal ${decision}`
+            })
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.message || `Failed to ${decision} appeal.`);
+        }
+
+        toast({ title: "Decision Submitted", description: `The appeal has been marked as ${decision}.`});
+        
+        // Refetch to get the latest state
+        fetchAppeals();
+        setComments("");
+
+    } catch (error: any) {
+         toast({ variant: 'destructive', title: 'Decision Failed', description: error.message });
+    }
   }
   
   const getStatusColor = (status: Appeal['status']) => {

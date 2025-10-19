@@ -116,7 +116,7 @@ export default function ManageRemarksPage() {
       }
 
       // Fetch negative credit titles
-      const creditTitlesResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title`, {
+      const creditTitlesResponse = await fetch(`${API_BASE_URL}/api/v1/credit-title`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
       const creditTitlesData = await creditTitlesResponse.json();
@@ -131,40 +131,33 @@ export default function ManageRemarksPage() {
   };
 
   const fetchRemarks = async () => {
-    setIsLoadingRemarks(true);
-    if (!adminToken || !uid) {
-        setIsLoadingRemarks(false);
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/admin/faculty/${uid}/credits/negative`, {
-            headers: { Authorization: `Bearer ${adminToken}` },
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            setRemarks(data.items);
-        } else {
-            // Fallback for older API versions or if the specific endpoint fails
-            console.warn("Could not fetch negative remarks for the current user. Trying to fetch all credits and filter as a fallback.");
-            const allCreditsResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?limit=200`, { headers: { Authorization: `Bearer ${adminToken}` } });
-            const allCreditsData = await allCreditsResponse.json();
-            if (allCreditsData.success) {
-                // Assuming the backend returns a mix and we need to filter client-side
-                const negativeRemarks = allCreditsData.items.filter((item: any) => item.type === 'negative');
-                setRemarks(negativeRemarks);
-            } else {
-                throw new Error(data.message || "Failed to fetch remarks");
-            }
-        }
-    } catch (error: any) {
-        toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
-        setRemarks([]);
-    } finally {
-        setIsLoadingRemarks(false);
-    }
-};
+      setIsLoadingRemarks(true);
+      if (!adminToken) {
+          setIsLoadingRemarks(false);
+          return;
+      }
+  
+      try {
+          // This endpoint is not ideal for getting ALL remarks, but we'll filter client-side for now.
+          // A better backend would have GET /api/v1/admin/credits/negative
+          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?limit=500`, {
+              headers: { Authorization: `Bearer ${adminToken}` },
+          });
+  
+          const data = await response.json();
+          if (data.success) {
+              const negativeRemarks = data.items.filter((item: any) => item.type === 'negative');
+              setRemarks(negativeRemarks);
+          } else {
+              throw new Error(data.message || "Failed to fetch remarks");
+          }
+      } catch (error: any) {
+          toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
+          setRemarks([]);
+      } finally {
+          setIsLoadingRemarks(false);
+      }
+  };
 
 
   useEffect(() => {
@@ -177,7 +170,6 @@ export default function ManageRemarksPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
-      // You might want to add file size validation here
       setProof(file);
       setFileName(file.name);
     }
@@ -187,11 +179,11 @@ export default function ManageRemarksPage() {
     e.preventDefault();
     const selectedTitle = creditTitles.find(ct => ct._id === creditTitleId);
 
-    if (!facultyId || !creditTitleId || !academicYear || !notes || !proof || !selectedTitle) {
+    if (!facultyId || !creditTitleId || !academicYear) {
       toast({
         variant: "destructive",
         title: "Incomplete Form",
-        description: "Please fill all fields and upload a proof document.",
+        description: "Please select faculty, remark title, and academic year.",
       });
       return;
     }
@@ -207,14 +199,11 @@ export default function ManageRemarksPage() {
     formData.append("facultyId", facultyId);
     formData.append("creditTitleId", creditTitleId);
     formData.append("academicYear", academicYear);
-    formData.append("notes", notes);
-    formData.append("proof", proof);
-    // These are now handled by the backend based on creditTitleId
-    // formData.append("title", selectedTitle.title);
-    // formData.append("points", selectedTitle.points.toString());
+    if (notes) formData.append("notes", notes);
+    if (proof) formData.append("proof", proof);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/credits/negative`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${adminToken}`,
@@ -233,14 +222,13 @@ export default function ManageRemarksPage() {
         description: "The negative remark has been successfully recorded.",
       });
 
-      // Reset form and refetch remarks
       setFacultyId("");
       setCreditTitleId("");
       setAcademicYear(getCurrentAcademicYear());
       setNotes("");
       setProof(null);
       setFileName("");
-      fetchRemarks(); // This will show the newly created remark
+      fetchRemarks();
 
     } catch (error: any) {
       toast({
@@ -333,7 +321,7 @@ export default function ManageRemarksPage() {
                 className="block text-sm font-medium text-muted-foreground"
                 htmlFor="notes"
               >
-                Notes / Description
+                Notes / Description (Optional)
               </label>
               <Textarea
                 id="notes"
@@ -347,7 +335,7 @@ export default function ManageRemarksPage() {
               <label
                 className="block text-sm font-medium text-muted-foreground mb-1"
               >
-                Upload Proof Document
+                Upload Proof Document (Optional)
               </label>
                <label
                   htmlFor="file-upload"

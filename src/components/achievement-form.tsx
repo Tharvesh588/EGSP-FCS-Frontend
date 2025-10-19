@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,18 +14,16 @@ import {
 import { FileUpload } from "@/components/file-upload";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CreditTitle } from "@/hooks/use-credit-titles";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+import { Textarea } from "./ui/textarea";
 
 const getCurrentAcademicYear = () => {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-    // Academic year starts in June (index 5)
     if (currentMonth >= 5) {
-      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+      return `${currentYear}-${(currentYear + 1).toString()}`;
     }
-    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
+    return `${currentYear - 1}-${currentYear.toString()}`;
 };
 
 const generateYearOptions = () => {
@@ -36,7 +34,7 @@ const generateYearOptions = () => {
     for (let i = 0; i < 5; i++) {
         const startYear = startCurrentYear - i;
         const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
+        years.push(`${startYear}-${endYear.toString()}`);
     }
     return years;
 };
@@ -46,6 +44,8 @@ export type AchievementFormData = {
   creditTitleId: string;
   academicYear: string;
   proof: File;
+  points: number;
+  notes?: string;
 };
 
 type AchievementFormProps = {
@@ -59,6 +59,7 @@ export function AchievementForm({ creditTitles, onSubmit, isLoading }: Achieveme
   const [selectedCreditTitleId, setSelectedCreditTitleId] = useState("");
   const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [proof, setProof] = useState<File | null>(null);
+  const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedCreditTitle = useMemo(() => 
@@ -79,13 +80,15 @@ export function AchievementForm({ creditTitles, onSubmit, isLoading }: Achieveme
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading || !validate()) return;
+    if (isLoading || !validate() || !selectedCreditTitle) return;
     
     onSubmit({
       title,
       creditTitleId: selectedCreditTitleId,
       academicYear,
       proof: proof!,
+      points: selectedCreditTitle.points,
+      notes: notes,
     });
   };
 
@@ -157,6 +160,18 @@ export function AchievementForm({ creditTitles, onSubmit, isLoading }: Achieveme
               </SelectContent>
           </Select>
           {errors.academicYear && <p className="text-sm font-medium text-destructive mt-1">{errors.academicYear}</p>}
+      </div>
+       <div>
+        <Label htmlFor="notes">Notes (Optional)</Label>
+        <Textarea
+          id="notes"
+          className="mt-1"
+          placeholder="Add any additional notes or comments here..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          disabled={isLoading}
+          rows={3}
+        />
       </div>
       <div>
         <Label>Attachments</Label>

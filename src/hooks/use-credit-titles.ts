@@ -35,11 +35,18 @@ export function useCreditTitles() {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to fetch credit titles. Please check your connection.");
+            const errorText = await response.text();
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(errorJson.message || `Server returned status ${response.status}`);
+            } catch (e) {
+                 throw new Error("Failed to fetch credit titles. Please check your connection.");
+            }
         }
 
         const responseData = await response.json();
         if (responseData.success) {
+          // Filter for only 'positive' credit titles for achievement submission
           setCreditTitles(responseData.items.filter((ct: CreditTitle) => ct.type === 'positive'));
         } else {
           throw new Error(responseData.message || "An unknown error occurred while fetching titles.");

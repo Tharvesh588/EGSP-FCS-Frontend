@@ -95,7 +95,7 @@ export default function AppealsPage() {
                 const errorJson = JSON.parse(errorText);
                 throw new Error(errorJson.message || "Server returned an error");
             } catch (e) {
-                throw new Error(`Failed to fetch appeals. The server responded with an error: ${response.status}.`);
+                throw new Error(`Failed to fetch data. The server responded with an error: ${response.status}.`);
             }
         }
 
@@ -109,7 +109,7 @@ export default function AppealsPage() {
             );
 
             const fetchedAppealable = allCredits.filter(credit => 
-                credit.type === 'negative' && !credit.appeal && credit.status !== 'appealed'
+                credit.type === 'negative' && credit.status !== 'appealed'
             );
 
             setAppeals(fetchedAppeals);
@@ -122,10 +122,10 @@ export default function AppealsPage() {
               setSelectedAppeal(null);
             }
         } else {
-            throw new Error(resData.message || "Failed to fetch appeals.");
+            throw new Error(resData.message || "Failed to fetch data.");
         }
       } catch (error: any) {
-          toast({ variant: "destructive", title: "Failed to fetch appeals", description: error.message });
+          toast({ variant: "destructive", title: "Failed to fetch data", description: error.message });
           setAppeals([]);
           setAppealableRemarks([]);
       } finally {
@@ -154,19 +154,10 @@ export default function AppealsPage() {
 
     socket.on('connect', () => console.log('Faculty socket connected for appeals.'));
     
-    socket.on(`credit:negative:new`, (data) => {
+    socket.on(`faculty:${facultyId}:creditUpdate`, (data) => {
         toast({
-            title: "New Negative Remark Received",
-            description: `A remark for "${data.credit.title}" has been issued. You may appeal it.`,
-            variant: "destructive"
-        });
-        fetchAppealsAndRemarks();
-    });
-
-    socket.on('appeal:update', (updatedCredit) => {
-        toast({
-            title: `Appeal for "${updatedCredit.title}" Updated`,
-            description: `Status is now: ${updatedCredit.appeal?.status}`,
+            title: "An item was updated",
+            description: `Your record for "${data.title}" has been updated.`,
         });
         fetchAppealsAndRemarks();
     });
@@ -176,7 +167,7 @@ export default function AppealsPage() {
     return () => {
         socket.disconnect();
     };
-  }, [token, toast]);
+  }, [token, facultyId, toast]);
 
   const handleAppealSubmit = async () => {
     if (!selectedRemarkId || !appealReason) {
@@ -230,7 +221,7 @@ export default function AppealsPage() {
     setIsStartingConversation(true);
 
     try {
-        const response = await fetch(`${API_base_URL}/api/v1/conversations`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -238,7 +229,7 @@ export default function AppealsPage() {
             },
             body: JSON.stringify({ 
                 creditId: selectedAppeal._id,
-                participantIds: [facultyId] // The backend will add the other participant (admin/issuer)
+                participantIds: [facultyId]
             }),
         });
 
