@@ -163,7 +163,8 @@ export default function ManageRemarksPage() {
               limit: limit.toString(),
               sort: '-createdAt'
           });
-          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative?${params.toString()}`, {
+          // Assuming the listPositiveCreditsForAdmin can filter by type=negative
+          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?${params.toString()}`, {
               headers: { Authorization: `Bearer ${adminToken}` },
           });
   
