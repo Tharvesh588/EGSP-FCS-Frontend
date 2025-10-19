@@ -36,6 +36,15 @@ type Conversation = {
     totalMessages: number;
 };
 
+type NewMessagePayload = { 
+    conversationId: string; 
+    sender: string; 
+    content: { text: string }; 
+    createdAt: string;
+    __optimisticId?: string;
+};
+
+
 export default function ConversationsPage() {
     const { toast } = useToast();
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -115,7 +124,6 @@ export default function ConversationsPage() {
     useEffect(() => {
         if (!token || !currentUserId) return;
     
-        // Disconnect existing socket before creating a new one
         if (socketRef.current) {
           socketRef.current.disconnect();
         }
@@ -139,14 +147,12 @@ export default function ConversationsPage() {
           });
         });
     
-        const handleNewMessage = (newMessage: { conversationId: string; content: { text: string }; sender: string; createdAt: string; }) => {
+        const handleNewMessage = (newMessage: NewMessagePayload) => {
             setConversations(prevConvos => {
                 const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
                 if (convoIndex === -1) {
-                    // If conversation is not in the list, we might need to fetch it.
-                    // For now, we'll just log it and ignore. A full implementation might fetch the new convo details.
-                    console.warn("Received a message for a conversation not in the list.");
-                    return prevConvos;
+                    console.warn("Received a message for a conversation not in the list. Need to fetch.");
+                    return prevConvos; // Or fetch new convo details
                 }
     
                 const updatedConvo = {
@@ -159,12 +165,8 @@ export default function ConversationsPage() {
                     updatedAt: newMessage.createdAt,
                 };
     
-                // Remove the old conversation from its position
-                const filteredConvos = prevConvos.filter(c => c._id !== newMessage.conversationId);
-                // Add the updated conversation to the top
-                const newConvos = [updatedConvo, ...filteredConvos];
-    
-                return newConvos;
+                const otherConvos = prevConvos.filter(c => c._id !== newMessage.conversationId);
+                return [updatedConvo, ...otherConvos];
             });
         };
     

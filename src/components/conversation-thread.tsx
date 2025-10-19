@@ -113,11 +113,9 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: Message) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
-                    // Use the optimisticId to find and replace the temporary message
                     if (msg.__optimisticId && prev.some(m => m.__optimisticId === msg.__optimisticId)) {
-                        return prev.map(m => m.__optimisticId === msg.__optimisticId ? { ...msg, __optimistic: false } : m);
+                        return prev.map(m => m.__optimisticId === msg.__optimisticId ? msg : m);
                     }
-                    // Add new message only if it doesn't already exist in the list
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
@@ -170,7 +168,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         typingTimeoutRef.current = setTimeout(() => {
             socket.emit('typing:stop', { conversationId });
-        }, 3000); // User is considered "stopped" after 3 seconds of inactivity
+        }, 3000);
     };
 
     const handleSendMessage = async (e: React.FormEvent) => {
@@ -197,7 +195,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             content: { text },
             createdAt: new Date().toISOString(),
             __optimistic: true,
-            __optimisticId: optimisticId, // Important for replacement
+            __optimisticId: optimisticId,
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
@@ -208,15 +206,14 @@ export function ConversationThread({ conversationId, conversationDetails, socket
           text,
           type: 'neutral',
           meta: {},
-          __optimisticId: optimisticId, // Send the optimistic ID to the server
+          __optimisticId: optimisticId,
         };
         
         socket.emit('message', payload, (response: any) => {
             if (response && response.error) {
                 toast({ variant: "destructive", title: "Error sending message", description: response.error });
-                // If sending failed, remove the optimistic message
                 setMessages(prev => prev.filter(msg => msg._id !== optimisticId));
-                setNewMessage(text); // Put the failed message back in the input for the user to retry
+                setNewMessage(text);
             }
         });
     };
@@ -233,24 +230,22 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const otherParticipant = conversationDetails?.participants.find(p => p._id !== currentUserId);
 
     const renderMessages = () => {
-        const renderableItems: RenderableItem[] = [];
+        const items: RenderableItem[] = [];
         let lastDate: string | null = null;
 
-        messages.forEach((message, index) => {
+        messages.forEach((message) => {
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             
             if (lastDate !== messageDate) {
-                const dividerId = `divider-${messageDate}-${index}`;
-                renderableItems.push({ type: 'divider', id: dividerId, date: message.createdAt });
+                items.push({ type: 'divider', id: messageDate, date: message.createdAt });
                 lastDate = messageDate;
             }
             
-            const messageId = message.__optimisticId || message._id;
-            renderableItems.push({ type: 'message', id: `${messageId}-${index}`, message });
+            items.push({ type: 'message', id: message.__optimisticId || message._id, message });
         });
 
-        return renderableItems.map((item) => {
+        return items.map((item) => {
             if (item.type === 'divider') {
                 return <DayDivider key={item.id} date={item.date} />;
             }
