@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button"
 import {
@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ConversationThread } from "@/components/conversation-thread";
+import { io, type Socket } from "socket.io-client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -81,6 +82,7 @@ export default function AppealsPage() {
 
   const facultyId = searchParams.get('uid');
   const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+  const socketRef = useRef<Socket | null>(null);
 
   const fetchAppeals = async () => {
       setIsLoading(true);
@@ -91,7 +93,7 @@ export default function AppealsPage() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/appeals/faculty`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}/appeals`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const resData = await response.json();
@@ -147,6 +149,44 @@ export default function AppealsPage() {
   useEffect(() => {
     setActiveConversation(null);
   }, [selectedAppeal]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const socket = io(API_BASE_URL, {
+      auth: { token },
+      transports: ['websocket'],
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => console.log('Faculty socket connected for appeals.'));
+    
+    socket.on(`credit:negative:new`, (data) => {
+        toast({
+            title: "New Negative Remark Received",
+            description: `A remark for "${data.credit.title}" has been issued. You may appeal it.`,
+            variant: "destructive"
+        });
+        fetchAppealableRemarks();
+    });
+
+    socket.on('appeal:update', (updatedAppeal) => {
+        toast({
+            title: `Appeal for "${updatedAppeal.credit.title}" Updated`,
+            description: `Status is now: ${updatedAppeal.status.replace('_', ' ')}`,
+        });
+        setAppeals(prev => prev.map(a => a._id === updatedAppeal._id ? updatedAppeal : a));
+        if(selectedAppeal?._id === updatedAppeal._id) {
+            setSelectedAppeal(updatedAppeal);
+        }
+    });
+
+    socket.on('connect_error', (err) => console.error('Socket error:', err.message));
+
+    return () => {
+        socket.disconnect();
+    };
+  }, [token, toast, selectedAppeal?._id]);
 
   const handleAppealSubmit = async () => {
     if (!selectedRemarkId || !appealReason) {
@@ -358,7 +398,7 @@ export default function AppealsPage() {
                 <h3 className="text-xl font-bold mb-4">Appeal Details</h3>
                 
                 {activeConversation ? (
-                    <ConversationThread conversationId={activeConversation._id} conversationDetails={{_id: activeConversation._id, participants: [], credit: {title: selectedAppeal.credit.title}}} socket={null} currentUserId={facultyId} onBack={() => setActiveConversation(null)} />
+                    <ConversationThread conversationId={activeConversation._id} conversationDetails={{_id: activeConversation._id, participants: [], credit: {title: selectedAppeal.credit.title}}} socket={socketRef.current} currentUserId={facultyId} onBack={() => setActiveConversation(null)} />
                 ) : (
                     <>
                         <div className="space-y-4">

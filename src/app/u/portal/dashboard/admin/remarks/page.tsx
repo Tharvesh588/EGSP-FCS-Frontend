@@ -146,11 +146,14 @@ export default function ManageRemarksPage() {
         if (data.success) {
             setRemarks(data.items);
         } else {
-            console.warn("Could not fetch negative remarks for the current user. Trying to fetch all positive credits and filter as a fallback.");
+            // Fallback for older API versions or if the specific endpoint fails
+            console.warn("Could not fetch negative remarks for the current user. Trying to fetch all credits and filter as a fallback.");
             const allCreditsResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?limit=200`, { headers: { Authorization: `Bearer ${adminToken}` } });
             const allCreditsData = await allCreditsResponse.json();
             if (allCreditsData.success) {
-                setRemarks(allCreditsData.items.filter((item: any) => item.type === 'negative'));
+                // Assuming the backend returns a mix and we need to filter client-side
+                const negativeRemarks = allCreditsData.items.filter((item: any) => item.type === 'negative');
+                setRemarks(negativeRemarks);
             } else {
                 throw new Error(data.message || "Failed to fetch remarks");
             }
@@ -206,8 +209,9 @@ export default function ManageRemarksPage() {
     formData.append("academicYear", academicYear);
     formData.append("notes", notes);
     formData.append("proof", proof);
-    formData.append("title", selectedTitle.title);
-    formData.append("points", selectedTitle.points.toString());
+    // These are now handled by the backend based on creditTitleId
+    // formData.append("title", selectedTitle.title);
+    // formData.append("points", selectedTitle.points.toString());
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative`, {
@@ -236,7 +240,7 @@ export default function ManageRemarksPage() {
       setNotes("");
       setProof(null);
       setFileName("");
-      fetchRemarks();
+      fetchRemarks(); // This will show the newly created remark
 
     } catch (error: any) {
       toast({

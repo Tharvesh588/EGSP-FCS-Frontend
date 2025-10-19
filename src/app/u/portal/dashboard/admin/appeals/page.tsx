@@ -12,8 +12,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useEffect, useRef, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { io, type Socket } from "socket.io-client"
 
-const appeals = [
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+
+const initialAppeals = [
   {
     id: 1,
     faculty: {
@@ -70,6 +75,49 @@ const history = [
 ]
 
 export default function AppealReviewPage() {
+  const { toast } = useToast();
+  const [appeals, setAppeals] = useState(initialAppeals);
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const socket = io(API_BASE_URL, {
+        auth: { token },
+        transports: ['websocket']
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+        console.log('Admin socket connected for appeals');
+    });
+
+    socket.on('appeal:new', (newAppeal) => {
+        toast({
+            title: "New Appeal Submitted",
+            description: `${newAppeal.faculty.name} has submitted an appeal for "${newAppeal.credit.title}".`,
+        });
+        // This is a mock update. In a real scenario, you'd fetch the new appeal data.
+        setAppeals(prev => [{
+          id: newAppeal._id,
+          faculty: { name: newAppeal.faculty.name, department: 'N/A' },
+          activity: newAppeal.credit.title,
+          date: new Date(newAppeal.createdAt).toISOString().split('T')[0],
+          status: 'Pending',
+        }, ...prev]);
+    });
+    
+    socket.on('connect_error', (err) => {
+        console.error('Socket connection error:', err.message);
+    });
+
+    return () => {
+        socket.disconnect();
+    };
+  }, [toast]);
+
+
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       <div className="flex-grow lg:w-2/3 space-y-8">
