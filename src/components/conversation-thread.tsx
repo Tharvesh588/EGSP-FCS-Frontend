@@ -236,26 +236,23 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const renderableItems: RenderableItem[] = [];
         let lastDate: string | null = null;
 
-        messages.forEach(message => {
+        messages.forEach((message, index) => {
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             
             if (lastDate !== messageDate) {
-                const dividerId = `divider-${messageDate}`;
+                const dividerId = `divider-${messageDate}-${index}`;
                 renderableItems.push({ type: 'divider', id: dividerId, date: message.createdAt });
                 lastDate = messageDate;
             }
             
-            // Use the optimistic ID for the key if it exists, otherwise use the real ID
-            renderableItems.push({ type: 'message', id: message.__optimisticId || message._id, message });
+            const messageId = message.__optimisticId || message._id;
+            renderableItems.push({ type: 'message', id: `${messageId}-${index}`, message });
         });
 
-        return renderableItems.map((item, index) => {
-            // Use index in the key to ensure uniqueness during renders
-            const key = `${item.id}-${index}`;
-
+        return renderableItems.map((item) => {
             if (item.type === 'divider') {
-                return <DayDivider key={key} date={item.date} />;
+                return <DayDivider key={item.id} date={item.date} />;
             }
 
             const { message } = item;
@@ -266,7 +263,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             const firstLink = links ? links[0] : null;
 
             return (
-                <div key={key} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                <div key={item.id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                     {!isSender && (
                         <Avatar className="h-8 w-8 self-end mb-1">
                              <AvatarImage src={message.senderSnapshot?.profileImage} />

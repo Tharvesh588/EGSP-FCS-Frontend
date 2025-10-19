@@ -115,35 +115,42 @@ export default function ConversationsPage() {
     }, [toast, currentUserId]);
 
     useEffect(() => {
-        if (!token) return;
-
-        // Ensure we only have one socket connection.
-        if (socketRef.current) return;
-        
-        const socket = io(API_BASE_URL, {
-            auth: { token },
-            transports: ['websocket'] 
+        if (!token || !currentUserId) return;
+    
+        // Disconnect existing socket before creating a new one
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+        }
+    
+        const newSocket = io(API_BASE_URL, {
+          auth: { token },
+          transports: ['websocket'],
         });
-        socketRef.current = socket;
-
-        socket.on('connect', () => {
+        socketRef.current = newSocket;
+    
+        newSocket.on('connect', () => {
           console.log('Socket connected for faculty conversations.');
         });
-        
-        socket.on('connect_error', (err) => {
-            console.error('Socket connection error:', err.message);
-            toast({ variant: 'destructive', title: 'Chat connection failed', description: 'Could not connect to the real-time server.' });
+    
+        newSocket.on('connect_error', (err) => {
+          console.error('Socket connection error:', err.message);
+          toast({
+            variant: 'destructive',
+            title: 'Chat connection failed',
+            description: 'Could not connect to the real-time server.',
+          });
         });
-
+    
         const handleNewMessage = (newMessage: { conversationId: string; content: { text: string }; sender: string; createdAt: string; }) => {
             setConversations(prevConvos => {
                 const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
-                
-                // If conversation doesn't exist, we might need to fetch it or ignore.
                 if (convoIndex === -1) {
+                    // If conversation is not in the list, we might need to fetch it.
+                    // For now, we'll just log it and ignore. A full implementation might fetch the new convo details.
+                    console.warn("Received a message for a conversation not in the list.");
                     return prevConvos;
                 }
-
+    
                 const updatedConvo = {
                     ...prevConvos[convoIndex],
                     lastMessage: {
@@ -153,28 +160,24 @@ export default function ConversationsPage() {
                     },
                     updatedAt: newMessage.createdAt,
                 };
-                
-                // Create a new array, remove the old convo, and add the updated one to the top
-                const newConvos = [
-                    updatedConvo,
-                    ...prevConvos.slice(0, convoIndex),
-                    ...prevConvos.slice(convoIndex + 1)
-                ];
-                
+    
+                // Remove the old conversation from its position
+                const filteredConvos = prevConvos.filter(c => c._id !== newMessage.conversationId);
+                // Add the updated conversation to the top
+                const newConvos = [updatedConvo, ...filteredConvos];
+    
                 return newConvos;
             });
         };
-
-        socket.on('message:new', handleNewMessage);
-
+    
+        newSocket.on('message:new', handleNewMessage);
+    
         return () => {
-            socket.off('message:new', handleNewMessage);
-            socket.off('connect');
-            socket.off('connect_error');
-            socket.disconnect();
-            socketRef.current = null;
+          newSocket.off('message:new', handleNewMessage);
+          newSocket.disconnect();
+          socketRef.current = null;
         };
-    }, [token, toast]);
+      }, [token, currentUserId, toast]);
     
     const filteredConversations = conversations.filter(convo => {
         const term = searchTerm.toLowerCase();
@@ -281,7 +284,5 @@ export default function ConversationsPage() {
       </div>
     );
 }
-
-    
 
     
