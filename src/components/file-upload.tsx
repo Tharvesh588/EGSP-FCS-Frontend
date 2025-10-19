@@ -1,7 +1,9 @@
+
 "use client";
 
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 type FileUploadProps = {
   onFileSelect: (file: File | null) => void;
@@ -25,23 +27,23 @@ export function FileUpload({ onFileSelect, disabled }: FileUploadProps) {
   return (
     <label
       htmlFor="file-upload"
-      className="mt-2 flex cursor-pointer justify-center rounded-xl border-2 border-dashed border-border px-6 pt-10 pb-12 transition-colors hover:border-primary/50"
+      className={cn(
+          "mt-1 flex cursor-pointer justify-center rounded-lg border-2 border-dashed border-border px-6 py-8 transition-colors hover:border-primary/50",
+          disabled && "cursor-not-allowed opacity-50"
+      )}
     >
       <div className="text-center">
-        <span className="material-symbols-outlined text-5xl text-primary/50">
+        <span className="material-symbols-outlined text-4xl text-muted-foreground/50">
           cloud_upload
         </span>
-        <div className="mt-4 flex justify-center text-sm leading-6 text-muted-foreground">
-            <span className="font-semibold text-primary">Upload a file</span>
+        <div className="mt-2 flex text-sm text-muted-foreground">
+            <span className="font-semibold text-primary">Click to upload</span>
             <p className="pl-1">or drag and drop</p>
         </div>
-        <p className="text-xs leading-5 text-muted-foreground">
-          PDF, DOCX, PNG, JPG up to 10MB
+        <p className="text-xs text-muted-foreground/80 mt-1">
+          PDF, JPG, PNG, etc. (max 10MB)
         </p>
-        <p className="text-xs leading-5 text-muted-foreground/80 mt-1">
-          For multiple files, please combine them into a single .zip archive.
-        </p>
-        {fileName && <p className="text-sm text-green-600 mt-2">{fileName}</p>}
+        {fileName && <p className="text-sm font-medium text-green-600 mt-2 truncate max-w-xs">{fileName}</p>}
       </div>
       <Input
         id="file-upload"
