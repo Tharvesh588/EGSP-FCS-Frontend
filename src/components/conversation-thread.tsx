@@ -200,13 +200,11 @@ export function ConversationThread({ conversationId, conversationDetails, token,
         const messageElements: JSX.Element[] = [];
         let lastDate: string | null = null;
 
-        messages.forEach((message, index) => {
+        messages.forEach((message) => {
             const messageDate = new Date(message.createdAt).toDateString();
             if (lastDate !== messageDate) {
                 messageElements.push(
-                    <React.Fragment key={`divider-${message._id}`}>
-                        <DayDivider date={message.createdAt} />
-                    </React.Fragment>
+                    <DayDivider key={`divider-${message._id}`} date={message.createdAt} />
                 );
                 lastDate = messageDate;
             }
@@ -216,29 +214,27 @@ export function ConversationThread({ conversationId, conversationDetails, token,
             const firstLink = links ? links[0] : null;
 
             messageElements.push(
-                <React.Fragment key={message._id}>
-                    <div className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
-                        {!isSender && (
-                            <Avatar className="h-8 w-8 self-end mb-1">
-                                 <AvatarImage src={message.senderSnapshot?.profileImage} />
-                                <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) || '?'}</AvatarFallback>
-                            </Avatar>
-                        )}
-                        <div className={cn(
-                            "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative", 
-                            isSender 
-                                ? "bg-primary text-primary-foreground rounded-br-lg" 
-                                : "bg-muted rounded-bl-lg",
-                            message.__optimistic ? "opacity-60" : ""
-                        )}>
-                            <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
-                            {firstLink && <LinkPreviewCard url={firstLink} />}
-                            <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
-                               {format(new Date(message.createdAt), 'p')}
-                            </div>
+                <div key={message._id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                    {!isSender && (
+                        <Avatar className="h-8 w-8 self-end mb-1">
+                             <AvatarImage src={message.senderSnapshot?.profileImage} />
+                            <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) ?? '?'}</AvatarFallback>
+                        </Avatar>
+                    )}
+                    <div className={cn(
+                        "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative", 
+                        isSender 
+                            ? "bg-primary text-primary-foreground rounded-br-lg" 
+                            : "bg-muted rounded-bl-lg",
+                        message.__optimistic ? "opacity-60" : ""
+                    )}>
+                        <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
+                        {firstLink && <LinkPreviewCard url={firstLink} />}
+                        <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
+                           {format(new Date(message.createdAt), 'p')}
                         </div>
                     </div>
-                </React.Fragment>
+                </div>
             );
         });
 
