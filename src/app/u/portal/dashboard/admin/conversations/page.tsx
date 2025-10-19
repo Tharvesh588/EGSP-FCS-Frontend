@@ -10,9 +10,6 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -23,7 +20,10 @@ type Conversation = {
         title: string;
         academicYear: string;
     };
-    participants: string[];
+    participants: {
+      _id: string;
+      name: string;
+    }[];
     lastMessage?: {
         text: string;
         sender: string;
@@ -79,7 +79,6 @@ export default function ConversationsPage() {
                     });
                     setConversations(sortedConversations);
                     if (sortedConversations.length > 0) {
-                        // On desktop, select the first one by default.
                         if (window.innerWidth >= 768) {
                            setSelectedConversation(sortedConversations[0]);
                         }
@@ -102,17 +101,19 @@ export default function ConversationsPage() {
 
     const filteredConversations = conversations.filter(convo => {
         const term = searchTerm.toLowerCase();
+        const otherParticipant = convo.participants.find(p => p._id !== currentUserId);
         return (
             convo.credit.title.toLowerCase().includes(term) ||
+            (otherParticipant && otherParticipant.name.toLowerCase().includes(term)) ||
             (convo.lastMessage?.text && convo.lastMessage.text.toLowerCase().includes(term))
         );
     });
 
     return (
-      <div className="flex-1 h-full overflow-hidden">
+      <div className="h-full">
         <div className={cn(
             "grid w-full h-full",
-            "md:grid-cols-[300px_1fr]"
+            "md:grid-cols-[350px_1fr]"
         )}>
           <aside className={cn(
               "border-r flex flex-col",
@@ -122,7 +123,7 @@ export default function ConversationsPage() {
                 <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4">search</span>
                     <Input
-                        placeholder="Search conversations..."
+                        placeholder="Search faculty or topic..."
                         className="pl-10 h-9"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -143,7 +144,7 @@ export default function ConversationsPage() {
                   ) : (
                     <div className="flex flex-col">
                       {filteredConversations.map(convo => {
-                          const otherParticipant = "Admin";
+                          const otherParticipant = convo.participants.find(p => p._id !== currentUserId);
                           return (
                           <button
                               key={convo._id}
@@ -157,11 +158,12 @@ export default function ConversationsPage() {
                           >
                               <div className="flex items-center gap-3">
                                   <Avatar className="h-10 w-10">
-                                      <AvatarFallback>{otherParticipant.charAt(0)}</AvatarFallback>
+                                      <AvatarFallback>{otherParticipant ? otherParticipant.name.charAt(0) : '?'}</AvatarFallback>
                                   </Avatar>
                                   <div className="flex-1 overflow-hidden">
-                                      <div className="flex justify-between items-baseline">
-                                        <p className="font-semibold truncate pr-2">{convo.credit.title}</p>
+                                      <p className="font-semibold truncate pr-2">{otherParticipant?.name || "Unknown User"}</p>
+                                       <div className="flex justify-between items-baseline">
+                                        <p className="text-sm text-muted-foreground truncate pr-2">{convo.credit.title}</p>
                                         {convo.lastMessage?.createdAt && (
                                             <p className="text-xs text-muted-foreground whitespace-nowrap">
                                                 {formatDistanceToNow(new Date(convo.lastMessage.createdAt), { addSuffix: true })}
@@ -179,14 +181,15 @@ export default function ConversationsPage() {
               </div>
           </aside>
           <main className={cn(
-              "flex flex-col h-full",
+              "flex flex-col",
               selectedConversation ? "flex" : "hidden md:flex"
           )}>
               {selectedConversation ? (
-                  <ConversationThread 
-                    key={selectedConversation._id} 
-                    conversationId={selectedConversation._id} 
-                    token={token} 
+                  <ConversationThread
+                    key={selectedConversation._id}
+                    conversationId={selectedConversation._id}
+                    token={token}
+                    currentUserId={currentUserId}
                     onBack={() => setSelectedConversation(null)}
                   />
               ) : (

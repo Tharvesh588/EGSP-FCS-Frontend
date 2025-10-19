@@ -10,9 +10,6 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -110,10 +107,10 @@ export default function ConversationsPage() {
     });
 
     return (
-      <div className="flex-1 h-full overflow-hidden">
+      <div className="h-full">
         <div className={cn(
             "grid w-full h-full",
-            "md:grid-cols-[300px_1fr]"
+            "md:grid-cols-[350px_1fr]"
         )}>
           <aside className={cn(
               "border-r flex flex-col",
@@ -180,7 +177,7 @@ export default function ConversationsPage() {
               </div>
           </aside>
           <main className={cn(
-              "flex flex-col h-full",
+              "flex flex-col",
               selectedConversation ? "flex" : "hidden md:flex"
           )}>
               {selectedConversation ? (
@@ -188,6 +185,7 @@ export default function ConversationsPage() {
                     key={selectedConversation._id} 
                     conversationId={selectedConversation._id} 
                     token={token} 
+                    currentUserId={currentUserId}
                     onBack={() => setSelectedConversation(null)}
                   />
               ) : (

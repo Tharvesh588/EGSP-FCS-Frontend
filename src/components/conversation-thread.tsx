@@ -2,8 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +12,7 @@ import { Skeleton } from './ui/skeleton';
 import { io, type Socket } from 'socket.io-client';
 import { LinkPreviewCard } from './link-preview';
 import { ArrowLeft } from 'lucide-react';
+import TextareaAutosize from 'react-textarea-autosize';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -21,7 +21,7 @@ type Message = {
     sender: string;
     senderSnapshot: {
         name: string;
-        facultyID?: string;
+        profileImage?: string;
     };
     type: 'positive' | 'negative' | 'neutral';
     content: {
@@ -35,20 +35,21 @@ type Message = {
 type ConversationThreadProps = {
     conversationId: string;
     token: string | null;
+    currentUserId: string | null;
     onBack: () => void;
 };
 
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
-export function ConversationThread({ conversationId, token, onBack }: ConversationThreadProps) {
+export function ConversationThread({ conversationId, token, currentUserId, onBack }: ConversationThreadProps) {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [chatSearchTerm, setChatSearchTerm] = useState('');
-    const searchParams = useSearchParams();
-    const currentUserId = searchParams.get('uid');
+    const [conversationDetails, setConversationDetails] = useState<any>(null);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const socketRef = useRef<Socket | null>(null);
 
@@ -56,28 +57,40 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    const fetchMessages = async () => {
+    const fetchConversationData = async () => {
         if (!conversationId || !token) {
             setIsLoading(false);
             return;
         }
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/messages?limit=100`, {
+            // Fetch conversation details (participants, etc.)
+            const detailsResponse = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
-            if (!response.ok) {
+            const detailsData = await detailsResponse.json();
+            if(detailsData.success) {
+                setConversationDetails(detailsData.conversation);
+            } else {
+                 throw new Error("Failed to fetch conversation details.");
+            }
+
+            // Fetch messages
+            const messagesResponse = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/messages?limit=100`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!messagesResponse.ok) {
                 throw new Error("Failed to fetch messages from server.");
             }
-            const data = await response.json();
-            if (data.messages) {
-                const sortedMessages = data.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+            const messagesData = await messagesResponse.json();
+            if (messagesData.messages) {
+                const sortedMessages = messagesData.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                 setMessages(sortedMessages);
             } else {
-                throw new Error(data.message || 'Failed to fetch messages');
+                throw new Error(messagesData.message || 'Failed to fetch messages');
             }
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Error fetching messages", description: error.message });
+            toast({ variant: "destructive", title: "Error fetching data", description: error.message });
         } finally {
             if (isLoading) setIsLoading(false);
         }
@@ -87,7 +100,8 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
         if (conversationId) {
             setIsLoading(true);
             setMessages([]);
-            fetchMessages();
+            setConversationDetails(null);
+            fetchConversationData();
         }
 
         if (!conversationId || !token) return;
@@ -152,10 +166,19 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
 
         setIsSending(false);
     };
+    
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage(e as any);
+        }
+    };
 
     const filteredMessages = messages.filter(message =>
         message.content.text.toLowerCase().includes(chatSearchTerm.toLowerCase())
     );
+
+    const otherParticipant = conversationDetails?.participants.find((p: any) => p._id !== currentUserId);
 
     return (
         <div className="flex flex-col h-full bg-card">
@@ -165,10 +188,11 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <Avatar>
-                        <AvatarFallback>C</AvatarFallback>
+                        <AvatarImage src={otherParticipant?.profileImage} />
+                        <AvatarFallback>{otherParticipant ? otherParticipant.name.charAt(0) : '?'}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <p className="font-semibold">Conversation</p>
+                        <p className="font-semibold">{otherParticipant?.name || 'Conversation'}</p>
                         <p className="text-xs text-muted-foreground">Online</p>
                     </div>
                 </div>
@@ -206,7 +230,8 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
                         return (
                             <div key={message._id || Math.random()} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                                 {!isSender && (
-                                    <Avatar className="h-8 w-8">
+                                    <Avatar className="h-8 w-8 self-end mb-1">
+                                         <AvatarImage src={message.senderSnapshot.profileImage} />
                                         <AvatarFallback>{message.senderSnapshot.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                 )}
@@ -218,13 +243,14 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
                                 )}>
                                     <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
                                     {firstLink && <LinkPreviewCard url={firstLink} />}
-                                    <p className="text-right text-xs opacity-70 mt-1.5">
+                                    <p className={cn("text-right text-xs mt-1.5", isSender ? "text-primary-foreground/70" : "text-muted-foreground/70")}>
                                         {format(new Date(message.createdAt), 'p')}
                                     </p>
                                 </div>
                                 {isSender && (
-                                    <Avatar className="h-8 w-8">
-                                         <AvatarFallback>Y</AvatarFallback>
+                                    <Avatar className="h-8 w-8 self-end mb-1">
+                                        <AvatarImage src={message.senderSnapshot.profileImage} />
+                                        <AvatarFallback>Y</AvatarFallback>
                                     </Avatar>
                                 )}
                             </div>
@@ -234,19 +260,24 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
                  <div ref={messagesEndRef} />
             </div>
              <div className="border-t bg-background/80 p-4 shrink-0">
-                <form onSubmit={handleSendMessage} className="relative">
-                     <Input
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                    <Button type="button" variant="ghost" size="icon" className="shrink-0">
+                        <span className="material-symbols-outlined text-muted-foreground text-xl">add_circle</span>
+                    </Button>
+                     <TextareaAutosize
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
                         disabled={isSending || isLoading}
                         autoComplete="off"
-                        className="h-12 rounded-full bg-muted focus-visible:ring-primary pl-5 pr-14"
+                        maxRows={5}
+                        className="w-full resize-none bg-muted focus-visible:ring-primary rounded-2xl border-none px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
                     />
                     <Button 
                         type="submit" 
                         size="icon" 
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full h-9 w-9" 
+                        className="shrink-0 rounded-full h-9 w-9" 
                         disabled={isSending || isLoading || !newMessage.trim()}
                     >
                         <span className="material-symbols-outlined text-lg">send</span>
