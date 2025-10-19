@@ -110,7 +110,7 @@ export default function ConversationsPage() {
     });
 
     return (
-      <div className="h-full">
+      <div className="flex-1 overflow-hidden">
         <div className={cn(
             "grid w-full h-full",
             "md:grid-cols-[300px_1fr]"

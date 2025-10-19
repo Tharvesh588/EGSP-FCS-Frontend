@@ -122,7 +122,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           className={cn(
             "flex-1",
             isConversationPage
-              ? "overflow-hidden"
+              ? "flex flex-col overflow-hidden"
               : "overflow-auto p-4 md:p-6 lg:p-8"
           )}
         >
