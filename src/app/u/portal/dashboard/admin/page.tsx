@@ -48,9 +48,9 @@ const getCurrentAcademicYear = () => {
     const currentYear = today.getFullYear();
     // Academic year starts in June (index 5)
     if (currentMonth >= 5) {
-      return `${currentYear}-${(currentYear + 1).toString()}`;
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
     }
-    return `${currentYear - 1}-${currentYear.toString()}`;
+    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
 };
 
 const generateYearOptions = () => {
@@ -60,8 +60,8 @@ const generateYearOptions = () => {
     const years = [];
     for (let i = 0; i < 5; i++) {
         const startYear = startCurrentYear - i;
-        const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString()}`);
+        const endYear = (startYear + 1).toString().slice(-2);
+        years.push(`${startYear}-${endYear}`);
     }
     return years;
 };

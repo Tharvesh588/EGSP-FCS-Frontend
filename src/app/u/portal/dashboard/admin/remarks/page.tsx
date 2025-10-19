@@ -73,10 +73,10 @@ const getCurrentAcademicYear = () => {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-    if (currentMonth >= 5) {
-      return `${currentYear}-${(currentYear + 1).toString()}`;
+    if (currentMonth >= 5) { // June or later
+      return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
     }
-    return `${currentYear - 1}-${currentYear.toString()}`;
+    return `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
 };
 
 const generateYearOptions = () => {
@@ -86,8 +86,8 @@ const generateYearOptions = () => {
     const years = [];
     for (let i = 0; i < 5; i++) {
         const startYear = startCurrentYear - i;
-        const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString()}`);
+        const endYear = (startYear + 1).toString().slice(-2);
+        years.push(`${startYear}-${endYear}`);
     }
     return years;
 };
@@ -340,15 +340,13 @@ export default function ManageRemarksPage() {
 
   const getProofUrl = (url: string) => {
     if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (url.startsWith('http')) {
         return url;
     }
-    // Check for duplicated base URL
-    if (url.includes('https//') || url.includes('http//')) {
-        const parts = url.split('https//');
-        if (parts.length > 1) return `https://${parts[parts.length -1]}`;
-        const httpParts = url.split('http//');
-        if (httpParts.length > 1) return `http://${httpParts[httpParts.length-1]}`;
+    // Handle cases where the base URL might be duplicated
+    if (url.includes(API_BASE_URL)) {
+        const urlParts = url.split(API_BASE_URL);
+        return `${API_BASE_URL}${urlParts[urlParts.length - 1]}`;
     }
     return `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };

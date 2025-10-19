@@ -62,8 +62,8 @@ const generateYearOptions = () => {
     const years = [];
     for (let i = 0; i < 5; i++) {
         const startYear = startCurrentYear - i;
-        const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear.toString().slice(-2)}`);
+        const endYear = (startYear + 1).toString().slice(-2);
+        years.push(`${startYear}-${endYear}`);
     }
     return years;
 };
