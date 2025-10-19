@@ -17,7 +17,7 @@ export function useSubmitAchievement() {
       throw new Error("Authentication error. Please log in again.");
     }
     
-    const { title, points, academicYear, proof, creditTitleId } = formData;
+    const { title, points, academicYear, proof, creditTitleId, notes } = formData;
 
     const submissionData = new FormData();
     submissionData.append("title", title);
@@ -25,10 +25,15 @@ export function useSubmitAchievement() {
     submissionData.append("academicYear", academicYear);
     submissionData.append("proof", proof);
     if (creditTitleId) {
+      // The API expects 'categories'
       submissionData.append("categories", creditTitleId);
+    }
+    if (notes) {
+      submissionData.append("notes", notes);
     }
     
     try {
+      // The correct endpoint is /api/v1/credits/credits/positive
       const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive`, {
         method: "POST",
         headers: {
