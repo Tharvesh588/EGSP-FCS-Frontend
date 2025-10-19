@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, isSameDay } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
-import { io, type Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import { LinkPreviewCard } from './link-preview';
 import { ArrowLeft, Send } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -33,6 +33,9 @@ type Message = {
 
 type ConversationDetails = {
     _id: string;
+    credit?: {
+      title: string;
+    };
     participants: {
         _id: string;
         name: string;
@@ -54,7 +57,7 @@ function DayDivider({ date }: { date: string }) {
     const formattedDate = format(new Date(date), 'MMMM d, yyyy');
     return (
         <div className="relative text-center my-4">
-            <hr className="absolute top-1/2 left-0 w-full" />
+            <hr className="absolute top-1/2 left-0 w-full border-border" />
             <span className="relative bg-background px-3 text-sm text-muted-foreground">{formattedDate}</span>
         </div>
     );
@@ -113,11 +116,21 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                 setMessages(prev => [...prev, msg]);
             }
         };
+        
+        const handleConnect = () => {
+            socket.emit('join', { conversationId });
+        };
+        
+        if (socket.connected) {
+           handleConnect();
+        } else {
+           socket.on('connect', handleConnect);
+        }
 
         socket.on('message:new', handleNewMessage);
-        socket.emit('join', { conversationId });
 
         return () => {
+          socket.off('connect', handleConnect);
           socket.off('message:new', handleNewMessage);
           socket.emit('leave', { conversationId });
         };
@@ -140,6 +153,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         if (!text || !currentUserId || !socket || !conversationDetails) return;
 
         setIsSending(true);
+        setNewMessage('');
         
         const optimisticMessage: Message = {
             _id: `optimistic-${Date.now()}`,
@@ -151,12 +165,11 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             __optimistic: true,
         };
         setMessages(prev => [...prev, optimisticMessage]);
-        setNewMessage('');
         
         const payload = {
           conversationId,
           text,
-          type: 'neutral', // or derive from context
+          type: 'neutral',
           meta: {}
         };
         
@@ -165,37 +178,15 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (response && response.error) {
                 toast({ variant: "destructive", title: "Error sending message", description: response.error });
                 setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
-            } else {
-                // The 'message:new' event handler will add the confirmed message
-                // For REST fallbacks, you might need to handle this differently
+            } else if (response && response.ok) {
+                // REST is now the fallback, so we depend on the 'message:new' event
+                // to update the UI with the confirmed message.
+                // We'll replace the optimistic message when the new one comes in.
+                // For now, we can just remove it and let the 'message:new' handler add the real one.
+                // A better implementation might match on a nonce.
+                setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
             }
         });
-        
-        // REST API as a fallback
-        const token = localStorage.getItem("token");
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/message`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ text })
-            });
-
-            if (!response.ok) {
-                 const errorData = await response.json().catch(() => ({ message: "Failed to send message" }));
-                 throw new Error(errorData.message);
-            }
-
-            const data = await response.json();
-             // Replace optimistic message with real one from REST response if socket fails
-             setMessages(prev => prev.map(msg => msg._id === optimisticMessage._id ? { ...data.message, __optimistic: false } : msg));
-
-        } catch (error: any) {
-            // Error is handled by socket, but maybe log this for debugging
-             console.error("REST fallback send failed:", error);
-        }
     };
     
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -215,7 +206,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             const messageDate = new Date(message.createdAt).toDateString();
             if (lastDate !== messageDate) {
                 messageElements.push(
-                    <DayDivider key={`divider-${message._id}`} date={message.createdAt} />
+                    <DayDivider key={`divider-${messageDate}`} date={message.createdAt} />
                 );
                 lastDate = messageDate;
             }
@@ -265,6 +256,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                     </Avatar>
                     <div>
                         <p className="font-semibold">{otherParticipant?.name || 'Conversation'}</p>
+                        <p className="text-xs text-muted-foreground">{conversationDetails?.credit?.title}</p>
                     </div>
                 </div>
                 <div className='flex items-center gap-2'>
