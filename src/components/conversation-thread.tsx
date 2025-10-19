@@ -204,7 +204,7 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
                         const firstLink = links ? links[0] : null;
 
                         return (
-                            <div key={message._id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                            <div key={message._id || Math.random()} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                                 {!isSender && (
                                     <Avatar className="h-8 w-8">
                                         <AvatarFallback>{message.senderSnapshot.name.charAt(0)}</AvatarFallback>
@@ -216,7 +216,7 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
                                         ? "bg-primary text-primary-foreground rounded-br-none" 
                                         : "bg-muted rounded-bl-none"
                                 )}>
-                                    <p className="text-sm break-words">{message.content.text}</p>
+                                    <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
                                     {firstLink && <LinkPreviewCard url={firstLink} />}
                                     <p className="text-right text-xs opacity-70 mt-1.5">
                                         {format(new Date(message.createdAt), 'p')}
@@ -235,7 +235,7 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
             </div>
              <div className="border-t bg-background/80 p-4">
                 <form onSubmit={handleSendMessage} className="relative">
-                    <Input
+                     <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message..."

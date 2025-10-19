@@ -109,7 +109,7 @@ export default function ConversationsPage() {
     });
 
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-[calc(100vh_-_var(--header-height)_-_2rem)] md:h-[calc(100vh_-_var(--header-height)_-_4rem)] flex flex-col">
         <div className={cn(
             "grid w-full h-full",
             "md:grid-cols-[300px_1fr]"
@@ -118,9 +118,6 @@ export default function ConversationsPage() {
               "border-r flex flex-col",
               selectedConversation ? "hidden md:flex" : "flex"
           )}>
-              <header className="p-4 border-b">
-                <h1 className="text-xl font-bold tracking-tight text-foreground">Conversations</h1>
-              </header>
               <div className="p-4 border-b">
                 <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4">search</span>
@@ -182,8 +179,7 @@ export default function ConversationsPage() {
               </div>
           </aside>
           <main className={cn(
-              "flex flex-col",
-              "h-[calc(100svh_-_var(--header-height)_-_2rem)] md:h-full",
+              "flex flex-col h-full",
               selectedConversation ? "flex" : "hidden md:flex"
           )}>
               {selectedConversation ? (
