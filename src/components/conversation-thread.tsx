@@ -113,11 +113,11 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: Message) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
-                    // Replace optimistic message with the real one from the server
+                    // Use the optimisticId to find and replace the temporary message
                     if (msg.__optimisticId && prev.some(m => m.__optimisticId === msg.__optimisticId)) {
                         return prev.map(m => m.__optimisticId === msg.__optimisticId ? { ...msg, __optimistic: false } : m);
                     }
-                    // Add new message if it doesn't exist
+                    // Add new message only if it doesn't already exist in the list
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
@@ -170,7 +170,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         typingTimeoutRef.current = setTimeout(() => {
             socket.emit('typing:stop', { conversationId });
-        }, 3000); // Stop typing after 3 seconds of inactivity
+        }, 3000); // User is considered "stopped" after 3 seconds of inactivity
     };
 
     const handleSendMessage = async (e: React.FormEvent) => {
@@ -197,7 +197,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             content: { text },
             createdAt: new Date().toISOString(),
             __optimistic: true,
-            __optimisticId: optimisticId,
+            __optimisticId: optimisticId, // Important for replacement
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
@@ -208,14 +208,15 @@ export function ConversationThread({ conversationId, conversationDetails, socket
           text,
           type: 'neutral',
           meta: {},
-          __optimisticId: optimisticId,
+          __optimisticId: optimisticId, // Send the optimistic ID to the server
         };
         
         socket.emit('message', payload, (response: any) => {
             if (response && response.error) {
                 toast({ variant: "destructive", title: "Error sending message", description: response.error });
+                // If sending failed, remove the optimistic message
                 setMessages(prev => prev.filter(msg => msg._id !== optimisticId));
-                setNewMessage(text); // Put message back in input
+                setNewMessage(text); // Put the failed message back in the input for the user to retry
             }
         });
     };
@@ -245,11 +246,14 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                 lastDate = messageDate;
             }
             
+            // Use the optimistic ID for the key if it exists, otherwise use the real ID
             renderableItems.push({ type: 'message', id: message.__optimisticId || message._id, message });
         });
 
         return renderableItems.map((item, index) => {
+            // Use index in the key to ensure uniqueness during renders
             const key = `${item.id}-${index}`;
+
             if (item.type === 'divider') {
                 return <DayDivider key={key} date={item.date} />;
             }

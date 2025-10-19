@@ -117,6 +117,9 @@ export default function ConversationsPage() {
     useEffect(() => {
         if (!token) return;
 
+        // Ensure we only have one socket connection.
+        if (socketRef.current) return;
+        
         const socket = io(API_BASE_URL, {
             auth: { token },
             transports: ['websocket'] 
@@ -132,12 +135,12 @@ export default function ConversationsPage() {
             toast({ variant: 'destructive', title: 'Chat connection failed', description: 'Could not connect to the real-time server.' });
         });
 
-        const handleNewMessage = (newMessage: { conversationId: string, content: { text: string }, sender: string, createdAt: string }) => {
+        const handleNewMessage = (newMessage: { conversationId: string; content: { text: string }; sender: string; createdAt: string; }) => {
             setConversations(prevConvos => {
                 const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
+                
+                // If conversation doesn't exist, we might need to fetch it or ignore.
                 if (convoIndex === -1) {
-                    // Conversation not in the list, might be a new one.
-                    // For now, we only update existing conversations to avoid complexity.
                     return prevConvos;
                 }
 
@@ -278,5 +281,7 @@ export default function ConversationsPage() {
       </div>
     );
 }
+
+    
 
     
