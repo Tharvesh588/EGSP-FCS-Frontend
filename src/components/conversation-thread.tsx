@@ -10,7 +10,7 @@ import { format, isSameDay, parseISO } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import type { Socket } from 'socket.io-client';
 import { LinkPreviewCard } from './link-preview';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, AlertCircle } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -29,8 +29,10 @@ type Message = {
         meta?: any;
     };
     createdAt: string;
-    __optimistic?: boolean;
-    __optimisticId?: string;
+    // Optimistic UI properties
+    tempId?: string;
+    isPending?: boolean;
+    error?: string;
 };
 
 type ConversationDetails = {
@@ -82,8 +84,19 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const scrollToBottom = (behavior: 'smooth' | 'auto' = 'auto') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     };
-
+    
     useEffect(() => {
+        if (!socket) return;
+        
+        socket.emit('join', { conversationId }, (resp: {ok: boolean; error?: string}) => {
+            if (resp && resp.ok) {
+                console.log(`Joined conversation ${conversationId}`);
+            } else {
+                console.warn('Failed to join conversation:', resp?.error);
+                toast({ variant: 'destructive', title: 'Chat Error', description: 'Could not connect to this conversation.' });
+            }
+        });
+
         const fetchMessages = async () => {
             const token = localStorage.getItem("token");
             if (!token) return;
@@ -105,37 +118,31 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         };
 
         fetchMessages();
-    }, [conversationId, toast]);
 
-    useEffect(() => {
-        if (!socket || !conversationId) return;
-        
-        const handleNewMessage = (msg: Message) => {
+        const handleNewMessage = (msg: Message & { tempId?: string }) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
-                    if (msg.__optimisticId && prev.some(m => m.__optimisticId === msg.__optimisticId)) {
-                        return prev.map(m => m.__optimisticId === msg.__optimisticId ? msg : m);
+                    // If the new message has a tempId, it's a confirmation of an optimistic message.
+                    if (msg.tempId && prev.some(m => m.tempId === msg.tempId)) {
+                        // Replace the optimistic message with the confirmed one from the server.
+                        return prev.map(m => m.tempId === msg.tempId ? msg : m);
                     }
+                    // If it's a new message from another user (no tempId match), just add it.
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
                     return prev;
                 });
+                // Acknowledge receipt of the message
+                socket.emit('message:ack', { conversationId, messageId: msg._id });
             }
         };
-
+        
         const handleTyping = (data: { conversationId: string; isTyping: boolean; userId: string; }) => {
             if (data.conversationId === conversationId && data.userId !== currentUserId) {
                 setIsTyping(data.isTyping);
             }
         };
-        
-        socket.emit('join', { conversationId }, (ack: { ok: boolean; error?: string }) => {
-            if (!ack || !ack.ok) {
-                console.error('Failed to join conversation room:', ack?.error);
-                toast({ variant: 'destructive', title: 'Chat Error', description: 'Could not connect to this conversation.' });
-            }
-        });
 
         socket.on('message:new', handleNewMessage);
         socket.on('typing:status', handleTyping);
@@ -144,6 +151,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
           socket.off('message:new', handleNewMessage);
           socket.off('typing:status', handleTyping);
           socket.emit('leave', { conversationId });
+          console.log(`Left conversation ${conversationId}`);
         };
     }, [conversationId, socket, toast, currentUserId]);
     
@@ -158,7 +166,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     }, [isLoading]);
 
     const handleTypingChange = () => {
-        if (!socket) return;
+        if (!socket || !isTyping) return;
         
         socket.emit('typing:start', { conversationId });
 
@@ -171,21 +179,20 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         }, 3000);
     };
 
-    const handleSendMessage = async (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent, retryMessage?: Message) => {
         e.preventDefault();
-        const text = newMessage.trim();
+        const text = retryMessage?.content.text || newMessage.trim();
         if (!text || !currentUserId || !socket || !conversationDetails) return;
         
-        if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-        }
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         socket.emit('typing:stop', { conversationId });
 
-        const optimisticId = `optimistic-${Date.now()}`;
+        const tempId = retryMessage?.tempId || `temp_${Date.now()}`;
         const currentUserDetails = conversationDetails.participants.find(p => p._id === currentUserId);
 
         const optimisticMessage: Message = {
-            _id: optimisticId,
+            _id: tempId,
+            tempId: tempId,
             sender: currentUserId,
             senderSnapshot: { 
                 name: currentUserDetails?.name || "You",
@@ -194,26 +201,30 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             type: 'neutral',
             content: { text },
             createdAt: new Date().toISOString(),
-            __optimistic: true,
-            __optimisticId: optimisticId,
+            isPending: true,
         };
 
-        setMessages(prev => [...prev, optimisticMessage]);
+        if (retryMessage) {
+            setMessages(prev => prev.map(m => m.tempId === retryMessage.tempId ? optimisticMessage : m));
+        } else {
+            setMessages(prev => [...prev, optimisticMessage]);
+        }
         setNewMessage('');
         
         const payload = {
           conversationId,
           text,
-          type: 'neutral',
-          meta: {},
-          __optimisticId: optimisticId,
+          tempId, // Send tempId to server for it to be included in the broadcasted message
         };
         
-        socket.emit('message', payload, (response: any) => {
-            if (response && response.error) {
-                toast({ variant: "destructive", title: "Error sending message", description: response.error });
-                setMessages(prev => prev.filter(msg => msg._id !== optimisticId));
-                setNewMessage(text);
+        socket.emit('message', payload, (resp: { ok: boolean; message?: Message, error?: string }) => {
+            if (resp && resp.ok && resp.message) {
+                // Server confirmed, replace optimistic message with the real one
+                 setMessages(prev => prev.map(m => m.tempId === tempId ? resp.message! : m));
+            } else {
+                // Handle send failure
+                toast({ variant: "destructive", title: "Error sending message", description: resp?.error });
+                setMessages(prev => prev.map(m => m.tempId === tempId ? { ...m, isPending: false, error: resp?.error || "Failed to send" } : m));
             }
         });
     };
@@ -242,7 +253,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                 lastDate = messageDate;
             }
             
-            items.push({ type: 'message', id: message.__optimisticId || message._id, message });
+            items.push({ type: 'message', id: message.tempId || message._id, message });
         });
 
         return items.map((item) => {
@@ -265,18 +276,29 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                             <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) ?? '?'}</AvatarFallback>
                         </Avatar>
                     )}
-                    <div className={cn(
-                        "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative",
-                        isSender
-                            ? "bg-primary text-primary-foreground rounded-br-lg"
-                            : "bg-muted rounded-bl-lg",
-                        message.__optimistic ? "opacity-60" : ""
-                    )}>
-                        <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
-                        {firstLink && <LinkPreviewCard url={firstLink} />}
-                        <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
-                           {format(parseISO(message.createdAt), 'p')}
+                    <div className="flex flex-col items-end gap-1">
+                        <div className={cn(
+                            "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative",
+                            isSender
+                                ? "bg-primary text-primary-foreground rounded-br-lg"
+                                : "bg-muted rounded-bl-lg",
+                            message.isPending && "opacity-60"
+                        )}>
+                            <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
+                            {firstLink && <LinkPreviewCard url={firstLink} />}
+                            <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
+                               {format(parseISO(message.createdAt), 'p')}
+                            </div>
                         </div>
+                        {message.error && isSender && (
+                            <div className="flex items-center gap-1 text-xs text-destructive">
+                                <AlertCircle className="h-3 w-3"/>
+                                <span>{message.error}.</span>
+                                <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={(e) => handleSendMessage(e, message)}>
+                                    Retry
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             );

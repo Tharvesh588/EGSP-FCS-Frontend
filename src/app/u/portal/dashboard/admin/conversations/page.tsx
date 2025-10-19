@@ -41,7 +41,6 @@ type NewMessagePayload = {
     sender: string; 
     content: { text: string }; 
     createdAt: string;
-    __optimisticId?: string;
 };
 
 
@@ -124,13 +123,15 @@ export default function ConversationsPage() {
     useEffect(() => {
         if (!token || !currentUserId) return;
     
+        // Disconnect any existing socket connection before creating a new one
         if (socketRef.current) {
           socketRef.current.disconnect();
         }
     
         const newSocket = io(API_BASE_URL, {
           auth: { token },
-          transports: ['websocket'],
+          reconnectionAttempts: 10,
+          transports: ['websocket','polling']
         });
         socketRef.current = newSocket;
     
@@ -146,13 +147,23 @@ export default function ConversationsPage() {
             description: 'Could not connect to the real-time server.',
           });
         });
+        
+        newSocket.on('reconnect', () => {
+          console.log('Socket reconnected.');
+          // Re-join active conversation room if any
+          if (selectedConversation) {
+            newSocket.emit('join', { conversationId: selectedConversation._id });
+          }
+        });
     
         const handleNewMessage = (newMessage: NewMessagePayload) => {
             setConversations(prevConvos => {
                 const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
                 if (convoIndex === -1) {
+                    // If conversation is not in the list, we might need to fetch it. For now, log it.
                     console.warn("Received a message for a conversation not in the list. Need to fetch.");
-                    return prevConvos; // Or fetch new convo details
+                    // Or you could fetch the conversation details and add it to the list.
+                    return prevConvos;
                 }
     
                 const updatedConvo = {
@@ -165,6 +176,7 @@ export default function ConversationsPage() {
                     updatedAt: newMessage.createdAt,
                 };
     
+                // Remove the old conversation and place the updated one at the top
                 const otherConvos = prevConvos.filter(c => c._id !== newMessage.conversationId);
                 return [updatedConvo, ...otherConvos];
             });
@@ -172,12 +184,13 @@ export default function ConversationsPage() {
     
         newSocket.on('message:new', handleNewMessage);
     
+        // Cleanup on component unmount
         return () => {
           newSocket.off('message:new', handleNewMessage);
           newSocket.disconnect();
           socketRef.current = null;
         };
-      }, [token, currentUserId, toast]);
+      }, [token, currentUserId, toast, selectedConversation]);
 
 
     const filteredConversations = conversations.filter(convo => {

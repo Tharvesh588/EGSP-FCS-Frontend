@@ -41,7 +41,6 @@ type NewMessagePayload = {
     sender: string; 
     content: { text: string }; 
     createdAt: string;
-    __optimisticId?: string;
 };
 
 export default function ConversationsPage() {
@@ -125,13 +124,15 @@ export default function ConversationsPage() {
     useEffect(() => {
         if (!token || !currentUserId) return;
     
+        // Disconnect any existing socket connection before creating a new one
         if (socketRef.current) {
           socketRef.current.disconnect();
         }
     
         const newSocket = io(API_BASE_URL, {
           auth: { token },
-          transports: ['websocket'],
+          reconnectionAttempts: 10,
+          transports: ['websocket','polling']
         });
         socketRef.current = newSocket;
     
@@ -146,6 +147,14 @@ export default function ConversationsPage() {
             title: 'Chat connection failed',
             description: 'Could not connect to the real-time server.',
           });
+        });
+
+        newSocket.on('reconnect', () => {
+          console.log('Socket reconnected.');
+          // Re-join active conversation room if any
+          if (selectedConversation) {
+            newSocket.emit('join', { conversationId: selectedConversation._id });
+          }
         });
     
         const handleNewMessage = (newMessage: NewMessagePayload) => {
@@ -173,12 +182,13 @@ export default function ConversationsPage() {
     
         newSocket.on('message:new', handleNewMessage);
     
+        // Cleanup on component unmount
         return () => {
           newSocket.off('message:new', handleNewMessage);
           newSocket.disconnect();
           socketRef.current = null;
         };
-      }, [token, currentUserId, toast]);
+      }, [token, currentUserId, toast, selectedConversation]);
     
     const filteredConversations = conversations.filter(convo => {
         const term = searchTerm.toLowerCase();
