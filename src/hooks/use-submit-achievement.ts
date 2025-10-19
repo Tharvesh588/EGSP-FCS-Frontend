@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import type { AchievementFormData } from "@/components/achievement-form";
+import type { CreditTitle } from "./use-credit-titles";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
 export function useSubmitAchievement() {
   const [isLoading, setIsLoading] = useState(false);
 
-  const submitAchievement = async (formData: AchievementFormData) => {
+  const submitAchievement = async (formData: AchievementFormData, creditTitles: CreditTitle[]) => {
     setIsLoading(true);
 
     const token = localStorage.getItem("token");
@@ -19,21 +20,18 @@ export function useSubmitAchievement() {
     
     const { title, creditTitleId, academicYear, proof } = formData;
     
-    // Corrected the fetch URL to the proper endpoint
-    const creditTitleResponse = await fetch(`${API_BASE_URL}/api/v1/admin/credit-title/${creditTitleId}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-    });
-    const creditTitle = await creditTitleResponse.json();
+    // Find the selected credit title from the provided array instead of fetching
+    const selectedCreditTitle = creditTitles.find(ct => ct._id === creditTitleId);
 
-    if (!creditTitle.success) {
+    if (!selectedCreditTitle) {
         setIsLoading(false);
-        throw new Error("Could not verify credit category.");
+        throw new Error("Could not find the selected credit category. Please refresh and try again.");
     }
 
     const submissionData = new FormData();
     submissionData.append("title", title);
-    submissionData.append("points", creditTitle.item.points.toString());
-    submissionData.append("categories", creditTitleId);
+    submissionData.append("points", selectedCreditTitle.points.toString());
+    submissionData.append("categories", creditTitleId); // API expects 'categories' field
     submissionData.append("academicYear", academicYear);
     submissionData.append("proof", proof);
 

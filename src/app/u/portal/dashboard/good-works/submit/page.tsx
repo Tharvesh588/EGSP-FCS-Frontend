@@ -14,7 +14,8 @@ export default function SubmitAchievementPage() {
 
   const handleSubmit = async (formData: AchievementFormData) => {
     try {
-      await submitAchievement(formData);
+      // Pass the already-fetched creditTitles to the hook
+      await submitAchievement(formData, creditTitles);
       toast({
         title: "Submission Successful",
         description: "Your achievement has been submitted for review.",
