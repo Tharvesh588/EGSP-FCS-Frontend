@@ -168,14 +168,13 @@ export default function ManageRemarksPage() {
   
       try {
           const params = new URLSearchParams({
-              type: 'negative',
               page: currentPage.toString(),
               limit: limit.toString(),
               sort: '-createdAt'
           });
-          // This endpoint lists credits, we filter by type=negative on the backend if possible,
-          // or rely on a dedicated endpoint. Based on provided API, this seems to be the way.
-          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?${params.toString()}`, {
+
+          // Using the /admin/credits/positive endpoint and filtering by type=negative on the backend
+          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?type=negative&${params.toString()}`, {
               headers: { Authorization: `Bearer ${adminToken}` },
           });
   
@@ -324,6 +323,13 @@ export default function ManageRemarksPage() {
         description: error.message,
       });
     }
+  };
+
+  const getProofUrl = (url: string) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return `${API_BASE_URL}${url}`;
   };
 
   return (
@@ -475,7 +481,7 @@ export default function ManageRemarksPage() {
                                     </div>
                                     {selectedRemark.proofUrl && (
                                         <Button asChild variant="link" className="p-0 h-auto">
-                                            <a href={`${API_BASE_URL}${selectedRemark.proofUrl}`} target="_blank" rel="noopener noreferrer">View Proof Document</a>
+                                            <a href={getProofUrl(selectedRemark.proofUrl)} target="_blank" rel="noopener noreferrer">View Proof Document</a>
                                         </Button>
                                     )}
                                 </div>
