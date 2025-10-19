@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Table,
   TableBody,
@@ -34,7 +34,9 @@ import {
   DialogClose,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Eye } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { io, type Socket } from "socket.io-client";
 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -56,11 +58,15 @@ type NegativeRemark = {
   faculty: {
     _id: string;
     name: string;
+    profileImage?: string;
   };
   title: string;
   points: number;
   status: string;
+  notes?: string;
+  proofUrl?: string;
   createdAt: string;
+  academicYear: string;
 };
 
 const getCurrentAcademicYear = () => {
@@ -111,6 +117,10 @@ export default function ManageRemarksPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
+  
+  // Details view state
+  const [selectedRemark, setSelectedRemark] = useState<NegativeRemark | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
   const uid = searchParams.get('uid');
@@ -163,7 +173,8 @@ export default function ManageRemarksPage() {
               limit: limit.toString(),
               sort: '-createdAt'
           });
-          // Assuming the listPositiveCreditsForAdmin can filter by type=negative
+          // This endpoint lists credits, we filter by type=negative on the backend if possible,
+          // or rely on a dedicated endpoint. Based on provided API, this seems to be the way.
           const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?${params.toString()}`, {
               headers: { Authorization: `Bearer ${adminToken}` },
           });
@@ -278,7 +289,42 @@ export default function ManageRemarksPage() {
       setIsLoading(false);
     }
   };
+  
+  const handleStartConversation = async () => {
+    if (!selectedRemark || !uid) return;
 
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          creditId: selectedRemark._id,
+          participantIds: [selectedRemark.faculty._id, uid],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to start conversation');
+      }
+
+      toast({
+        title: 'Conversation Started',
+        description: 'You can now chat with the faculty member in the Conversations tab.',
+      });
+      setIsDetailsOpen(false);
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error Starting Conversation',
+        description: error.message,
+      });
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -374,11 +420,12 @@ export default function ManageRemarksPage() {
                   <TableHead>Remark Title</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Points</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoadingRemarks ? (
-                   <TableRow><TableCell colSpan={4} className="text-center h-24">Loading remarks...</TableCell></TableRow>
+                   <TableRow><TableCell colSpan={5} className="text-center h-24">Loading remarks...</TableCell></TableRow>
                 ) : remarks.length > 0 ? (
                   remarks.map((remark) => (
                   <TableRow key={remark._id}>
@@ -386,10 +433,64 @@ export default function ManageRemarksPage() {
                     <TableCell>{remark.title}</TableCell>
                     <TableCell>{new Date(remark.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right font-semibold text-destructive">{remark.points}</TableCell>
+                    <TableCell className="text-center">
+                        <Dialog open={isDetailsOpen && selectedRemark?._id === remark._id} onOpenChange={(isOpen) => {
+                            if (isOpen) {
+                                setSelectedRemark(remark);
+                                setIsDetailsOpen(true);
+                            } else {
+                                setIsDetailsOpen(false);
+                                setSelectedRemark(null);
+                            }
+                        }}>
+                            <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={() => {
+                                    setSelectedRemark(remark);
+                                    setIsDetailsOpen(true);
+                                }}>
+                                    <Eye className="h-4 w-4" />
+                                </Button>
+                            </DialogTrigger>
+                             <DialogContent>
+                                <DialogHeader>
+                                <DialogTitle>Remark Details</DialogTitle>
+                                </DialogHeader>
+                                {selectedRemark && (
+                                <div className="space-y-4 py-4">
+                                    <div className="flex items-center gap-4">
+                                        <Avatar className="h-12 w-12">
+                                            <AvatarImage src={selectedRemark.faculty.profileImage} />
+                                            <AvatarFallback>{selectedRemark.faculty.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-semibold">{selectedRemark.faculty.name}</p>
+                                            <p className="text-sm text-muted-foreground">{selectedRemark.academicYear}</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p><strong className="font-medium text-muted-foreground">Title:</strong> {selectedRemark.title}</p>
+                                        <p><strong className="font-medium text-muted-foreground">Points:</strong> <span className="font-semibold text-destructive">{selectedRemark.points}</span></p>
+                                        <p><strong className="font-medium text-muted-foreground">Date Issued:</strong> {new Date(selectedRemark.createdAt).toLocaleString()}</p>
+                                        <p><strong className="font-medium text-muted-foreground">Notes:</strong> {selectedRemark.notes || 'N/A'}</p>
+                                    </div>
+                                    {selectedRemark.proofUrl && (
+                                        <Button asChild variant="link" className="p-0 h-auto">
+                                            <a href={`${API_BASE_URL}${selectedRemark.proofUrl}`} target="_blank" rel="noopener noreferrer">View Proof Document</a>
+                                        </Button>
+                                    )}
+                                </div>
+                                )}
+                                <DialogFooter>
+                                    <Button variant="secondary" onClick={handleStartConversation}>Start Conversation</Button>
+                                    <DialogClose asChild><Button>Close</Button></DialogClose>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </TableCell>
                   </TableRow>
                 ))
                 ) : (
-                    <TableRow><TableCell colSpan={4} className="text-center h-24">No remarks found.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">No remarks found.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
