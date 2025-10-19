@@ -86,7 +86,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     };
     
     useEffect(() => {
-        if (!socket) return;
+        if (!socket || !conversationId) return;
         
         socket.emit('join', { conversationId }, (resp: {ok: boolean; error?: string}) => {
             if (resp && resp.ok) {
@@ -166,7 +166,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     }, [isLoading]);
 
     const handleTypingChange = () => {
-        if (!socket || !isTyping) return;
+        if (!socket) return;
         
         socket.emit('typing:start', { conversationId });
 
@@ -176,7 +176,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         typingTimeoutRef.current = setTimeout(() => {
             socket.emit('typing:stop', { conversationId });
-        }, 3000);
+        }, 2000); // Stop typing after 2 seconds of inactivity
     };
 
     const handleSendMessage = async (e: React.FormEvent, retryMessage?: Message) => {
@@ -233,9 +233,12 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendMessage(e as any);
-        } else {
-            handleTypingChange();
         }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setNewMessage(e.target.value);
+      handleTypingChange();
     };
 
     const otherParticipant = conversationDetails?.participants.find(p => p._id !== currentUserId);
@@ -354,7 +357,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                     </Button>
                      <TextareaAutosize
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
                         disabled={isLoading || !socket?.connected}
@@ -375,5 +378,3 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
-    
