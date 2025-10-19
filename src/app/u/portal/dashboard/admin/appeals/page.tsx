@@ -42,42 +42,59 @@ export default function AppealReviewPage() {
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const [comments, setComments] = useState("");
 
   const fetchAppeals = async () => {
-     const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?status=appealed`, {
-             headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if(data.success) {
-            const fetchedAppeals = data.items.map((item: any) => ({
-                _id: item._id,
-                faculty: {
-                  _id: item.faculty._id,
-                  name: item.faculty.name,
-                  department: item.faculty.department,
-                },
-                credit: {
-                  _id: item._id, // The credit is the appeal item itself
-                  title: item.title,
-                  notes: item.notes,
-                },
-                reason: item.appeal?.reason || 'No reason provided',
-                status: item.appeal?.status || 'pending',
-                createdAt: item.appeal?.createdAt || item.createdAt,
-            }));
-            setAppeals(fetchedAppeals);
-            if (fetchedAppeals.length > 0) {
-              setSelectedAppeal(fetchedAppeals[0]);
-            }
-        } else {
-            throw new Error(data.message || 'Failed to fetch appeals');
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?limit=200`, { // Fetch all credits
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.message || "Server returned an error");
+        } catch (e) {
+          throw new Error(`Failed to fetch appeals. The server responded with an error: ${response.status}.`);
         }
-    } catch(err: any) {
-        toast({ variant: 'destructive', title: 'Error fetching appeals', description: err.message });
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        const fetchedAppeals = data.items
+          .filter((item: any) => item.status === 'appealed' && item.appeal) // Filter for appealed credits
+          .map((item: any) => ({
+            _id: item._id,
+            faculty: {
+              _id: item.faculty._id,
+              name: item.faculty.name,
+              department: item.faculty.department,
+            },
+            credit: {
+              _id: item._id,
+              title: item.title,
+              notes: item.notes,
+            },
+            reason: item.appeal?.reason || 'No reason provided',
+            status: item.appeal?.status || 'pending',
+            createdAt: item.appeal?.createdAt || item.createdAt,
+          }));
+
+        setAppeals(fetchedAppeals);
+        if (fetchedAppeals.length > 0) {
+          setSelectedAppeal(fetchedAppeals[0]);
+        } else {
+          setSelectedAppeal(null);
+        }
+      } else {
+        throw new Error(data.message || 'Failed to fetch appeals');
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error fetching appeals', description: err.message });
     }
   }
 
@@ -96,7 +113,7 @@ export default function AppealReviewPage() {
         console.log('Admin socket connected for appeals');
     });
 
-    socket.on('admin:appealNotification', (newAppeal) => {
+    socket.on('admin:appealNotification', (newAppeal: any) => {
         toast({
             title: "New Appeal Submitted",
             description: `${newAppeal.facultySnapshot.name} has submitted an appeal for "${newAppeal.title}".`,
@@ -117,15 +134,22 @@ export default function AppealReviewPage() {
     if (!selectedAppeal) return;
     const token = localStorage.getItem("token");
     if (!token) return;
-
-    // This is a simplified logic. Backend should handle status update
-    // on the credit's appeal subdocument.
+    
+    // In a real app, this would be a PUT request to an endpoint like:
+    // `/api/v1/admin/appeals/${selectedAppeal._id}/status`
+    // with a body of { status: decision, notes: comments }
+    
     console.log(`Making decision: ${decision} for appeal on credit ${selectedAppeal.credit._id}`);
-    toast({ title: "Decision Submitted", description: `The appeal has been marked as ${decision}.`});
+    console.log("With rationale:", comments);
 
-    // Optimistic update
-    setAppeals(appeals.filter(a => a._id !== selectedAppeal._id));
-    setSelectedAppeal(appeals.length > 1 ? appeals.find(a => a._id !== selectedAppeal._id) || null : null);
+    toast({ title: "Decision Submitted", description: `The appeal has been marked as ${decision}.`});
+    
+    // Optimistic update: Remove from the list and select the next one
+    setAppeals(prev => prev.filter(a => a._id !== selectedAppeal._id));
+    const currentIndex = appeals.findIndex(a => a._id === selectedAppeal._id);
+    const nextAppeal = appeals[currentIndex + 1] || appeals[0] || null;
+    setSelectedAppeal(nextAppeal === selectedAppeal ? null : nextAppeal);
+    setComments("");
   }
   
   const getStatusColor = (status: Appeal['status']) => {
@@ -165,7 +189,7 @@ export default function AppealReviewPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {appeals.map((appeal, index) => (
+                {appeals.map((appeal) => (
                   <TableRow 
                     key={appeal._id} 
                     className={`cursor-pointer ${selectedAppeal?._id === appeal._id ? "bg-primary/10" : ""}`}
@@ -235,6 +259,24 @@ export default function AppealReviewPage() {
                 <h4 className="text-md font-semibold text-foreground">
                   Decision
                 </h4>
+                <div>
+                    <Label
+                    className="block text-sm font-medium text-muted-foreground"
+                    htmlFor="comments"
+                    >
+                    Rationale
+                    </Label>
+                    <div className="mt-1">
+                    <Textarea
+                        id="comments"
+                        name="comments"
+                        placeholder="Add comments for your decision (optional)"
+                        rows={3}
+                        value={comments}
+                        onChange={(e) => setComments(e.target.value)}
+                    />
+                    </div>
+                </div>
                 <div className="flex items-center gap-4">
                   <Button
                     className="w-full bg-green-600 hover:bg-green-700 text-white"
@@ -252,27 +294,6 @@ export default function AppealReviewPage() {
                     Reject Appeal
                   </Button>
                 </div>
-              </div>
-              <div>
-                <label
-                  className="block text-sm font-medium text-muted-foreground"
-                  htmlFor="comments"
-                >
-                  Rationale
-                </label>
-                <div className="mt-1">
-                  <Textarea
-                    id="comments"
-                    name="comments"
-                    placeholder="Add comments for your decision (optional)"
-                    rows={4}
-                  />
-                </div>
-              </div>
-              <div className="pt-4 flex justify-end">
-                <Button type="button" onClick={() => handleDecision('accepted')}>
-                  Submit Decision
-                </Button>
               </div>
             </div>
           </div>
