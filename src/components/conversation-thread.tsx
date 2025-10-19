@@ -32,8 +32,19 @@ type Message = {
     __optimistic?: boolean;
 };
 
+type ConversationDetails = {
+    _id: string;
+    participants: {
+        _id: string;
+        name: string;
+        profileImage?: string;
+    }[];
+     // Add other relevant conversation fields
+};
+
 type ConversationThreadProps = {
     conversationId: string;
+    conversationDetails: ConversationDetails | null;
     token: string | null;
     currentUserId: string | null;
     onBack: () => void;
@@ -41,14 +52,13 @@ type ConversationThreadProps = {
 
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
-export function ConversationThread({ conversationId, token, currentUserId, onBack }: ConversationThreadProps) {
+export function ConversationThread({ conversationId, conversationDetails, token, currentUserId, onBack }: ConversationThreadProps) {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [chatSearchTerm, setChatSearchTerm] = useState('');
-    const [conversationDetails, setConversationDetails] = useState<any>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const socketRef = useRef<Socket | null>(null);
@@ -57,7 +67,7 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    const fetchConversationData = async () => {
+    const fetchMessages = async () => {
         if (!conversationId || !token) {
             setIsLoading(false);
             return;
@@ -65,35 +75,24 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
         
         setIsLoading(true);
         try {
-            // Fetch conversation details (participants, etc.)
-            const detailsResponse = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            const detailsData = await detailsResponse.json();
-            if(detailsData.success) {
-                setConversationDetails(detailsData.conversation);
-            } else {
-                 throw new Error("Failed to fetch conversation details.");
-            }
-
-            // Fetch messages
             const messagesResponse = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/messages?limit=100`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (!messagesResponse.ok) {
-                throw new Error("Failed to fetch messages from server.");
+                 const errorData = await messagesResponse.json().catch(() => ({ message: "Failed to fetch messages from server." }));
+                 throw new Error(errorData.message);
             }
             const messagesData = await messagesResponse.json();
             if (messagesData.messages) {
                 const sortedMessages = messagesData.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                 setMessages(sortedMessages);
-            } else if (messagesData.success && messagesData.messages.length === 0) {
+            } else if (messagesData.success && Array.isArray(messagesData.messages) && messagesData.messages.length === 0) {
                 setMessages([]);
             } else {
-                throw new Error(messagesData.message || 'Failed to fetch messages');
+                throw new Error(messagesData.message || 'Failed to parse messages');
             }
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Error fetching data", description: error.message });
+            toast({ variant: "destructive", title: "Error fetching messages", description: error.message });
         } finally {
             setIsLoading(false);
         }
@@ -101,9 +100,7 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
     
     useEffect(() => {
         if (conversationId) {
-            setMessages([]);
-            setConversationDetails(null);
-            fetchConversationData();
+            fetchMessages();
         }
 
         if (!conversationId || !token) return;
@@ -146,7 +143,7 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = newMessage.trim();
-        if (!text || !currentUserId || !socketRef.current) return;
+        if (!text || !currentUserId || !socketRef.current || !conversationDetails) return;
 
         setIsSending(true);
         setNewMessage('');
@@ -296,5 +293,3 @@ export function ConversationThread({ conversationId, token, currentUserId, onBac
         </div>
     );
 }
-
-    

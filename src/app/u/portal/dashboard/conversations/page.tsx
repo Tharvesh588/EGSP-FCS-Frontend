@@ -20,7 +20,11 @@ type Conversation = {
         title: string;
         academicYear: string;
     };
-    participants: string[];
+    participants: {
+      _id: string;
+      name: string;
+      profileImage?: string;
+    }[];
     lastMessage?: {
         text: string;
         sender: string;
@@ -141,7 +145,7 @@ export default function ConversationsPage() {
                   ) : (
                     <div className="flex flex-col">
                       {filteredConversations.map(convo => {
-                          const otherParticipant = "Admin";
+                          const otherParticipant = convo.participants.find(p => p._id !== currentUserId) ?? { name: "Admin" };
                           return (
                           <button
                               key={convo._id}
@@ -155,7 +159,7 @@ export default function ConversationsPage() {
                           >
                               <div className="flex items-center gap-3">
                                   <Avatar className="h-10 w-10">
-                                      <AvatarFallback>{otherParticipant.charAt(0)}</AvatarFallback>
+                                      <AvatarFallback>{otherParticipant.name.charAt(0)}</AvatarFallback>
                                   </Avatar>
                                   <div className="flex-1 overflow-hidden">
                                       <div className="flex justify-between items-baseline">
@@ -184,6 +188,7 @@ export default function ConversationsPage() {
                   <ConversationThread 
                     key={selectedConversation._id} 
                     conversationId={selectedConversation._id} 
+                    conversationDetails={selectedConversation}
                     token={token} 
                     currentUserId={currentUserId}
                     onBack={() => setSelectedConversation(null)}

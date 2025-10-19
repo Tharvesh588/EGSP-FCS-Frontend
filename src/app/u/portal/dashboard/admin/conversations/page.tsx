@@ -23,6 +23,7 @@ type Conversation = {
     participants: {
       _id: string;
       name: string;
+      profileImage?: string;
     }[];
     lastMessage?: {
         text: string;
@@ -188,6 +189,7 @@ export default function ConversationsPage() {
                   <ConversationThread
                     key={selectedConversation._id}
                     conversationId={selectedConversation._id}
+                    conversationDetails={selectedConversation}
                     token={token}
                     currentUserId={currentUserId}
                     onBack={() => setSelectedConversation(null)}
