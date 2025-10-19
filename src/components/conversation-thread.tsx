@@ -157,7 +157,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         const optimisticId = `optimistic-${Date.now()}`;
         const optimisticMessage: Message = {
-            _id: optimisticId,
+            _id: optimisticId, // Use optimistic ID here
             sender: currentUserId,
             senderSnapshot: { name: "You" }, // Placeholder, actual user data should be available
             type: 'neutral',
@@ -205,6 +205,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                 renderableItems.push({ type: 'divider', date: message.createdAt, id: `divider-${messageDate}` });
                 lastDate = messageDate;
             }
+            // The key for a message is its `_id`. For an optimistic message, this will be `optimistic-...`
             renderableItems.push({ type: 'message', message, id: message._id });
         });
 
@@ -316,5 +317,3 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
-    
