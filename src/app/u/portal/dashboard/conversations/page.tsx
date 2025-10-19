@@ -113,7 +113,7 @@ export default function ConversationsPage() {
       <div className="h-full flex flex-col">
         <div className={cn(
             "grid w-full h-full",
-            selectedConversation ? "md:grid-cols-[300px_1fr]" : "md:grid-cols-[300px_1fr]"
+            "md:grid-cols-[300px_1fr]"
         )}>
           <aside className={cn(
               "border-r flex flex-col",
@@ -183,7 +183,8 @@ export default function ConversationsPage() {
               </div>
           </aside>
           <main className={cn(
-              "flex flex-col h-full",
+              "flex flex-col",
+              "h-[calc(100svh_-_var(--header-height)_-_2rem)] md:h-full",
               selectedConversation ? "flex" : "hidden md:flex"
           )}>
               {selectedConversation ? (
