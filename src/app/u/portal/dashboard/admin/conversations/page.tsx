@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { ConversationThread } from '@/components/conversation-thread';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,12 +37,15 @@ export default function ConversationsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const searchParams = useSearchParams();
     const currentUserId = searchParams.get('uid');
+    const [token, setToken] = useState<string | null>(null);
 
     useEffect(() => {
+        const storedToken = localStorage.getItem("token");
+        setToken(storedToken);
+
         const fetchConversations = async () => {
             setIsLoading(true);
-            const token = localStorage.getItem("token");
-            if (!token) {
+            if (!storedToken) {
                 toast({ variant: "destructive", title: "Authentication Error" });
                 setIsLoading(false);
                 return;
@@ -51,7 +53,7 @@ export default function ConversationsPage() {
 
             try {
                 const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
-                    headers: { "Authorization": `Bearer ${token}` }
+                    headers: { "Authorization": `Bearer ${storedToken}` }
                 });
 
                 if(!response.ok) {
@@ -62,7 +64,7 @@ export default function ConversationsPage() {
 
                 if (data.conversations) {
                     const sortedConversations = data.conversations.sort((a: Conversation, b: Conversation) => {
-                        if (!a.lastMessage || !b.lastMessage) return 0;
+                        if (!a.lastMessage?.createdAt || !b.lastMessage?.createdAt) return 0;
                         try {
                             const dateA = new Date(a.lastMessage.createdAt).getTime();
                             const dateB = new Date(b.lastMessage.createdAt).getTime();
@@ -170,7 +172,7 @@ export default function ConversationsPage() {
           </aside>
           <main className="flex flex-col h-full">
               {selectedConversation ? (
-                  <ConversationThread key={selectedConversation._id} conversationId={selectedConversation._id} />
+                  <ConversationThread key={selectedConversation._id} conversationId={selectedConversation._id} token={token} />
               ) : (
                   <div className="flex items-center justify-center h-full">
                       <div className="text-center text-muted-foreground">

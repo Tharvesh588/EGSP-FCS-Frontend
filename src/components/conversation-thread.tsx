@@ -1,15 +1,16 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
+import { io, type Socket } from 'socket.io-client';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -26,13 +27,15 @@ type Message = {
         meta?: any;
     };
     createdAt: string;
+    __optimistic?: boolean;
 };
 
 type ConversationThreadProps = {
     conversationId: string;
+    token: string | null;
 };
 
-export function ConversationThread({ conversationId }: ConversationThreadProps) {
+export function ConversationThread({ conversationId, token }: ConversationThreadProps) {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -42,6 +45,7 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
     const searchParams = useSearchParams();
     const currentUserId = searchParams.get('uid');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const socketRef = useRef<Socket | null>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,9 +56,9 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
             setIsLoading(false);
             return;
         }
-        const token = localStorage.getItem("token");
+        
         if (!token) {
-             if (isLoading) setIsLoading(false);
+            if (isLoading) setIsLoading(false);
             return;
         }
         try {
@@ -77,13 +81,36 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
             if (isLoading) setIsLoading(false);
         }
     };
-
+    
     useEffect(() => {
         if (conversationId) {
             setIsLoading(true);
             fetchMessages();
         }
-    }, [conversationId]);
+
+        if (!conversationId || !token) return;
+
+        // connect
+        const socket = io(API_BASE_URL, { auth: { token } });
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+          socket.emit('join', { conversationId }, (resp: any) => {
+            if (resp?.error) console.error('join failed', resp.error);
+          });
+        });
+
+        socket.on('message:new', (msg: Message) => {
+          setMessages(prev => [...prev.filter(m => !m.__optimistic), msg]);
+        });
+
+        socket.on('connect_error', (err: any) => console.error('socket error', err.message));
+
+        return () => {
+          socket.disconnect();
+          socketRef.current = null;
+        };
+    }, [conversationId, token]);
     
     useEffect(() => {
         scrollToBottom();
@@ -91,58 +118,40 @@ export function ConversationThread({ conversationId }: ConversationThreadProps) 
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !currentUserId) return;
+        const text = newMessage.trim();
+        if (!text || !currentUserId || !socketRef.current) return;
 
         setIsSending(true);
-        const token = localStorage.getItem("token");
-        
+
         const optimisticMessage: Message = {
-            _id: `temp-${Date.now()}-${Math.random()}`,
+            _id: `optimistic-${Date.now()}`,
             sender: currentUserId,
             senderSnapshot: { name: "You" },
             type: 'positive',
             content: { text: newMessage },
             createdAt: new Date().toISOString(),
+            __optimistic: true,
         };
         setMessages(prev => [...prev, optimisticMessage]);
         setNewMessage('');
 
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/message`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ text: newMessage, type: 'positive', meta: {} }),
-            });
-
-            if (!response.ok) {
-                 throw new Error("Server failed to process message.");
-            }
-
-            const data = await response.json();
-            // The API response for a sent message doesn't contain the full message object with an _id.
-            // We'll just refetch messages to get the updated list.
-            if (data.ok) {
-                fetchMessages();
-            } else {
-                throw new Error(data.message || 'Failed to send message');
-            }
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Error sending message", description: error.message });
+        // prefer socket
+        socketRef.current?.emit('message', { conversationId, text }, (ack: any) => {
+          if (ack?.error) {
+            console.error('socket send error', ack.error);
+            toast({ variant: "destructive", title: "Error sending message", description: ack.error });
             setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
-        } finally {
-            setIsSending(false);
-        }
+          }
+          // On success, the server will emit message:new which will update the UI
+        });
+
+        setIsSending(false);
     };
 
-    const filteredMessages = useMemo(() => {
-        return messages.filter(message =>
-            message.content.text.toLowerCase().includes(chatSearchTerm.toLowerCase())
-        );
-    }, [messages, chatSearchTerm]);
+    const filteredMessages = messages.filter(message =>
+        message.content.text.toLowerCase().includes(chatSearchTerm.toLowerCase())
+    );
 
     return (
         <div className="flex flex-col h-full bg-card">
