@@ -110,7 +110,7 @@ export default function ConversationsPage() {
     });
 
     return (
-      <div className="h-[calc(100vh_-_var(--header-height)_-_2rem)] md:h-[calc(100vh_-_var(--header-height)_-_4rem)] flex flex-col">
+      <div className="h-full flex flex-col">
         <div className={cn(
             "grid w-full h-full",
             "md:grid-cols-[300px_1fr]"

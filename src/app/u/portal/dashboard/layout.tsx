@@ -7,6 +7,7 @@ import { SidebarNav } from "@/components/sidebar-nav";
 import { useState, useEffect, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -117,7 +118,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <SidebarNav role={user.role} />
         <SidebarInset>
             <Header user={user} />
-            <main className={`flex-1 ${isConversationPage ? 'overflow-hidden' : 'overflow-auto'} p-4 md:p-6 lg:p-8 bg-background`}>
+            <main className={cn(
+              "flex-1",
+              isConversationPage ? 'overflow-hidden' : 'overflow-auto p-4 md:p-6 lg:p-8'
+            )}>
                 {children}
             </main>
         </SidebarInset>
