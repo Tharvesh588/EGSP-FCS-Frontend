@@ -179,7 +179,7 @@ export default function ConversationsPage() {
               </div>
           </aside>
           <main className={cn(
-              "flex flex-col",
+              "flex flex-col h-full",
               selectedConversation ? "flex" : "hidden md:flex"
           )}>
               {selectedConversation ? (
