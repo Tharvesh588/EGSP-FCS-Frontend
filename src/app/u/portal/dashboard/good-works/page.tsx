@@ -34,6 +34,7 @@ type GoodWork = {
   points: number;
   academicYear: string;
   type: 'positive' | 'negative';
+  proofUrl?: string;
 };
 
 const getCurrentAcademicYear = () => {
@@ -99,14 +100,30 @@ export default function GoodWorksPage() {
         },
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        // Check if the error is HTML (like a 404 page)
+        if (errorText.trim().startsWith("<!DOCTYPE html>")) {
+           throw new Error(`API endpoint not found. Please check the URL. Status: ${response.status}`);
+        }
+        // Try to parse as JSON
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.message || "An unknown server error occurred.");
+        } catch (e) {
+          throw new Error(errorText);
+        }
+      }
+      
       const responseData = await response.json();
-      if (!response.ok || !responseData.success) {
+
+      if (!responseData.success) {
         throw new Error(responseData.message || "Failed to fetch good works.");
       }
 
       const positiveWorks = responseData.items.filter((work: GoodWork) => work.type === 'positive');
       setGoodWorks(positiveWorks);
-      setTotal(positiveWorks.length);
+      setTotal(responseData.total); // Use total from API for pagination
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -126,6 +143,13 @@ export default function GoodWorksPage() {
         fetchGoodWorks(page, academicYear);
     }
   }, [page, academicYear, searchParams]);
+
+  const handleViewDocument = (proofUrl: string) => {
+    const userConfirmation = window.confirm("You are being redirected to an external website. This application is not responsible for the content of external sites.");
+    if (userConfirmation) {
+      window.open(proofUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   const filteredWorks = goodWorks.filter(work => {
     const matchesSearch = searchTerm.trim() === "" ||
@@ -232,7 +256,14 @@ export default function GoodWorksPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="link" className="p-0 h-auto text-primary">View Details</Button>
+                      <Button 
+                        variant="link" 
+                        className="p-0 h-auto text-primary"
+                        onClick={() => work.proofUrl && handleViewDocument(work.proofUrl)}
+                        disabled={!work.proofUrl}
+                      >
+                        View Document
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -246,7 +277,7 @@ export default function GoodWorksPage() {
         </div>
         <div className="flex items-center justify-between border-t px-4 py-3 sm:px-6">
             <div className="text-sm text-muted-foreground">
-                Showing <span className="font-medium text-foreground">{(page - 1) * limit + 1}</span> to <span className="font-medium text-foreground">{Math.min(page * limit, total)}</span> of <span className="font-medium text-foreground">{total}</span> results
+                Showing <span className="font-medium text-foreground">{Math.min((page - 1) * limit + 1, total)}</span> to <span className="font-medium text-foreground">{Math.min(page * limit, total)}</span> of <span className="font-medium text-foreground">{total}</span> results
             </div>
             <nav aria-label="Pagination" className="isolate inline-flex -space-x-px rounded-lg shadow-sm">
                 <Button variant="outline" size="icon" className="rounded-r-none h-8 w-8" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
@@ -262,7 +293,7 @@ export default function GoodWorksPage() {
                   ))
                 }
 
-                <Button variant="outline" size="icon" className="rounded-l-none h-8 w-8" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                <Button variant="outline" size="icon" className="rounded-l-none h-8 w-8" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
                     <span className="material-symbols-outlined h-5 w-5"> chevron_right </span>
                 </Button>
             </nav>
