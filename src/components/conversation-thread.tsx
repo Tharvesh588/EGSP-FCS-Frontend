@@ -159,7 +159,7 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
 
     return (
         <div className="flex flex-col h-full bg-card">
-            <header className="p-4 border-b flex items-center justify-between gap-3">
+            <header className="p-4 border-b flex items-center justify-between gap-3 shrink-0">
                  <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" className="md:hidden" onClick={onBack}>
                         <ArrowLeft className="h-5 w-5" />
@@ -233,7 +233,7 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
                 )}
                  <div ref={messagesEndRef} />
             </div>
-             <div className="border-t bg-background/80 p-4">
+             <div className="border-t bg-background/80 p-4 shrink-0">
                 <form onSubmit={handleSendMessage} className="relative">
                      <Input
                         value={newMessage}
