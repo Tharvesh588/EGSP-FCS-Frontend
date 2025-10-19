@@ -112,7 +112,7 @@ export default function GoodWorksPage() {
           const errorJson = JSON.parse(errorText);
           throw new Error(errorJson.message || "An unknown server error occurred.");
         } catch (e) {
-          throw new Error(errorText);
+          throw new Error(errorText || `Server responded with status: ${response.status}`);
         }
       }
       
@@ -303,3 +303,5 @@ export default function GoodWorksPage() {
     </div>
   )
 }
+
+    
