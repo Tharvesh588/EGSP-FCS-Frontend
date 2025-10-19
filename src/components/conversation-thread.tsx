@@ -100,13 +100,16 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     }, [conversationId, toast]);
 
     useEffect(() => {
-        if (!socket) return;
+        if (!socket || !conversationId) return;
         
         const handleNewMessage = (msg: any) => {
             if (msg.conversationId === conversationId) {
-                setMessages(prev => {
-                    if(prev.some(m => m._id === msg._id)) return prev; // Avoid duplicates
-                    return [...prev, msg];
+                 setMessages(prev => {
+                    if (prev.some(m => m._id === msg._id)) {
+                        // If message with same ID exists, update it (e.g. from optimistic to confirmed)
+                        return prev.map(m => m._id === msg._id ? msg : m);
+                    }
+                    return [...prev, msg]; // Otherwise, add new message
                 });
             }
         };
@@ -143,10 +146,11 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         setNewMessage('');
         
+        const optimisticId = `optimistic-${Date.now()}`;
         const optimisticMessage: Message = {
-            _id: `optimistic-${Date.now()}`,
+            _id: optimisticId,
             sender: currentUserId,
-            senderSnapshot: { name: "You" },
+            senderSnapshot: { name: "You" }, // This should be replaced by actual user data
             type: 'neutral',
             content: { text },
             createdAt: new Date().toISOString(),
@@ -164,11 +168,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         socket.emit('message', payload, (response: any) => {
             if (response && response.error) {
                 toast({ variant: "destructive", title: "Error sending message", description: response.error });
-                setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
-            } else if (response && response.ok) {
-                // The 'message:new' event will update the UI with the confirmed message.
-                // We remove the optimistic message once the server confirms via the broadcast.
-                setMessages(prev => prev.map(msg => msg._id === optimisticMessage._id ? { ...msg, __optimistic: false } : msg));
+                setMessages(prev => prev.filter(msg => msg._id !== optimisticId));
             }
         });
     };
@@ -183,15 +183,14 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const otherParticipant = conversationDetails?.participants.find(p => p._id !== currentUserId);
 
     const renderMessages = () => {
-        const messageElements: JSX.Element[] = [];
         let lastDate: string | null = null;
 
-        messages.forEach((message) => {
+        return messages.map((message) => {
             const messageDate = new Date(message.createdAt).toDateString();
+            let dayDivider = null;
+
             if (lastDate !== messageDate) {
-                messageElements.push(
-                    <DayDivider key={`divider-${messageDate}`} date={message.createdAt} />
-                );
+                dayDivider = <DayDivider key={`divider-${messageDate}`} date={message.createdAt} />;
                 lastDate = messageDate;
             }
 
@@ -199,32 +198,33 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             const links = message.content.text.match(urlRegex);
             const firstLink = links ? links[0] : null;
 
-            messageElements.push(
-                <div key={message._id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
-                    {!isSender && (
-                        <Avatar className="h-8 w-8 self-end mb-1">
-                             <AvatarImage src={message.senderSnapshot?.profileImage} />
-                            <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) ?? '?'}</AvatarFallback>
-                        </Avatar>
-                    )}
-                    <div className={cn(
-                        "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative", 
-                        isSender 
-                            ? "bg-primary text-primary-foreground rounded-br-lg" 
-                            : "bg-muted rounded-bl-lg",
-                        message.__optimistic ? "opacity-60" : ""
-                    )}>
-                        <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
-                        {firstLink && <LinkPreviewCard url={firstLink} />}
-                        <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
-                           {format(parseISO(message.createdAt), 'p')}
+            return (
+                <Fragment key={message._id}>
+                    {dayDivider}
+                    <div className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                        {!isSender && (
+                            <Avatar className="h-8 w-8 self-end mb-1">
+                                <AvatarImage src={message.senderSnapshot?.profileImage} />
+                                <AvatarFallback>{message.senderSnapshot?.name?.charAt(0) ?? '?'}</AvatarFallback>
+                            </Avatar>
+                        )}
+                        <div className={cn(
+                            "max-w-xs md:max-w-md lg:max-w-2xl rounded-2xl px-4 py-2 flex flex-col group relative",
+                            isSender
+                                ? "bg-primary text-primary-foreground rounded-br-lg"
+                                : "bg-muted rounded-bl-lg",
+                            message.__optimistic ? "opacity-60" : ""
+                        )}>
+                            <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
+                            {firstLink && <LinkPreviewCard url={firstLink} />}
+                            <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
+                               {format(parseISO(message.createdAt), 'p')}
+                            </div>
                         </div>
                     </div>
-                </div>
+                </Fragment>
             );
         });
-
-        return messageElements;
     };
 
     return (
