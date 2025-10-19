@@ -194,23 +194,21 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const otherParticipant = conversationDetails?.participants.find(p => p._id !== currentUserId);
 
     const renderMessages = () => {
-        if (!messages.length) return null;
-
         const renderableItems: RenderableItem[] = [];
         let lastDate: string | null = null;
 
         messages.forEach(message => {
+            if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             if (lastDate !== messageDate) {
                 renderableItems.push({ type: 'divider', date: message.createdAt, id: `divider-${messageDate}` });
                 lastDate = messageDate;
             }
-            // The key for a message is its `_id`. For an optimistic message, this will be `optimistic-...`
             renderableItems.push({ type: 'message', message, id: message._id });
         });
 
-        return renderableItems.map((item) => {
-            switch (item.type) {
+        return renderableItems.map((item, index) => {
+             switch (item.type) {
                 case 'divider':
                     return <DayDivider key={item.id} date={item.date} />;
                 case 'message':
@@ -220,7 +218,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                     const firstLink = links ? links[0] : null;
 
                     return (
-                        <div key={item.id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                        <div key={item.id || `message-${index}`} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                             {!isSender && (
                                 <Avatar className="h-8 w-8 self-end mb-1">
                                      <AvatarImage src={message.senderSnapshot?.profileImage} />
