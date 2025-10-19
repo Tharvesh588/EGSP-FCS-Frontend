@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import { io, type Socket } from 'socket.io-client';
 import { LinkPreviewCard } from './link-preview';
+import { ArrowLeft } from 'lucide-react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -34,11 +35,12 @@ type Message = {
 type ConversationThreadProps = {
     conversationId: string;
     token: string | null;
+    onBack: () => void;
 };
 
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
-export function ConversationThread({ conversationId, token }: ConversationThreadProps) {
+export function ConversationThread({ conversationId, token, onBack }: ConversationThreadProps) {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -84,6 +86,7 @@ export function ConversationThread({ conversationId, token }: ConversationThread
     useEffect(() => {
         if (conversationId) {
             setIsLoading(true);
+            setMessages([]);
             fetchMessages();
         }
 
@@ -102,10 +105,7 @@ export function ConversationThread({ conversationId, token }: ConversationThread
             setMessages(prev => {
                 const optimisticMessage = prev.find(m => m.__optimistic && m.content.text === msg.content.text);
                 if (optimisticMessage) {
-                    // The incoming message 'msg' doesn't have an _id from the socket event.
-                    // We need to merge it with the optimistic one to keep the key.
-                    // The final _id will be corrected on the next full fetch, but this prevents key warnings.
-                    return prev.map(m => m._id === optimisticMessage._id ? { ...optimisticMessage, ...msg, __optimistic: false } : m);
+                    return prev.map(m => m._id === optimisticMessage._id ? { ...optimisticMessage, ...msg, _id: msg._id || optimisticMessage._id, __optimistic: false } : m);
                 }
                 return [...prev, msg];
             });
@@ -161,6 +161,9 @@ export function ConversationThread({ conversationId, token }: ConversationThread
         <div className="flex flex-col h-full bg-card">
             <header className="p-4 border-b flex items-center justify-between gap-3">
                  <div className="flex items-center gap-3">
+                    <Button variant="ghost" size="icon" className="md:hidden" onClick={onBack}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
                     <Avatar>
                         <AvatarFallback>C</AvatarFallback>
                     </Avatar>

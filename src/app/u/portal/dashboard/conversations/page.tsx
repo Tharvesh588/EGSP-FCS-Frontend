@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -9,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -77,7 +80,10 @@ export default function ConversationsPage() {
                     });
                     setConversations(sortedConversations);
                     if (sortedConversations.length > 0) {
-                        setSelectedConversation(sortedConversations[0]);
+                        // On desktop, select the first one by default.
+                        if (window.innerWidth >= 768) {
+                           setSelectedConversation(sortedConversations[0]);
+                        }
                     }
                 } else {
                     throw new Error(data.message || 'Failed to fetch conversations');
@@ -105,12 +111,17 @@ export default function ConversationsPage() {
 
     return (
       <div className="h-full flex flex-col">
-        <header className="px-4 py-6">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Conversations</h1>
-          <p className="text-sm text-muted-foreground">Review your recent conversations and messages.</p>
-        </header>
-        <div className="flex-1 grid grid-cols-[300px_1fr] gap-0 overflow-hidden h-[calc(100vh-150px)] border bg-card rounded-t-xl">
-          <aside className="border-r flex flex-col">
+        <div className={cn(
+            "grid w-full h-full",
+            selectedConversation ? "md:grid-cols-[300px_1fr]" : "md:grid-cols-[300px_1fr]"
+        )}>
+          <aside className={cn(
+              "border-r flex flex-col",
+              selectedConversation ? "hidden md:flex" : "flex"
+          )}>
+              <header className="p-4 border-b">
+                <h1 className="text-xl font-bold tracking-tight text-foreground">Conversations</h1>
+              </header>
               <div className="p-4 border-b">
                 <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4">search</span>
@@ -171,9 +182,17 @@ export default function ConversationsPage() {
                   )}
               </div>
           </aside>
-          <main className="flex flex-col h-full">
+          <main className={cn(
+              "flex flex-col h-full",
+              selectedConversation ? "flex" : "hidden md:flex"
+          )}>
               {selectedConversation ? (
-                  <ConversationThread key={selectedConversation._id} conversationId={selectedConversation._id} token={token} />
+                  <ConversationThread 
+                    key={selectedConversation._id} 
+                    conversationId={selectedConversation._id} 
+                    token={token} 
+                    onBack={() => setSelectedConversation(null)}
+                  />
               ) : (
                   <div className="flex items-center justify-center h-full">
                       <div className="text-center text-muted-foreground">
