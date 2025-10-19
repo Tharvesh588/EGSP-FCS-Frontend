@@ -101,7 +101,13 @@ export function ConversationThread({ conversationId, token }: ConversationThread
         });
 
         socket.on('message:new', (msg: Message) => {
-          setMessages(prev => [...prev.filter(m => !m.__optimistic), msg]);
+            setMessages(prev => {
+                const optimisticMessage = prev.find(m => m.__optimistic && m.content.text === msg.content.text);
+                if (optimisticMessage) {
+                    return prev.map(m => m._id === optimisticMessage._id ? { ...msg, _id: optimisticMessage._id, __optimistic: false } : m);
+                }
+                return [...prev, msg];
+            });
         });
 
         socket.on('connect_error', (err: any) => console.error('socket error', err.message));
@@ -124,7 +130,7 @@ export function ConversationThread({ conversationId, token }: ConversationThread
         setIsSending(true);
 
         const optimisticMessage: Message = {
-            _id: `optimistic-${Date.now()}`,
+            _id: `optimistic-${Date.now()}-${Math.random()}`,
             sender: currentUserId,
             senderSnapshot: { name: "You" },
             type: 'positive',
@@ -245,3 +251,5 @@ export function ConversationThread({ conversationId, token }: ConversationThread
         </div>
     );
 }
+
+    
