@@ -94,14 +94,14 @@ export default function GoodWorksPage() {
       limit: limit.toString(),
     });
     
-    if (currentYear) {
+    if (currentYear && currentYear !== 'all') {
       params.append('academicYear', currentYear);
     }
     if (currentStatus && currentStatus !== 'all') {
       params.append('status', currentStatus);
     }
 
-    let url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?${params.toString()}`;
+    let url = `${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?${params.toString()}`;
 
     try {
       const response = await fetch(url, {
@@ -164,10 +164,7 @@ export default function GoodWorksPage() {
       work.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (work.description && work.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Status filter is now handled by the API, but we keep this for search filtering
-    const matchesStatus = statusFilter === 'all' || work.status.toLowerCase() === statusFilter;
-
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
   const totalPages = Math.ceil(total / limit);
@@ -311,3 +308,5 @@ export default function GoodWorksPage() {
     </div>
   )
 }
+
+    
