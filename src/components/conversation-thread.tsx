@@ -69,14 +69,15 @@ type RenderableItem =
     | { type: 'divider'; id: string; date: string; }
     | { type: 'message'; id: string; message: Message; };
 
-
 export function ConversationThread({ conversationId, conversationDetails, socket, currentUserId, onBack }: ConversationThreadProps) {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isTyping, setIsTyping] = useState(false);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const scrollToBottom = (behavior: 'smooth' | 'auto' = 'auto') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
@@ -113,18 +114,20 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
                     const optimisticId = msg.__optimisticId;
-                    // If an optimistic message ID is present, find and replace it
                     if (optimisticId && prev.some(m => m.__optimisticId === optimisticId)) {
                         return prev.map(m => m.__optimisticId === optimisticId ? { ...msg, __optimistic: false } : m);
                     }
-                    
-                    // If it's a new message from someone else, just add it if not already present
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
-    
                     return prev;
                 });
+            }
+        };
+
+        const handleTyping = (data: { conversationId: string; isTyping: boolean }) => {
+            if (data.conversationId === conversationId) {
+                setIsTyping(data.isTyping);
             }
         };
         
@@ -136,16 +139,18 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         });
 
         socket.on('message:new', handleNewMessage);
+        socket.on('typing:status', handleTyping);
 
         return () => {
           socket.off('message:new', handleNewMessage);
+          socket.off('typing:status', handleTyping);
           socket.emit('leave', { conversationId });
         };
     }, [conversationId, socket, toast]);
     
     useEffect(() => {
         scrollToBottom('smooth');
-    }, [messages]);
+    }, [messages, isTyping]);
 
     useEffect(() => {
         if (!isLoading) {
@@ -153,10 +158,29 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         }
     }, [isLoading]);
 
+    const handleTypingChange = () => {
+        if (!socket) return;
+        
+        socket.emit('typing:start', { conversationId });
+
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit('typing:stop', { conversationId });
+        }, 3000); // Stop typing after 3 seconds of inactivity
+    };
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = newMessage.trim();
         if (!text || !currentUserId || !socket || !conversationDetails) return;
+        
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        socket.emit('typing:stop', { conversationId });
 
         const optimisticId = `optimistic-${Date.now()}`;
         const optimisticMessage: Message = {
@@ -194,6 +218,8 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendMessage(e as any);
+        } else {
+            handleTypingChange();
         }
     };
 
@@ -297,6 +323,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                  <div ref={messagesEndRef} />
             </div>
              <div className="border-t bg-background p-2 md:p-4 shrink-0">
+                {isTyping && <div className="text-xs text-muted-foreground px-4 pb-2 italic">{otherParticipant?.name} is typing...</div>}
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2 bg-muted rounded-full px-2">
                     <Button type="button" variant="ghost" size="icon" className="shrink-0">
                         <span className="material-symbols-outlined text-muted-foreground text-xl">add_circle</span>
@@ -324,3 +351,5 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
+
+    
