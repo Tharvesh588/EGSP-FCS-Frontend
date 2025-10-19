@@ -110,7 +110,7 @@ export default function ConversationsPage() {
     });
 
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full">
         <div className={cn(
             "grid w-full h-full",
             "md:grid-cols-[300px_1fr]"
@@ -180,7 +180,7 @@ export default function ConversationsPage() {
               </div>
           </aside>
           <main className={cn(
-              "flex flex-col h-full",
+              "flex flex-col",
               selectedConversation ? "flex" : "hidden md:flex"
           )}>
               {selectedConversation ? (

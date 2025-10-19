@@ -115,16 +115,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-        <SidebarNav role={user.role} />
-        <SidebarInset>
-            <Header user={user} />
-            <main className={cn(
-              "flex-1",
-              isConversationPage ? 'overflow-hidden' : 'overflow-auto p-4 md:p-6 lg:p-8'
-            )}>
-                {children}
-            </main>
-        </SidebarInset>
+      <SidebarNav role={user.role} />
+      <SidebarInset className="flex flex-col h-screen">
+        <Header user={user} />
+        <main
+          className={cn(
+            "flex-1",
+            isConversationPage
+              ? "overflow-hidden"
+              : "overflow-auto p-4 md:p-6 lg:p-8"
+          )}
+        >
+          {children}
+        </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }
