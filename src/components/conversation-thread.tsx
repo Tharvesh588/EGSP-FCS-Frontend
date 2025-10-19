@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import { io, type Socket } from 'socket.io-client';
+import { LinkPreviewCard } from './link-preview';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -35,6 +36,8 @@ type ConversationThreadProps = {
     token: string | null;
 };
 
+const urlRegex = /(https?:\/\/[^\s]+)/g;
+
 export function ConversationThread({ conversationId, token }: ConversationThreadProps) {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
@@ -52,15 +55,11 @@ export function ConversationThread({ conversationId, token }: ConversationThread
     };
 
     const fetchMessages = async () => {
-        if (!conversationId) {
+        if (!conversationId || !token) {
             setIsLoading(false);
             return;
         }
         
-        if (!token) {
-            if (isLoading) setIsLoading(false);
-            return;
-        }
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/messages?limit=100`, {
                 headers: { "Authorization": `Bearer ${token}` }
@@ -90,7 +89,6 @@ export function ConversationThread({ conversationId, token }: ConversationThread
 
         if (!conversationId || !token) return;
 
-        // connect
         const socket = io(API_BASE_URL, { auth: { token } });
         socketRef.current = socket;
 
@@ -104,7 +102,10 @@ export function ConversationThread({ conversationId, token }: ConversationThread
             setMessages(prev => {
                 const optimisticMessage = prev.find(m => m.__optimistic && m.content.text === msg.content.text);
                 if (optimisticMessage) {
-                    return prev.map(m => m._id === optimisticMessage._id ? { ...msg, _id: optimisticMessage._id, __optimistic: false } : m);
+                    // The incoming message 'msg' doesn't have an _id from the socket event.
+                    // We need to merge it with the optimistic one to keep the key.
+                    // The final _id will be corrected on the next full fetch, but this prevents key warnings.
+                    return prev.map(m => m._id === optimisticMessage._id ? { ...optimisticMessage, ...msg, __optimistic: false } : m);
                 }
                 return [...prev, msg];
             });
@@ -141,15 +142,12 @@ export function ConversationThread({ conversationId, token }: ConversationThread
         setMessages(prev => [...prev, optimisticMessage]);
         setNewMessage('');
 
-
-        // prefer socket
         socketRef.current?.emit('message', { conversationId, text }, (ack: any) => {
           if (ack?.error) {
             console.error('socket send error', ack.error);
             toast({ variant: "destructive", title: "Error sending message", description: ack.error });
             setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
           }
-          // On success, the server will emit message:new which will update the UI
         });
 
         setIsSending(false);
@@ -199,6 +197,9 @@ export function ConversationThread({ conversationId, token }: ConversationThread
                 ) : (
                     filteredMessages.map(message => {
                         const isSender = message.sender === currentUserId;
+                        const links = message.content.text.match(urlRegex);
+                        const firstLink = links ? links[0] : null;
+
                         return (
                             <div key={message._id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                                 {!isSender && (
@@ -207,12 +208,13 @@ export function ConversationThread({ conversationId, token }: ConversationThread
                                     </Avatar>
                                 )}
                                 <div className={cn(
-                                    "max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-2.5", 
+                                    "max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-2.5 flex flex-col", 
                                     isSender 
                                         ? "bg-primary text-primary-foreground rounded-br-none" 
                                         : "bg-muted rounded-bl-none"
                                 )}>
-                                    <p className="text-sm">{message.content.text}</p>
+                                    <p className="text-sm break-words">{message.content.text}</p>
+                                    {firstLink && <LinkPreviewCard url={firstLink} />}
                                     <p className="text-right text-xs opacity-70 mt-1.5">
                                         {format(new Date(message.createdAt), 'p')}
                                     </p>
@@ -251,5 +253,3 @@ export function ConversationThread({ conversationId, token }: ConversationThread
         </div>
     );
 }
-
-    
