@@ -113,10 +113,11 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: Message) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
-                    const optimisticId = msg.__optimisticId;
-                    if (optimisticId && prev.some(m => m.__optimisticId === optimisticId)) {
-                        return prev.map(m => m.__optimisticId === optimisticId ? { ...msg, __optimistic: false } : m);
+                    // Replace optimistic message with the real one from the server
+                    if (msg.__optimisticId && prev.some(m => m.__optimisticId === msg.__optimisticId)) {
+                        return prev.map(m => m.__optimisticId === msg.__optimisticId ? { ...msg, __optimistic: false } : m);
                     }
+                    // Add new message if it doesn't exist
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
