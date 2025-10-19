@@ -86,7 +86,7 @@ export function ConversationThread({ conversationId, conversationDetails, token,
             if (messagesData.messages) {
                 const sortedMessages = messagesData.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                 setMessages(sortedMessages);
-            } else if (messagesData.success && Array.isArray(messagesData.messages) && messagesData.messages.length === 0) {
+            } else if (messagesData.success === false || (Array.isArray(messagesData.messages) && messagesData.messages.length === 0)) {
                 setMessages([]);
             } else {
                 throw new Error(messagesData.message || 'Failed to parse messages');
@@ -194,7 +194,7 @@ export function ConversationThread({ conversationId, conversationDetails, token,
                     </Button>
                     <Avatar>
                         <AvatarImage src={otherParticipant?.profileImage} />
-                        <AvatarFallback>{otherParticipant?.name ? otherParticipant.name.charAt(0) : '?'}</AvatarFallback>
+                        <AvatarFallback>{otherParticipant?.name?.charAt(0) ?? '?'}</AvatarFallback>
                     </Avatar>
                     <div>
                         <p className="font-semibold">{otherParticipant?.name || 'Conversation'}</p>
