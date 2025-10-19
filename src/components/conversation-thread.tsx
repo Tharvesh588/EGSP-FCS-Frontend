@@ -121,9 +121,11 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: Message) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
+                    // This logic handles replacing the optimistic message with the real one from the server
                     if (msg.tempId && prev.some(m => m.tempId === msg.tempId)) {
                         return prev.map(m => m.tempId === msg.tempId ? { ...msg, isPending: false, error: undefined } : m);
                     }
+                    // This handles receiving a new message from the other user
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
@@ -159,7 +161,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             scrollToBottom('auto');
         }
     }, [isLoading]);
-
+    
     const handleTypingChange = () => {
         if (!socket || !socket.connected) return;
 
@@ -171,7 +173,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         typingTimeoutRef.current = setTimeout(() => {
             socket.emit('typing', { conversationId, typing: false });
-        }, 3000); // Stop typing after 3 seconds of inactivity
+        }, 3000);
     };
     
     const handleSendMessage = async (e: React.FormEvent, retryMessage?: Message) => {
@@ -248,7 +250,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         return items.map((item) => {
             if (item.type === 'divider') {
-                return <DayDivider key={item.id} date={item.date} />;
+                return <DayDivider key={`divider-${item.id}`} date={item.date} />;
             }
 
             const { message } = item;
@@ -259,7 +261,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             const firstLink = links ? links[0] : null;
 
             return (
-                <div key={item.id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                <div key={`message-${item.id}`} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                     {!isSender && (
                         <Avatar className="h-8 w-8 self-end mb-1">
                              <AvatarImage src={message.senderSnapshot?.profileImage} />
@@ -365,5 +367,3 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
-    
