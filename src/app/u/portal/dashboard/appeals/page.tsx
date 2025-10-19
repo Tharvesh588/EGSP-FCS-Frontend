@@ -148,7 +148,7 @@ export default function AppealsPage() {
 
     const socket = io(API_BASE_URL, {
       auth: { token },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
     });
     socketRef.current = socket;
 
@@ -162,7 +162,14 @@ export default function AppealsPage() {
         fetchAppealsAndRemarks();
     });
 
-    socket.on('connect_error', (err) => console.error('Socket error:', err.message));
+    socket.on('connect_error', (err) => {
+        console.error('Socket error:', err.message)
+        toast({
+            title: "Connection Issue",
+            description: "Could not connect to real-time server. Retrying...",
+            variant: "destructive"
+        });
+    });
 
     return () => {
         socket.disconnect();
