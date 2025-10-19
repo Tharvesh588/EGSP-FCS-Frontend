@@ -1,4 +1,4 @@
-// This file is the new location for src/app/(app)/admin/appeals/page.tsx
+
 "use client"
 
 import {
@@ -13,28 +13,28 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { io, type Socket } from "socket.io-client"
 import { Badge } from "@/components/ui/badge"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
 type Appeal = {
-  _id: string;
+  _id: string; // This is the credit ID
   faculty: {
     _id: string;
     name: string;
     department: string;
   };
-  credit: {
-    _id: string;
-    title: string;
-    notes: string;
+  title: string;
+  notes: string; // Original notes of the negative credit
+  appeal: {
+    by: string;
+    reason: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    createdAt: string;
   };
-  reason: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  createdAt: string;
+  createdAt: string; // Credit creation date
 };
 
 
@@ -42,53 +42,40 @@ export default function AppealReviewPage() {
   const { toast } = useToast();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
-  const socketRef = useRef<Socket | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'accepted' | 'rejected' | 'all'>('pending');
   const [comments, setComments] = useState("");
 
-  const fetchAppeals = async () => {
+  const fetchAppeals = async (status: string) => {
+    setIsLoading(true);
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+        toast({ variant: "destructive", title: "Authentication Error" });
+        setIsLoading(false);
+        return;
+    }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive?status=appealed`, {
+      const params = new URLSearchParams({
+        status: status === 'all' ? '' : status,
+        sort: '-appeal.createdAt',
+        limit: '100' // Fetch more to demonstrate filtering
+      });
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative/appeals?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.message || "Server returned an error");
-        } catch (e) {
-          throw new Error(`Failed to fetch appeals. The server responded with an error: ${response.status}.`);
-        }
+        throw new Error(JSON.parse(errorText).message || `Failed to fetch appeals. Status: ${response.status}`);
       }
 
       const data = await response.json();
       if (data.success) {
-        const fetchedAppeals = data.items
-          .filter((item: any) => item.status === 'appealed' && item.appeal) // Ensure it has an appeal object
-          .map((item: any) => ({
-            _id: item._id,
-            faculty: {
-              _id: item.faculty._id,
-              name: item.faculty.name,
-              department: item.faculty.department,
-            },
-            credit: {
-              _id: item._id,
-              title: item.title,
-              notes: item.notes,
-            },
-            reason: item.appeal?.reason || 'No reason provided',
-            status: item.appeal?.status || 'pending',
-            createdAt: item.appeal?.createdAt || item.createdAt,
-          }));
-
-        setAppeals(fetchedAppeals);
-        if (fetchedAppeals.length > 0) {
-          const currentSelection = fetchedAppeals.find((a: Appeal) => a._id === selectedAppeal?._id);
-          setSelectedAppeal(currentSelection || fetchedAppeals[0]);
+        setAppeals(data.items);
+        if (data.items.length > 0) {
+          const currentSelection = data.items.find((a: Appeal) => a._id === selectedAppeal?._id);
+          setSelectedAppeal(currentSelection || data.items[0]);
         } else {
           setSelectedAppeal(null);
         }
@@ -97,45 +84,15 @@ export default function AppealReviewPage() {
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error fetching appeals', description: err.message });
+      setAppeals([]);
+    } finally {
+        setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    fetchAppeals();
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    const socket = io(API_BASE_URL, {
-        auth: { token },
-        transports: ['websocket', 'polling']
-    });
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-        console.log('Admin socket connected for appeals');
-    });
-
-    socket.on('admin:appealNotification', (newAppeal: any) => {
-        toast({
-            title: "New Appeal Submitted",
-            description: `${newAppeal.facultySnapshot.name} has submitted an appeal for "${newAppeal.title}".`,
-        });
-        fetchAppeals();
-    });
-    
-    socket.on('connect_error', (err) => {
-        console.error('Socket connection error:', err.message);
-        toast({
-            title: "Connection Issue",
-            description: "Could not connect to real-time server. Retrying...",
-            variant: "destructive"
-        });
-    });
-
-    return () => {
-        socket.disconnect();
-    };
-  }, [toast]);
+    fetchAppeals(statusFilter);
+  }, [statusFilter, toast]);
   
   const handleDecision = async (decision: 'accepted' | 'rejected') => {
     if (!selectedAppeal) return;
@@ -143,7 +100,7 @@ export default function AppealReviewPage() {
     if (!token) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive/${selectedAppeal.credit._id}/status`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative/${selectedAppeal._id}/appeal`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -151,7 +108,7 @@ export default function AppealReviewPage() {
             },
             body: JSON.stringify({ 
                 status: decision, 
-                notes: comments || `Appeal ${decision}`
+                notes: comments || `Appeal decision: ${decision}`
             })
         });
 
@@ -163,7 +120,7 @@ export default function AppealReviewPage() {
         toast({ title: "Decision Submitted", description: `The appeal has been marked as ${decision}.`});
         
         // Refetch to get the latest state
-        fetchAppeals();
+        fetchAppeals(statusFilter);
         setComments("");
 
     } catch (error: any) {
@@ -171,7 +128,7 @@ export default function AppealReviewPage() {
     }
   }
   
-  const getStatusColor = (status: Appeal['status']) => {
+  const getStatusColor = (status: Appeal['appeal']['status']) => {
       switch (status) {
           case 'accepted': return 'bg-green-100 text-green-800';
           case 'rejected': return 'bg-red-100 text-red-800';
@@ -191,9 +148,17 @@ export default function AppealReviewPage() {
           </p>
         </div>
         <div className="bg-card p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-foreground mb-4">
-            Pending Appeals ({appeals.filter(a => a.status === 'pending').length})
-          </h3>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-foreground">
+                    {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Appeals ({appeals.length})
+                </h3>
+                <div className="flex items-center gap-2">
+                    <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('pending')}>Pending</Button>
+                    <Button variant={statusFilter === 'accepted' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('accepted')}>Accepted</Button>
+                    <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('rejected')}>Rejected</Button>
+                    <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>All</Button>
+                </div>
+            </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -208,34 +173,40 @@ export default function AppealReviewPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {appeals.map((appeal) => (
-                  <TableRow 
-                    key={appeal._id} 
-                    className={`cursor-pointer ${selectedAppeal?._id === appeal._id ? "bg-primary/10" : ""}`}
-                    onClick={() => setSelectedAppeal(appeal)}
-                  >
-                    <TableCell>
-                      <div className="font-medium text-foreground">
-                        {appeal.faculty.name}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {appeal.faculty.department}
-                      </div>
-                    </TableCell>
-                    <TableCell>{appeal.credit.title}</TableCell>
-                    <TableCell>{new Date(appeal.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(appeal.status)}>
-                        {appeal.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="link" className="text-primary">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {isLoading ? (
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">Loading appeals...</TableCell></TableRow>
+                ) : appeals.length > 0 ? (
+                    appeals.map((appeal) => (
+                    <TableRow 
+                        key={appeal._id} 
+                        className={`cursor-pointer ${selectedAppeal?._id === appeal._id ? "bg-primary/10" : ""}`}
+                        onClick={() => setSelectedAppeal(appeal)}
+                    >
+                        <TableCell>
+                        <div className="font-medium text-foreground">
+                            {appeal.faculty.name}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                            {appeal.faculty.department}
+                        </div>
+                        </TableCell>
+                        <TableCell>{appeal.title}</TableCell>
+                        <TableCell>{new Date(appeal.appeal.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                        <Badge className={getStatusColor(appeal.appeal.status)}>
+                            {appeal.appeal.status}
+                        </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                        <Button variant="link" className="text-primary">
+                            View
+                        </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">No appeals found for this filter.</TableCell></TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -251,7 +222,7 @@ export default function AppealReviewPage() {
                   {selectedAppeal.faculty.name}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Appeal for: {selectedAppeal.credit.title} ({new Date(selectedAppeal.createdAt).toLocaleDateString()})
+                  Appeal for: {selectedAppeal.title} ({new Date(selectedAppeal.appeal.createdAt).toLocaleDateString()})
                 </p>
               </div>
             </div>
@@ -263,12 +234,12 @@ export default function AppealReviewPage() {
                 </TabsList>
                 <TabsContent value="remark" className="py-5">
                     <p className="text-sm text-muted-foreground italic">
-                      "{selectedAppeal.credit.notes}"
+                      "{selectedAppeal.notes}"
                     </p>
                 </TabsContent>
                 <TabsContent value="evidence" className="py-5">
                    <p className="text-sm text-muted-foreground italic">
-                     "{selectedAppeal.reason}"
+                     "{selectedAppeal.appeal.reason}"
                   </p>
                    {/* This should ideally link to the proof of the original credit */}
                    <Button variant="link" className="p-0 h-auto">View Original Document</Button>
@@ -293,32 +264,39 @@ export default function AppealReviewPage() {
                         rows={3}
                         value={comments}
                         onChange={(e) => setComments(e.target.value)}
+                        disabled={selectedAppeal.appeal.status !== 'pending'}
                     />
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <Button
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    type="button"
-                    onClick={() => handleDecision('accepted')}
-                  >
-                    Accept Appeal
-                  </Button>
-                  <Button
-                    className="w-full"
-                    variant="destructive"
-                    type="button"
-                    onClick={() => handleDecision('rejected')}
-                  >
-                    Reject Appeal
-                  </Button>
-                </div>
+                {selectedAppeal.appeal.status === 'pending' ? (
+                    <div className="flex items-center gap-4">
+                    <Button
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        type="button"
+                        onClick={() => handleDecision('accepted')}
+                    >
+                        Accept Appeal
+                    </Button>
+                    <Button
+                        className="w-full"
+                        variant="destructive"
+                        type="button"
+                        onClick={() => handleDecision('rejected')}
+                    >
+                        Reject Appeal
+                    </Button>
+                    </div>
+                ) : (
+                    <div className="text-center text-muted-foreground p-4 border rounded-md">
+                        This appeal has already been {selectedAppeal.appeal.status}.
+                    </div>
+                )}
               </div>
             </div>
           </div>
           ) : (
             <div className="bg-card p-6 rounded-lg shadow-sm text-center text-muted-foreground">
-                <p>Select an appeal to review.</p>
+                <p>{isLoading ? "Loading..." : "Select an appeal to review."}</p>
             </div>
           )}
         </div>
