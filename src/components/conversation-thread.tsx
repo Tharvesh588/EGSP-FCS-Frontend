@@ -113,7 +113,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
                     // If an optimistic message ID is present, find and replace it
-                    if (msg.__optimisticId) {
+                    if (msg.__optimisticId && prev.some(m => m._id === msg.__optimisticId)) {
                         return prev.map(m => m._id === msg.__optimisticId ? { ...msg, __optimistic: false } : m);
                     }
                     
@@ -166,7 +166,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             content: { text },
             createdAt: new Date().toISOString(),
             __optimistic: true,
-            __optimisticId: optimisticId, // Important for replacement
+            __optimisticId: optimisticId,
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
@@ -215,9 +215,10 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             renderableItems.push({ type: 'message', id: message._id, message });
         });
 
-        return renderableItems.map((item) => {
+        return renderableItems.map((item, index) => {
+            const key = `${item.id}-${index}`;
             if (item.type === 'divider') {
-                return <DayDivider key={item.id} date={item.date} />;
+                return <DayDivider key={key} date={item.date} />;
             }
 
             const { message } = item;
@@ -228,7 +229,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             const firstLink = links ? links[0] : null;
 
             return (
-                <div key={item.id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                <div key={key} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                     {!isSender && (
                         <Avatar className="h-8 w-8 self-end mb-1">
                              <AvatarImage src={message.senderSnapshot?.profileImage} />
@@ -322,3 +323,5 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
+
+    
