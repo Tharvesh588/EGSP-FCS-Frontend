@@ -1,15 +1,17 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { ConversationThread } from '@/components/conversation-thread';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import { io, type Socket } from 'socket.io-client';
+
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -43,8 +45,10 @@ export default function ConversationsPage() {
     const searchParams = useSearchParams();
     const currentUserId = searchParams.get('uid');
     const [token, setToken] = useState<string | null>(null);
+    const socketRef = useRef<Socket | null>(null);
 
     const formatTimestamp = (dateString: string) => {
+        if (!dateString) return '';
         const date = new Date(dateString);
         if (isToday(date)) {
             return format(date, 'p'); // e.g., 4:30 PM
@@ -80,13 +84,13 @@ export default function ConversationsPage() {
 
                 if (data.conversations) {
                      const sortedConversations = data.conversations.sort((a: Conversation, b: Conversation) => {
-                       const dateA = new Date(a.updatedAt).getTime();
-                       const dateB = new Date(b.updatedAt).getTime();
+                       const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                       const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
                        return dateB - dateA;
                     });
                     setConversations(sortedConversations);
                     if (sortedConversations.length > 0) {
-                        if (window.innerWidth >= 768) {
+                        if (window.innerWidth >= 768 && !selectedConversation) {
                            setSelectedConversation(sortedConversations[0]);
                         }
                     }
@@ -104,14 +108,53 @@ export default function ConversationsPage() {
         if(currentUserId) {
             fetchConversations();
         }
-    }, [toast, currentUserId]);
+    }, [toast, currentUserId, selectedConversation]);
+
+     useEffect(() => {
+        if (!token) return;
+
+        const socket = io(API_BASE_URL, { auth: { token } });
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+          conversations.forEach(convo => socket.emit('join', { conversationId: convo._id }));
+        });
+
+        socket.on('message:new', (newMessage: any) => {
+            setConversations(prevConvos => {
+                const newConvos = [...prevConvos];
+                const convoIndex = newConvos.findIndex(c => c._id === newMessage.conversationId);
+                
+                if (convoIndex > -1) {
+                    const updatedConvo = {
+                        ...newConvos[convoIndex],
+                        lastMessage: {
+                            text: newMessage.content.text,
+                            sender: newMessage.sender,
+                            createdAt: newMessage.createdAt,
+                        },
+                        updatedAt: newMessage.createdAt,
+                    };
+                    
+                    newConvos.splice(convoIndex, 1);
+                    newConvos.unshift(updatedConvo);
+                }
+                return newConvos;
+            });
+        });
+
+        return () => {
+          socket.disconnect();
+        };
+
+    }, [token, conversations]);
 
     const filteredConversations = conversations.filter(convo => {
         const term = searchTerm.toLowerCase();
         const otherParticipant = convo.participants.find(p => p._id !== currentUserId);
         return (
             (convo.credit?.title?.toLowerCase() ?? '').includes(term) ||
-            (otherParticipant && otherParticipant.name.toLowerCase().includes(term)) ||
+            (otherParticipant && otherParticipant.name?.toLowerCase()?.includes(term)) ||
             (convo.lastMessage?.text && convo.lastMessage.text.toLowerCase().includes(term))
         );
     });
