@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, parseISO } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import type { Socket } from 'socket.io-client';
 import { LinkPreviewCard } from './link-preview';
@@ -45,7 +45,7 @@ type ConversationDetails = {
 
 type ConversationThreadProps = {
     conversationId: string;
-    conversationDetails: ConversationDetails | null;
+    conversationDetails: ConversationDetails;
     socket: Socket | null;
     currentUserId: string | null;
     onBack: () => void;
@@ -54,7 +54,7 @@ type ConversationThreadProps = {
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 function DayDivider({ date }: { date: string }) {
-    const formattedDate = format(new Date(date), 'MMMM d, yyyy');
+    const formattedDate = format(parseISO(date), 'MMMM d, yyyy');
     return (
         <div className="relative text-center my-4">
             <hr className="absolute top-1/2 left-0 w-full border-border" />
@@ -68,7 +68,6 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
-    const [isSending, setIsSending] = useState(false);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -76,72 +75,62 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         messagesEndRef.current?.scrollIntoView({ behavior });
     };
 
-    const fetchMessages = async () => {
-        const token = localStorage.getItem("token");
-        if (!conversationId || !token) {
-            setIsLoading(false);
-            return;
-        }
-        
-        setIsLoading(true);
-        try {
-            const messagesResponse = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/messages?limit=100`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (!messagesResponse.ok) {
-                 const errorData = await messagesResponse.json().catch(() => ({ message: "Failed to fetch messages from server." }));
-                 throw new Error(errorData.message);
-            }
-            const messagesData = await messagesResponse.json();
-            if (messagesData.messages) {
-                const sortedMessages = messagesData.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                setMessages(sortedMessages);
-            } else {
-                setMessages([]);
-            }
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Error fetching messages", description: error.message });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
     useEffect(() => {
-        fetchMessages();
+        const fetchMessages = async () => {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+            
+            setIsLoading(true);
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/messages?limit=100`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Failed to fetch messages');
+                const data = await res.json();
+                const sortedMessages = data.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                setMessages(sortedMessages);
+            } catch (error: any) {
+                toast({ variant: "destructive", title: "Error", description: error.message });
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
+        fetchMessages();
+    }, [conversationId, toast]);
+
+    useEffect(() => {
         if (!socket) return;
         
-        const handleNewMessage = (msg: Message) => {
-            if (msg.sender !== currentUserId) {
-                setMessages(prev => [...prev, msg]);
+        const handleNewMessage = (msg: any) => {
+            if (msg.conversationId === conversationId) {
+                setMessages(prev => {
+                    if(prev.some(m => m._id === msg._id)) return prev; // Avoid duplicates
+                    return [...prev, msg];
+                });
             }
         };
         
-        const handleConnect = () => {
-            socket.emit('join', { conversationId });
-        };
-        
-        if (socket.connected) {
-           handleConnect();
-        } else {
-           socket.on('connect', handleConnect);
-        }
+        socket.emit('join', { conversationId }, (ack: { ok: boolean; error?: string }) => {
+            if (!ack || !ack.ok) {
+                console.error('Failed to join conversation room:', ack?.error);
+                toast({ variant: 'destructive', title: 'Chat Error', description: 'Could not connect to this conversation.' });
+            }
+        });
 
         socket.on('message:new', handleNewMessage);
 
         return () => {
-          socket.off('connect', handleConnect);
           socket.off('message:new', handleNewMessage);
           socket.emit('leave', { conversationId });
         };
-    }, [conversationId, socket, currentUserId]);
+    }, [conversationId, socket, toast]);
     
     useEffect(() => {
         scrollToBottom('smooth');
     }, [messages]);
 
     useEffect(() => {
-        // Scroll to bottom on initial load after messages are fetched
         if (!isLoading) {
             scrollToBottom('auto');
         }
@@ -152,13 +141,12 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const text = newMessage.trim();
         if (!text || !currentUserId || !socket || !conversationDetails) return;
 
-        setIsSending(true);
         setNewMessage('');
         
         const optimisticMessage: Message = {
             _id: `optimistic-${Date.now()}`,
             sender: currentUserId,
-            senderSnapshot: { name: "You", profileImage: conversationDetails?.participants.find(p => p._id === currentUserId)?.profileImage },
+            senderSnapshot: { name: "You" },
             type: 'neutral',
             content: { text },
             createdAt: new Date().toISOString(),
@@ -174,17 +162,13 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         };
         
         socket.emit('message', payload, (response: any) => {
-            setIsSending(false);
             if (response && response.error) {
                 toast({ variant: "destructive", title: "Error sending message", description: response.error });
                 setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
             } else if (response && response.ok) {
-                // REST is now the fallback, so we depend on the 'message:new' event
-                // to update the UI with the confirmed message.
-                // We'll replace the optimistic message when the new one comes in.
-                // For now, we can just remove it and let the 'message:new' handler add the real one.
-                // A better implementation might match on a nonce.
-                setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
+                // The 'message:new' event will update the UI with the confirmed message.
+                // We remove the optimistic message once the server confirms via the broadcast.
+                setMessages(prev => prev.map(msg => msg._id === optimisticMessage._id ? { ...msg, __optimistic: false } : msg));
             }
         });
     };
@@ -233,7 +217,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                         <p className="text-sm break-words whitespace-pre-wrap">{message.content.text}</p>
                         {firstLink && <LinkPreviewCard url={firstLink} />}
                         <div className="text-right text-xs mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: isSender ? 'hsl(var(--primary-foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.7)'}}>
-                           {format(new Date(message.createdAt), 'p')}
+                           {format(parseISO(message.createdAt), 'p')}
                         </div>
                     </div>
                 </div>
@@ -293,7 +277,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
-                        disabled={isSending || isLoading}
+                        disabled={isLoading || !socket?.connected}
                         autoComplete="off"
                         maxRows={5}
                         className="w-full resize-none bg-transparent border-none focus-visible:ring-0 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
@@ -302,7 +286,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                         type="submit" 
                         size="icon" 
                         className="shrink-0 rounded-full h-8 w-8" 
-                        disabled={isSending || isLoading || !newMessage.trim()}
+                        disabled={isLoading || !socket?.connected || !newMessage.trim()}
                     >
                         <Send className="h-4 w-4" />
                     </Button>

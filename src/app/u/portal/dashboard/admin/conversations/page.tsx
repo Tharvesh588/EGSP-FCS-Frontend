@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ConversationThread } from '@/components/conversation-thread';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { io, type Socket } from 'socket.io-client';
@@ -49,7 +49,7 @@ export default function ConversationsPage() {
 
     const formatTimestamp = (dateString: string) => {
         if (!dateString) return '';
-        const date = new Date(dateString);
+        const date = parseISO(dateString);
         if (isToday(date)) {
             return format(date, 'p'); // e.g., 4:30 PM
         }
@@ -61,7 +61,9 @@ export default function ConversationsPage() {
 
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
-        setToken(storedToken);
+        if(storedToken) {
+            setToken(storedToken);
+        }
 
         const fetchConversations = async () => {
             setIsLoading(true);
@@ -113,41 +115,59 @@ export default function ConversationsPage() {
      useEffect(() => {
         if (!token) return;
 
-        const socket = io(API_BASE_URL, { auth: { token } });
+        // Initialize socket connection
+        const socket = io(API_BASE_URL, {
+            auth: { token },
+            transports: ['websocket'] 
+        });
         socketRef.current = socket;
 
         socket.on('connect', () => {
-          conversations.forEach(convo => socket.emit('join', { conversationId: convo._id }));
+          console.log('Socket connected:', socket.id);
+        });
+        
+        socket.on('connect_error', (err) => {
+            console.error('Socket connection error:', err.message);
+            toast({ variant: 'destructive', title: 'Chat connection failed', description: 'Could not connect to the real-time server.' });
         });
 
-        socket.on('message:new', (newMessage: any) => {
+        const handleNewMessage = (newMessage: any) => {
             setConversations(prevConvos => {
-                const newConvos = [...prevConvos];
-                const convoIndex = newConvos.findIndex(c => c._id === newMessage.conversationId);
+                const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
+                if (convoIndex === -1) return prevConvos;
+
+                const updatedConvo = {
+                    ...prevConvos[convoIndex],
+                    lastMessage: {
+                        text: newMessage.content.text,
+                        sender: newMessage.sender,
+                        createdAt: newMessage.createdAt,
+                    },
+                    updatedAt: newMessage.createdAt,
+                };
                 
-                if (convoIndex > -1) {
-                    const updatedConvo = {
-                        ...newConvos[convoIndex],
-                        lastMessage: {
-                            text: newMessage.content.text,
-                            sender: newMessage.sender,
-                            createdAt: newMessage.createdAt,
-                        },
-                        updatedAt: newMessage.createdAt,
-                    };
-                    
-                    newConvos.splice(convoIndex, 1);
-                    newConvos.unshift(updatedConvo);
-                }
+                const newConvos = [...prevConvos];
+                newConvos.splice(convoIndex, 1);
+                newConvos.unshift(updatedConvo);
                 return newConvos;
             });
-        });
 
-        return () => {
-          socket.disconnect();
+            if (selectedConversation?._id === newMessage.conversationId) {
+                // This event will be handled inside ConversationThread
+            }
         };
 
-    }, [token, conversations]);
+        socket.on('message:new', handleNewMessage);
+
+        return () => {
+            socket.off('message:new', handleNewMessage);
+            socket.off('connect');
+            socket.off('connect_error');
+            socket.disconnect();
+            socketRef.current = null;
+        };
+    }, [token, selectedConversation?._id]);
+
 
     const filteredConversations = conversations.filter(convo => {
         const term = searchTerm.toLowerCase();
