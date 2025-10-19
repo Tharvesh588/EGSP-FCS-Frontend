@@ -94,7 +94,7 @@ export function Header({ user }: { user: User }) {
             }
 
             try {
-                const url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=50`;
+                const url = `${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?limit=50`;
                 const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
                 const data = await response.json();
                 
