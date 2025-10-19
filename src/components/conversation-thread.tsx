@@ -194,7 +194,7 @@ export function ConversationThread({ conversationId, conversationDetails, token,
                     </Button>
                     <Avatar>
                         <AvatarImage src={otherParticipant?.profileImage} />
-                        <AvatarFallback>{otherParticipant ? otherParticipant.name.charAt(0) : '?'}</AvatarFallback>
+                        <AvatarFallback>{otherParticipant?.name ? otherParticipant.name.charAt(0) : '?'}</AvatarFallback>
                     </Avatar>
                     <div>
                         <p className="font-semibold">{otherParticipant?.name || 'Conversation'}</p>
