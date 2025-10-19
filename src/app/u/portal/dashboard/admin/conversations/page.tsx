@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { ConversationThread } from '@/components/conversation-thread';
@@ -108,7 +108,7 @@ export default function ConversationsPage() {
         if(currentUserId) {
             fetchConversations();
         }
-    }, [toast, currentUserId, selectedConversation]);
+    }, [toast, currentUserId]);
 
      useEffect(() => {
         if (!token) return;
@@ -238,7 +238,7 @@ export default function ConversationsPage() {
                     key={selectedConversation._id}
                     conversationId={selectedConversation._id}
                     conversationDetails={selectedConversation}
-                    token={token}
+                    socket={socketRef.current}
                     currentUserId={currentUserId}
                     onBack={() => setSelectedConversation(null)}
                   />

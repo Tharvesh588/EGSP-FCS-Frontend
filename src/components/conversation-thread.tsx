@@ -43,7 +43,7 @@ type ConversationDetails = {
 type ConversationThreadProps = {
     conversationId: string;
     conversationDetails: ConversationDetails | null;
-    token: string | null;
+    socket: Socket | null;
     currentUserId: string | null;
     onBack: () => void;
 };
@@ -60,7 +60,7 @@ function DayDivider({ date }: { date: string }) {
     );
 }
 
-export function ConversationThread({ conversationId, conversationDetails, token, currentUserId, onBack }: ConversationThreadProps) {
+export function ConversationThread({ conversationId, conversationDetails, socket, currentUserId, onBack }: ConversationThreadProps) {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -68,13 +68,13 @@ export function ConversationThread({ conversationId, conversationDetails, token,
     const [isSending, setIsSending] = useState(false);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const socketRef = useRef<Socket | null>(null);
 
     const scrollToBottom = (behavior: 'smooth' | 'auto' = 'auto') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     };
 
     const fetchMessages = async () => {
+        const token = localStorage.getItem("token");
         if (!conversationId || !token) {
             setIsLoading(false);
             return;
@@ -106,28 +106,22 @@ export function ConversationThread({ conversationId, conversationDetails, token,
     useEffect(() => {
         fetchMessages();
 
-        if (!conversationId || !token) return;
-
-        const socket = io(API_BASE_URL, { auth: { token } });
-        socketRef.current = socket;
-
-        socket.on('connect', () => {
-          socket.emit('join', { conversationId });
-        });
-
-        socket.on('message:new', (msg: Message) => {
+        if (!socket) return;
+        
+        const handleNewMessage = (msg: Message) => {
             if (msg.sender !== currentUserId) {
                 setMessages(prev => [...prev, msg]);
             }
-        });
+        };
 
-        socket.on('connect_error', (err: any) => console.error('socket error', err.message));
+        socket.on('message:new', handleNewMessage);
+        socket.emit('join', { conversationId });
 
         return () => {
-          socket.disconnect();
-          socketRef.current = null;
+          socket.off('message:new', handleNewMessage);
+          socket.emit('leave', { conversationId });
         };
-    }, [conversationId, token, currentUserId]);
+    }, [conversationId, socket, currentUserId]);
     
     useEffect(() => {
         scrollToBottom('smooth');
@@ -143,7 +137,7 @@ export function ConversationThread({ conversationId, conversationDetails, token,
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = newMessage.trim();
-        if (!text || !currentUserId || !socketRef.current || !conversationDetails) return;
+        if (!text || !currentUserId || !socket || !conversationDetails) return;
 
         setIsSending(true);
         
@@ -159,6 +153,26 @@ export function ConversationThread({ conversationId, conversationDetails, token,
         setMessages(prev => [...prev, optimisticMessage]);
         setNewMessage('');
         
+        const payload = {
+          conversationId,
+          text,
+          type: 'neutral', // or derive from context
+          meta: {}
+        };
+        
+        socket.emit('message', payload, (response: any) => {
+            setIsSending(false);
+            if (response && response.error) {
+                toast({ variant: "destructive", title: "Error sending message", description: response.error });
+                setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
+            } else {
+                // The 'message:new' event handler will add the confirmed message
+                // For REST fallbacks, you might need to handle this differently
+            }
+        });
+        
+        // REST API as a fallback
+        const token = localStorage.getItem("token");
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${conversationId}/message`, {
                 method: 'POST',
@@ -175,15 +189,12 @@ export function ConversationThread({ conversationId, conversationDetails, token,
             }
 
             const data = await response.json();
-
-            // Replace optimistic message with real one from REST response
-            setMessages(prev => prev.map(msg => msg._id === optimisticMessage._id ? { ...data.message, __optimistic: false } : msg));
+             // Replace optimistic message with real one from REST response if socket fails
+             setMessages(prev => prev.map(msg => msg._id === optimisticMessage._id ? { ...data.message, __optimistic: false } : msg));
 
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Error sending message", description: error.message });
-            setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
-        } finally {
-            setIsSending(false);
+            // Error is handled by socket, but maybe log this for debugging
+             console.error("REST fallback send failed:", error);
         }
     };
     
