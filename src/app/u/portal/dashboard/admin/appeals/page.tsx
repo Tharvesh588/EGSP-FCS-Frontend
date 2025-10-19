@@ -15,71 +15,74 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useEffect, useRef, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { io, type Socket } from "socket.io-client"
+import { Badge } from "@/components/ui/badge"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
-const initialAppeals = [
-  {
-    id: 1,
-    faculty: {
-      name: "Dr. Priya Sharma",
-      department: "Computer Science",
-    },
-    activity: "Research Paper",
-    date: "2024-07-26",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    faculty: {
-      name: "Prof. Arjun Verma",
-      department: "Mechanical Engineering",
-    },
-    activity: "Workshop Conducted",
-    date: "2024-07-25",
-    status: "Pending",
-  },
-  {
-    id: 3,
-    faculty: {
-      name: "Ms. Neha Kapoor",
-      department: "Electrical Engineering",
-    },
-    activity: "Conference Presentation",
-    date: "2024-07-24",
-    status: "Pending",
-  },
-]
+type Appeal = {
+  _id: string;
+  faculty: {
+    _id: string;
+    name: string;
+    department: string;
+  };
+  credit: {
+    _id: string;
+    title: string;
+    notes: string;
+  };
+  reason: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+};
 
-const history = [
-    {
-        id: 1,
-        faculty: {
-            name: "Dr. Priya Sharma",
-            department: "Computer Science",
-        },
-        activity: "Research Paper",
-        date: "2024-07-20",
-        status: "Approved",
-    },
-    {
-        id: 2,
-        faculty: {
-            name: "Prof. Arjun Verma",
-            department: "Mechanical Engineering",
-        },
-        activity: "Workshop Conducted",
-        date: "2024-07-18",
-        status: "Rejected",
-    },
-]
 
 export default function AppealReviewPage() {
   const { toast } = useToast();
-  const [appeals, setAppeals] = useState(initialAppeals);
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
+  const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
+  const fetchAppeals = async () => {
+     const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?status=appealed`, {
+             headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if(data.success) {
+            const fetchedAppeals = data.items.map((item: any) => ({
+                _id: item._id,
+                faculty: {
+                  _id: item.faculty._id,
+                  name: item.faculty.name,
+                  department: item.faculty.department,
+                },
+                credit: {
+                  _id: item._id, // The credit is the appeal item itself
+                  title: item.title,
+                  notes: item.notes,
+                },
+                reason: item.appeal?.reason || 'No reason provided',
+                status: item.appeal?.status || 'pending',
+                createdAt: item.appeal?.createdAt || item.createdAt,
+            }));
+            setAppeals(fetchedAppeals);
+            if (fetchedAppeals.length > 0) {
+              setSelectedAppeal(fetchedAppeals[0]);
+            }
+        } else {
+            throw new Error(data.message || 'Failed to fetch appeals');
+        }
+    } catch(err: any) {
+        toast({ variant: 'destructive', title: 'Error fetching appeals', description: err.message });
+    }
+  }
+
   useEffect(() => {
+    fetchAppeals();
     const token = localStorage.getItem("token");
     if (!token) return;
 
@@ -93,19 +96,12 @@ export default function AppealReviewPage() {
         console.log('Admin socket connected for appeals');
     });
 
-    socket.on('appeal:new', (newAppeal) => {
+    socket.on('admin:appealNotification', (newAppeal) => {
         toast({
             title: "New Appeal Submitted",
-            description: `${newAppeal.faculty.name} has submitted an appeal for "${newAppeal.credit.title}".`,
+            description: `${newAppeal.facultySnapshot.name} has submitted an appeal for "${newAppeal.title}".`,
         });
-        // This is a mock update. In a real scenario, you'd fetch the new appeal data.
-        setAppeals(prev => [{
-          id: newAppeal._id,
-          faculty: { name: newAppeal.faculty.name, department: 'N/A' },
-          activity: newAppeal.credit.title,
-          date: new Date(newAppeal.createdAt).toISOString().split('T')[0],
-          status: 'Pending',
-        }, ...prev]);
+        fetchAppeals();
     });
     
     socket.on('connect_error', (err) => {
@@ -116,6 +112,30 @@ export default function AppealReviewPage() {
         socket.disconnect();
     };
   }, [toast]);
+  
+  const handleDecision = async (decision: 'accepted' | 'rejected') => {
+    if (!selectedAppeal) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    // This is a simplified logic. Backend should handle status update
+    // on the credit's appeal subdocument.
+    console.log(`Making decision: ${decision} for appeal on credit ${selectedAppeal.credit._id}`);
+    toast({ title: "Decision Submitted", description: `The appeal has been marked as ${decision}.`});
+
+    // Optimistic update
+    setAppeals(appeals.filter(a => a._id !== selectedAppeal._id));
+    setSelectedAppeal(appeals.length > 1 ? appeals.find(a => a._id !== selectedAppeal._id) || null : null);
+  }
+  
+  const getStatusColor = (status: Appeal['status']) => {
+      switch (status) {
+          case 'accepted': return 'bg-green-100 text-green-800';
+          case 'rejected': return 'bg-red-100 text-red-800';
+          case 'pending': return 'bg-yellow-100 text-yellow-800';
+          default: return 'bg-gray-100 text-gray-800';
+      }
+  };
 
 
   return (
@@ -129,7 +149,7 @@ export default function AppealReviewPage() {
         </div>
         <div className="bg-card p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-semibold text-foreground mb-4">
-            Pending Appeals ({appeals.length})
+            Pending Appeals ({appeals.filter(a => a.status === 'pending').length})
           </h3>
           <div className="overflow-x-auto">
             <Table>
@@ -138,6 +158,7 @@ export default function AppealReviewPage() {
                   <TableHead>Faculty</TableHead>
                   <TableHead>Activity</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="relative px-6 py-3">
                     <span className="sr-only">View</span>
                   </TableHead>
@@ -145,7 +166,11 @@ export default function AppealReviewPage() {
               </TableHeader>
               <TableBody>
                 {appeals.map((appeal, index) => (
-                  <TableRow key={appeal.id} className={index === 0 ? "bg-primary/10" : ""}>
+                  <TableRow 
+                    key={appeal._id} 
+                    className={`cursor-pointer ${selectedAppeal?._id === appeal._id ? "bg-primary/10" : ""}`}
+                    onClick={() => setSelectedAppeal(appeal)}
+                  >
                     <TableCell>
                       <div className="font-medium text-foreground">
                         {appeal.faculty.name}
@@ -154,8 +179,13 @@ export default function AppealReviewPage() {
                         {appeal.faculty.department}
                       </div>
                     </TableCell>
-                    <TableCell>{appeal.activity}</TableCell>
-                    <TableCell>{appeal.date}</TableCell>
+                    <TableCell>{appeal.credit.title}</TableCell>
+                    <TableCell>{new Date(appeal.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(appeal.status)}>
+                        {appeal.status}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="link" className="text-primary">
                         View
@@ -167,73 +197,38 @@ export default function AppealReviewPage() {
             </Table>
           </div>
         </div>
-        <div className="bg-card p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-foreground mb-4">
-            Appeal History
-          </h3>
-          <div className="overflow-x-auto">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Faculty</TableHead>
-                        <TableHead>Activity</TableHead>
-                        <TableHead>Decision Date</TableHead>
-                        <TableHead>Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {history.map(item => (
-                        <TableRow key={item.id}>
-                            <TableCell>
-                                <div className="font-medium text-foreground">{item.faculty.name}</div>
-                                <div className="text-sm text-muted-foreground">{item.faculty.department}</div>
-                            </TableCell>
-                            <TableCell>{item.activity}</TableCell>
-                            <TableCell>{item.date}</TableCell>
-                            <TableCell>
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.status === 'Approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {item.status}
-                                </span>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-          </div>
-        </div>
       </div>
       <aside className="w-full lg:w-1/3 lg:max-w-md">
         <div className="sticky top-8 space-y-6">
+          {selectedAppeal ? (
           <div className="bg-card p-6 rounded-lg shadow-sm">
             <div className="flex items-center gap-4 border-b pb-4 mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">
-                  Dr. Priya Sharma
+                  {selectedAppeal.faculty.name}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Appeal for: Research Paper (2024-07-26)
+                  Appeal for: {selectedAppeal.credit.title} ({new Date(selectedAppeal.createdAt).toLocaleDateString()})
                 </p>
               </div>
             </div>
             <div className="space-y-4">
-              <Tabs defaultValue="remark">
+              <Tabs defaultValue="evidence">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="remark">Original Remark</TabsTrigger>
-                  <TabsTrigger value="evidence">Faculty Evidence</TabsTrigger>
+                  <TabsTrigger value="evidence">Faculty's Reason</TabsTrigger>
                 </TabsList>
                 <TabsContent value="remark" className="py-5">
-                    <p className="text-sm text-muted-foreground">
-                    The research paper does not meet the required quality
-                    standards for publication in a Tier 1 journal. The
-                    methodology lacks rigor, and the results are not
-                    sufficiently validated.
-                  </p>
+                    <p className="text-sm text-muted-foreground italic">
+                      "{selectedAppeal.credit.notes}"
+                    </p>
                 </TabsContent>
                 <TabsContent value="evidence" className="py-5">
-                   <p className="text-sm text-muted-foreground">
-                    Attached is the peer-review feedback and acceptance letter from the conference committee, which address the quality and validation of the work.
+                   <p className="text-sm text-muted-foreground italic">
+                     "{selectedAppeal.reason}"
                   </p>
-                   <Button variant="link" className="p-0 h-auto">View Document</Button>
+                   {/* This should ideally link to the proof of the original credit */}
+                   <Button variant="link" className="p-0 h-auto">View Original Document</Button>
                 </TabsContent>
               </Tabs>
               <div className="space-y-4">
@@ -244,15 +239,17 @@ export default function AppealReviewPage() {
                   <Button
                     className="w-full bg-green-600 hover:bg-green-700 text-white"
                     type="button"
+                    onClick={() => handleDecision('accepted')}
                   >
-                    Uphold Credits
+                    Accept Appeal
                   </Button>
                   <Button
                     className="w-full"
-                    variant="outline"
+                    variant="destructive"
                     type="button"
+                    onClick={() => handleDecision('rejected')}
                   >
-                    Restore Credits
+                    Reject Appeal
                   </Button>
                 </div>
               </div>
@@ -267,18 +264,23 @@ export default function AppealReviewPage() {
                   <Textarea
                     id="comments"
                     name="comments"
-                    placeholder="Add comments (optional)"
+                    placeholder="Add comments for your decision (optional)"
                     rows={4}
                   />
                 </div>
               </div>
               <div className="pt-4 flex justify-end">
-                <Button type="button">
+                <Button type="button" onClick={() => handleDecision('accepted')}>
                   Submit Decision
                 </Button>
               </div>
             </div>
           </div>
+          ) : (
+            <div className="bg-card p-6 rounded-lg shadow-sm text-center text-muted-foreground">
+                <p>Select an appeal to review.</p>
+            </div>
+          )}
         </div>
       </aside>
     </div>

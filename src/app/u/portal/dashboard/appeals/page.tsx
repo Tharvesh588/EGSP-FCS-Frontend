@@ -30,7 +30,7 @@ import { io, type Socket } from "socket.io-client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
-type NegativeReport = {
+type NegativeCredit = {
   _id: string;
   title: string;
   createdAt: string;
@@ -38,25 +38,17 @@ type NegativeReport = {
   points: number;
   notes: string;
   proof: string;
+  appeal?: {
+    by: string;
+    reason: string;
+    createdAt: string;
+    status: 'pending' | 'accepted' | 'rejected';
+  }
+  status: 'pending' | 'approved' | 'rejected' | 'appealed';
 };
 
-type Appeal = {
-    _id: string;
-    faculty: string;
-    credit: {
-      _id: string;
-      title: string;
-      notes: string;
-      points: number;
-      createdAt: string;
-    };
-    reason: string;
-    status: 'pending' | 'under_review' | 'approved' | 'rejected';
-    createdAt: string;
-    decision?: {
-        notes: string;
-        decidedAt: string;
-    }
+type Appeal = NegativeCredit & {
+  appeal: NonNullable<NegativeCredit['appeal']>;
 };
 
 type Conversation = {
@@ -69,10 +61,10 @@ export default function AppealsPage() {
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'under_review' | 'approved' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('all');
 
   const [isAppealDialogOpen, setIsAppealDialogOpen] = useState(false);
-  const [appealableRemarks, setAppealableRemarks] = useState<NegativeReport[]>([]);
+  const [appealableRemarks, setAppealableRemarks] = useState<NegativeCredit[]>([]);
   const [selectedRemarkId, setSelectedRemarkId] = useState("");
   const [appealReason, setAppealReason] = useState("");
   const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
@@ -84,7 +76,7 @@ export default function AppealsPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
   const socketRef = useRef<Socket | null>(null);
 
-  const fetchAppeals = async () => {
+  const fetchAppealsAndRemarks = async () => {
       setIsLoading(true);
       if (!token || !facultyId) {
         toast({ variant: "destructive", title: "Authentication Error" });
@@ -93,15 +85,38 @@ export default function AppealsPage() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}/appeals`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=200`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+             try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(errorJson.message || "Server returned an error");
+            } catch (e) {
+                throw new Error(`Failed to fetch appeals. The server responded with an error: ${response.status}.`);
+            }
+        }
+
         const resData = await response.json();
 
         if (resData.success) {
-            setAppeals(resData.items);
-            if (resData.items.length > 0) {
-              const currentSelection = resData.items.find((item: Appeal) => item._id === selectedAppeal?._id) || resData.items[0];
+            const allCredits: NegativeCredit[] = resData.items;
+            
+            const fetchedAppeals = allCredits.filter((credit): credit is Appeal => 
+              credit.type === 'negative' && !!credit.appeal
+            );
+
+            const fetchedAppealable = allCredits.filter(credit => 
+                credit.type === 'negative' && !credit.appeal && credit.status !== 'appealed'
+            );
+
+            setAppeals(fetchedAppeals);
+            setAppealableRemarks(fetchedAppealable);
+
+            if (fetchedAppeals.length > 0) {
+              const currentSelection = fetchedAppeals.find((item: Appeal) => item._id === selectedAppeal?._id) || fetchedAppeals[0];
               setSelectedAppeal(currentSelection);
             } else {
               setSelectedAppeal(null);
@@ -112,39 +127,17 @@ export default function AppealsPage() {
       } catch (error: any) {
           toast({ variant: "destructive", title: "Failed to fetch appeals", description: error.message });
           setAppeals([]);
+          setAppealableRemarks([]);
       } finally {
           setIsLoading(false);
-      }
-  };
-
-  const fetchAppealableRemarks = async () => {
-      if (!token || !facultyId) return;
-       try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?type=negative&appealable=true`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const responseData = await response.json();
-        if (responseData.success) {
-          setAppealableRemarks(responseData.items);
-        } else {
-           throw new Error(responseData.message || "Failed to fetch appealable remarks.");
-        }
-      } catch(error: any) {
-        toast({ variant: "destructive", title: "Failed to fetch remarks", description: error.message });
       }
   };
   
   useEffect(() => {
     if (facultyId) {
-        fetchAppeals();
+        fetchAppealsAndRemarks();
     }
-  }, [facultyId]);
-
-  useEffect(() => {
-    if(isAppealDialogOpen) {
-      fetchAppealableRemarks();
-    }
-  }, [isAppealDialogOpen]);
+  }, [facultyId, toast]);
   
   useEffect(() => {
     setActiveConversation(null);
@@ -167,18 +160,15 @@ export default function AppealsPage() {
             description: `A remark for "${data.credit.title}" has been issued. You may appeal it.`,
             variant: "destructive"
         });
-        fetchAppealableRemarks();
+        fetchAppealsAndRemarks();
     });
 
-    socket.on('appeal:update', (updatedAppeal) => {
+    socket.on('appeal:update', (updatedCredit) => {
         toast({
-            title: `Appeal for "${updatedAppeal.credit.title}" Updated`,
-            description: `Status is now: ${updatedAppeal.status.replace('_', ' ')}`,
+            title: `Appeal for "${updatedCredit.title}" Updated`,
+            description: `Status is now: ${updatedCredit.appeal?.status}`,
         });
-        setAppeals(prev => prev.map(a => a._id === updatedAppeal._id ? updatedAppeal : a));
-        if(selectedAppeal?._id === updatedAppeal._id) {
-            setSelectedAppeal(updatedAppeal);
-        }
+        fetchAppealsAndRemarks();
     });
 
     socket.on('connect_error', (err) => console.error('Socket error:', err.message));
@@ -186,7 +176,7 @@ export default function AppealsPage() {
     return () => {
         socket.disconnect();
     };
-  }, [token, toast, selectedAppeal?._id]);
+  }, [token, toast]);
 
   const handleAppealSubmit = async () => {
     if (!selectedRemarkId || !appealReason) {
@@ -222,7 +212,7 @@ export default function AppealsPage() {
         setIsAppealDialogOpen(false);
         setSelectedRemarkId("");
         setAppealReason("");
-        fetchAppeals(); // Refresh appeals list
+        fetchAppealsAndRemarks();
 
     } catch (error: any) {
         toast({
@@ -240,14 +230,14 @@ export default function AppealsPage() {
     setIsStartingConversation(true);
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
+        const response = await fetch(`${API_base_URL}/api/v1/conversations`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
-                creditId: selectedAppeal.credit._id,
+                creditId: selectedAppeal._id,
                 participantIds: [facultyId] // The backend will add the other participant (admin/issuer)
             }),
         });
@@ -275,46 +265,39 @@ export default function AppealsPage() {
     }
   };
 
-  const filteredAppeals = appeals.filter(appeal => filter === 'all' || appeal.status.replace(/_/g, '-') === filter);
+  const filteredAppeals = appeals.filter(appeal => filter === 'all' || appeal.appeal.status === filter);
   
-  const getStatusVariant = (status: Appeal['status']) => {
+  const getStatusVariant = (status: Appeal['appeal']['status']) => {
       switch (status) {
-          case 'approved': return 'default';
+          case 'accepted': return 'default';
           case 'rejected': return 'destructive';
           case 'pending': return 'secondary';
-          case 'under_review': return 'secondary';
           default: return 'secondary';
       }
   };
   
-  const getStatusColor = (status: Appeal['status']) => {
+  const getStatusColor = (status: Appeal['appeal']['status']) => {
       switch (status) {
-          case 'approved': return 'bg-green-100 text-green-800';
+          case 'accepted': return 'bg-green-100 text-green-800';
           case 'rejected': return 'bg-red-100 text-red-800';
           case 'pending': return 'bg-yellow-100 text-yellow-800';
-          case 'under_review': return 'bg-blue-100 text-blue-800';
           default: return 'bg-gray-100 text-gray-800';
       }
   };
   
-  const getTimelineIcon = (status: Appeal['status'] | 'submitted', currentStatus: Appeal['status']) => {
-      const statusHierarchy = ['submitted', 'pending', 'under_review', 'approved', 'rejected'];
-      
-      const timelineStatus = status === 'approved' || status === 'rejected' ? 'decision' : status;
-      const currentTimelineStatus = currentStatus === 'approved' || currentStatus === 'rejected' ? 'decision' : currentStatus;
-      
-      const timelineHierarchy = ['submitted', 'pending', 'under_review', 'decision'];
-      const currentTimelineIndex = timelineHierarchy.indexOf(currentTimelineStatus);
-      const itemTimelineIndex = timelineHierarchy.indexOf(timelineStatus);
+  const getTimelineIcon = (status: Appeal['appeal']['status'] | 'submitted', currentStatus: Appeal['appeal']['status']) => {
+      const timelineHierarchy = ['submitted', 'pending', 'accepted', 'rejected'];
+      const itemIndex = status === 'submitted' ? 0 : timelineHierarchy.indexOf(status);
+      const currentIndex = timelineHierarchy.indexOf(currentStatus);
 
       let icon = 'radio_button_unchecked';
       let color = 'text-muted-foreground';
 
-      if (itemTimelineIndex < currentTimelineIndex) {
+      if (itemIndex < currentIndex) {
           icon = 'check_circle';
           color = 'text-primary';
-      } else if (itemTimelineIndex === currentTimelineIndex) {
-          if (currentStatus === 'approved') {
+      } else if (itemIndex === currentIndex) {
+          if (currentStatus === 'accepted') {
             icon = 'check_circle';
             color = 'text-green-600';
           } else if (currentStatus === 'rejected') {
@@ -346,8 +329,7 @@ export default function AppealsPage() {
         <div className="flex items-center gap-2 border-b pb-2">
             <Button variant={filter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('all')}>All</Button>
             <Button variant={filter === 'pending' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('pending')}>Pending</Button>
-            <Button variant={filter === 'under_review' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('under_review')}>Under Review</Button>
-            <Button variant={filter === 'approved' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('approved')}>Approved</Button>
+            <Button variant={filter === 'accepted' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('accepted')}>Accepted</Button>
             <Button variant={filter === 'rejected' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilter('rejected')}>Rejected</Button>
         </div>
 
@@ -372,11 +354,11 @@ export default function AppealsPage() {
                         className={`cursor-pointer ${selectedAppeal?._id === appeal._id ? "bg-primary/5" : ""}`}
                         onClick={() => setSelectedAppeal(appeal)}
                     >
-                        <TableCell className="font-medium">{appeal.credit.title}</TableCell>
-                        <TableCell className="text-muted-foreground">{new Date(appeal.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="font-medium">{appeal.title}</TableCell>
+                        <TableCell className="text-muted-foreground">{new Date(appeal.appeal.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell>
-                            <Badge variant={getStatusVariant(appeal.status)} className={getStatusColor(appeal.status)}>
-                                {appeal.status.replace(/_/g, ' ')}
+                            <Badge variant={getStatusVariant(appeal.appeal.status)} className={getStatusColor(appeal.appeal.status)}>
+                                {appeal.appeal.status}
                             </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -398,7 +380,7 @@ export default function AppealsPage() {
                 <h3 className="text-xl font-bold mb-4">Appeal Details</h3>
                 
                 {activeConversation ? (
-                    <ConversationThread conversationId={activeConversation._id} conversationDetails={{_id: activeConversation._id, participants: [], credit: {title: selectedAppeal.credit.title}}} socket={socketRef.current} currentUserId={facultyId} onBack={() => setActiveConversation(null)} />
+                    <ConversationThread conversationId={activeConversation._id} conversationDetails={{_id: activeConversation._id, participants: [], credit: {title: selectedAppeal.title}}} socket={socketRef.current} currentUserId={facultyId} onBack={() => setActiveConversation(null)} />
                 ) : (
                     <>
                         <div className="space-y-4">
@@ -407,9 +389,9 @@ export default function AppealsPage() {
                                 <CardTitle className="text-base">Original Remark</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm">
-                                    <p className="font-semibold">{selectedAppeal.credit.title} ({selectedAppeal.credit.points} points)</p>
-                                    <p className="text-muted-foreground italic">"{selectedAppeal.credit.notes}"</p>
-                                    <p className="text-xs text-muted-foreground">Issued on: {new Date(selectedAppeal.credit.createdAt).toLocaleString()}</p>
+                                    <p className="font-semibold">{selectedAppeal.title} ({selectedAppeal.points} points)</p>
+                                    <p className="text-muted-foreground italic">"{selectedAppeal.notes}"</p>
+                                    <p className="text-xs text-muted-foreground">Issued on: {new Date(selectedAppeal.createdAt).toLocaleString()}</p>
                                 </CardContent>
                             </Card>
 
@@ -418,22 +400,11 @@ export default function AppealsPage() {
                                 <CardTitle className="text-base">Your Appeal</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm">
-                                    <p className="text-muted-foreground italic">"{selectedAppeal.reason}"</p>
-                                    <p className="text-xs text-muted-foreground">Submitted on: {new Date(selectedAppeal.createdAt).toLocaleString()}</p>
+                                    <p className="text-muted-foreground italic">"{selectedAppeal.appeal.reason}"</p>
+                                    <p className="text-xs text-muted-foreground">Submitted on: {new Date(selectedAppeal.appeal.createdAt).toLocaleString()}</p>
                                 </CardContent>
                             </Card>
 
-                            {selectedAppeal.decision?.notes && (
-                            <Card>
-                                <CardHeader className="pb-2">
-                                <CardTitle className="text-base">Final Decision</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-2 text-sm">
-                                    <p className="text-muted-foreground italic">"{selectedAppeal.decision.notes}"</p>
-                                    <p className="text-xs text-muted-foreground">Decided on: {new Date(selectedAppeal.decision.decidedAt).toLocaleString()}</p>
-                                </CardContent>
-                            </Card>
-                            )}
                         </div>
 
                         <div className="border-t pt-6 mt-6">
@@ -441,26 +412,26 @@ export default function AppealsPage() {
                           <div className="relative pl-4 space-y-6">
                                 <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-border -translate-x-1/2"></div>
                                 <div className="relative flex items-start gap-4">
-                                  {getTimelineIcon('submitted', selectedAppeal.status)}
+                                  {getTimelineIcon('submitted', selectedAppeal.appeal.status)}
                                   <div>
                                     <p className="font-medium">Appeal Submitted</p>
-                                    <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.createdAt).toDateString()}</p>
+                                    <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
                                   </div>
                                 </div>
                                 <div className="relative flex items-start gap-4">
-                                   {getTimelineIcon('under_review', selectedAppeal.status)}
+                                   {getTimelineIcon('pending', selectedAppeal.appeal.status)}
                                   <div>
                                     <p className="font-medium">Under Review</p>
-                                     {(selectedAppeal.status === 'under_review' || selectedAppeal.status === 'approved' || selectedAppeal.status === 'rejected') && <p className="text-sm text-muted-foreground">Your appeal is being reviewed.</p>}
+                                     {(selectedAppeal.appeal.status === 'pending' || selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && <p className="text-sm text-muted-foreground">Your appeal is being reviewed.</p>}
                                   </div>
                                 </div>
                                 <div className="relative flex items-start gap-4">
-                                   {getTimelineIcon(selectedAppeal.status === 'approved' ? 'approved' : 'rejected', selectedAppeal.status)}
+                                   {getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}
                                   <div>
                                     <p className="font-medium">Decision</p>
-                                     {(selectedAppeal.status === 'approved' || selectedAppeal.status === 'rejected') && (
+                                     {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
                                         <p className="text-sm text-muted-foreground">
-                                            {selectedAppeal.status === 'approved' ? 'Your appeal was approved.' : 'Your appeal was rejected.'}
+                                            {selectedAppeal.appeal.status === 'accepted' ? 'Your appeal was approved.' : 'Your appeal was rejected.'}
                                         </p>
                                      )}
                                   </div>
@@ -512,11 +483,11 @@ export default function AppealsPage() {
                             </SelectItem>
                            ))
                         ) : (
-                           <div className="p-4 text-sm text-muted-foreground text-center">No recent remarks eligible for appeal.</div>
+                           <div className="p-4 text-sm text-muted-foreground text-center">No remarks are currently eligible for appeal.</div>
                         )}
                     </SelectContent>
                 </Select>
-                 <p className="text-xs text-muted-foreground px-1">Only remarks issued in the last 24 hours are shown.</p>
+                 <p className="text-xs text-muted-foreground px-1">Only remarks without a pending appeal are shown.</p>
             </div>
             <div className="space-y-2">
                 <label htmlFor="reason" className="text-sm font-medium">Reason for Appeal</label>
