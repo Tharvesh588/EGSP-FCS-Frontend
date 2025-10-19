@@ -320,5 +320,3 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
-    
