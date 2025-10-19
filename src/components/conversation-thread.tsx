@@ -105,7 +105,7 @@ export function ConversationThread({ conversationId, token, onBack }: Conversati
             setMessages(prev => {
                 const optimisticMessage = prev.find(m => m.__optimistic && m.content.text === msg.content.text);
                 if (optimisticMessage) {
-                    return prev.map(m => m._id === optimisticMessage._id ? { ...optimisticMessage, ...msg, _id: msg._id || optimisticMessage._id, __optimistic: false } : m);
+                    return prev.map(m => m._id === optimisticMessage._id ? { ...msg, __optimistic: false } : m);
                 }
                 return [...prev, msg];
             });
