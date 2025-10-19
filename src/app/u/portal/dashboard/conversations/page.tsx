@@ -135,7 +135,11 @@ export default function ConversationsPage() {
         const handleNewMessage = (newMessage: { conversationId: string, content: { text: string }, sender: string, createdAt: string }) => {
             setConversations(prevConvos => {
                 const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
-                if (convoIndex === -1) return prevConvos;
+                if (convoIndex === -1) {
+                    // Conversation not in the list, might be a new one.
+                    // For now, we only update existing conversations to avoid complexity.
+                    return prevConvos;
+                }
 
                 const updatedConvo = {
                     ...prevConvos[convoIndex],
@@ -147,11 +151,13 @@ export default function ConversationsPage() {
                     updatedAt: newMessage.createdAt,
                 };
                 
+                // Create a new array, remove the old convo, and add the updated one to the top
                 const newConvos = [
                     updatedConvo,
                     ...prevConvos.slice(0, convoIndex),
                     ...prevConvos.slice(convoIndex + 1)
                 ];
+                
                 return newConvos;
             });
         };

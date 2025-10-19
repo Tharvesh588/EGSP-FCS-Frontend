@@ -126,8 +126,8 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             }
         };
 
-        const handleTyping = (data: { conversationId: string; isTyping: boolean }) => {
-            if (data.conversationId === conversationId) {
+        const handleTyping = (data: { conversationId: string; isTyping: boolean; userId: string; }) => {
+            if (data.conversationId === conversationId && data.userId !== currentUserId) {
                 setIsTyping(data.isTyping);
             }
         };
@@ -147,7 +147,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
           socket.off('typing:status', handleTyping);
           socket.emit('leave', { conversationId });
         };
-    }, [conversationId, socket, toast]);
+    }, [conversationId, socket, toast, currentUserId]);
     
     useEffect(() => {
         scrollToBottom('smooth');
@@ -184,10 +184,15 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         socket.emit('typing:stop', { conversationId });
 
         const optimisticId = `optimistic-${Date.now()}`;
+        const currentUserDetails = conversationDetails.participants.find(p => p._id === currentUserId);
+
         const optimisticMessage: Message = {
             _id: optimisticId,
             sender: currentUserId,
-            senderSnapshot: { name: "You" },
+            senderSnapshot: { 
+                name: currentUserDetails?.name || "You",
+                profileImage: currentUserDetails?.profileImage,
+             },
             type: 'neutral',
             content: { text },
             createdAt: new Date().toISOString(),
@@ -240,7 +245,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                 lastDate = messageDate;
             }
             
-            renderableItems.push({ type: 'message', id: message._id, message });
+            renderableItems.push({ type: 'message', id: message.__optimisticId || message._id, message });
         });
 
         return renderableItems.map((item, index) => {

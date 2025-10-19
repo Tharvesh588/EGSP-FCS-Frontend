@@ -133,7 +133,11 @@ export default function ConversationsPage() {
         const handleNewMessage = (newMessage: { conversationId: string, content: { text: string }, sender: string, createdAt: string }) => {
             setConversations(prevConvos => {
                 const convoIndex = prevConvos.findIndex(c => c._id === newMessage.conversationId);
-                if (convoIndex === -1) return prevConvos; // Should not happen if user is in room
+                if (convoIndex === -1) {
+                    // If conversation is new (should be rare for admin), might need to fetch it.
+                    // For now, we'll just update existing ones.
+                    return prevConvos;
+                }
 
                 const updatedConvo = {
                     ...prevConvos[convoIndex],
@@ -145,12 +149,13 @@ export default function ConversationsPage() {
                     updatedAt: newMessage.createdAt,
                 };
                 
-                // Remove the old conversation and add the updated one to the top
+                // Create a new array, remove the old convo, and add the updated one to the top
                 const newConvos = [
                     updatedConvo,
                     ...prevConvos.slice(0, convoIndex),
                     ...prevConvos.slice(convoIndex + 1)
                 ];
+
                 return newConvos;
             });
         };
