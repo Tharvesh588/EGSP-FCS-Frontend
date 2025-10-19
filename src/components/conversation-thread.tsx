@@ -23,13 +23,12 @@ type Message = {
         name: string;
         profileImage?: string;
     };
-    type: 'positive' | 'negative' | 'neutral';
+    type: 'positive' | 'negative' | 'neutral' | 'system';
     content: {
         text: string;
         meta?: any;
     };
     createdAt: string;
-    // Optimistic UI properties
     tempId?: string;
     isPending?: boolean;
     error?: string;
@@ -119,33 +118,33 @@ export function ConversationThread({ conversationId, conversationDetails, socket
 
         fetchMessages();
 
-        const handleNewMessage = (msg: Message & { tempId?: string }) => {
+        const handleNewMessage = (msg: Message) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
                     if (msg.tempId && prev.some(m => m.tempId === msg.tempId)) {
-                        return prev.map(m => m.tempId === msg.tempId ? msg : m);
+                        return prev.map(m => m.tempId === msg.tempId ? { ...msg, isPending: false, error: undefined } : m);
                     }
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
                     return prev;
                 });
-                socket.emit('message:ack', { conversationId, messageId: msg._id });
+                socket.emit('message:ack', { conversationId, messageCreatedAt: msg.createdAt });
             }
         };
         
-        const handleTyping = (data: { conversationId: string; isTyping: boolean; userId: string; }) => {
-            if (data.conversationId === conversationId && data.userId !== currentUserId) {
-                setIsTyping(data.isTyping);
+        const handleTyping = (data: { conversationId: string; user: { id: string; name: string; }, typing: boolean; }) => {
+            if (data.conversationId === conversationId && data.user.id !== currentUserId) {
+                setIsTyping(data.typing);
             }
         };
 
         socket.on('message:new', handleNewMessage);
-        socket.on('typing:status', handleTyping);
+        socket.on('typing', handleTyping);
 
         return () => {
           socket.off('message:new', handleNewMessage);
-          socket.off('typing:status', handleTyping);
+          socket.off('typing', handleTyping);
           socket.emit('leave', { conversationId });
           console.log(`Left conversation ${conversationId}`);
         };
@@ -164,14 +163,14 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     const handleTypingChange = () => {
         if (!socket || !socket.connected) return;
 
-        socket.emit('typing:start', { conversationId });
+        socket.emit('typing', { conversationId, typing: true });
 
         if (typingTimeoutRef.current) {
             clearTimeout(typingTimeoutRef.current);
         }
 
         typingTimeoutRef.current = setTimeout(() => {
-            socket.emit('typing:stop', { conversationId });
+            socket.emit('typing', { conversationId, typing: false });
         }, 3000); // Stop typing after 3 seconds of inactivity
     };
     
@@ -181,9 +180,9 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         if (!text || !currentUserId || !socket || !conversationDetails) return;
         
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        socket.emit('typing:stop', { conversationId });
+        socket.emit('typing', { conversationId, typing: false });
 
-        const tempId = retryMessage?.tempId || `temp_${Date.now()}`;
+        const tempId = retryMessage?.tempId || `t_${Date.now()}`;
         const currentUserDetails = conversationDetails.participants.find(p => p._id === currentUserId);
 
         const optimisticMessage: Message = {
@@ -193,7 +192,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             senderSnapshot: { 
                 name: currentUserDetails?.name || "You",
                 profileImage: currentUserDetails?.profileImage,
-             },
+            },
             type: 'neutral',
             content: { text },
             createdAt: new Date().toISOString(),
@@ -207,15 +206,9 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         }
         setNewMessage('');
         
-        const payload = {
-          conversationId,
-          text,
-          tempId,
-        };
-        
-        socket.emit('message', payload, (resp: { ok: boolean; message?: Message, error?: string }) => {
+        socket.emit('message', { conversationId, text }, (resp: { ok: boolean; message?: Message, error?: string }) => {
             if (resp && resp.ok && resp.message) {
-                 setMessages(prev => prev.map(m => m.tempId === tempId ? resp.message! : m));
+                 setMessages(prev => prev.map(m => m.tempId === tempId ? { ...resp.message!, isPending: false } : m));
             } else {
                 toast({ variant: "destructive", title: "Error sending message", description: resp?.error });
                 setMessages(prev => prev.map(m => m.tempId === tempId ? { ...m, isPending: false, error: resp?.error || "Failed to send" } : m));
@@ -354,7 +347,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
-                        disabled={isLoading}
+                        disabled={isLoading || !socket?.connected}
                         autoComplete="off"
                         maxRows={5}
                         className="w-full resize-none bg-transparent border-none focus-visible:ring-0 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"

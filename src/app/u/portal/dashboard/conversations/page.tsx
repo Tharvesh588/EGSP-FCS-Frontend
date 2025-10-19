@@ -41,6 +41,7 @@ type NewMessagePayload = {
     sender: string; 
     content: { text: string }; 
     createdAt: string;
+    text: string; // for lastMessage
 };
 
 export default function ConversationsPage() {
@@ -122,7 +123,7 @@ export default function ConversationsPage() {
     }, [toast, currentUserId]);
 
     useEffect(() => {
-        if (!token || !currentUserId) return;
+        if (!token) return;
     
         // Disconnect any existing socket connection before creating a new one
         if (socketRef.current) {
@@ -151,10 +152,6 @@ export default function ConversationsPage() {
 
         newSocket.on('reconnect', () => {
           console.log('Socket reconnected.');
-          // Re-join active conversation room if any
-          if (selectedConversation) {
-            newSocket.emit('join', { conversationId: selectedConversation._id });
-          }
         });
     
         const handleNewMessage = (newMessage: NewMessagePayload) => {
@@ -168,7 +165,7 @@ export default function ConversationsPage() {
                 const updatedConvo = {
                     ...prevConvos[convoIndex],
                     lastMessage: {
-                        text: newMessage.content.text,
+                        text: newMessage.text,
                         sender: newMessage.sender,
                         createdAt: newMessage.createdAt,
                     },
@@ -188,7 +185,7 @@ export default function ConversationsPage() {
           newSocket.disconnect();
           socketRef.current = null;
         };
-      }, [token, currentUserId, toast, selectedConversation]);
+      }, [token, toast]);
     
     const filteredConversations = conversations.filter(convo => {
         const term = searchTerm.toLowerCase();
