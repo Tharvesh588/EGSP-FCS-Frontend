@@ -170,11 +170,11 @@ export default function ManageRemarksPage() {
           const params = new URLSearchParams({
               page: currentPage.toString(),
               limit: limit.toString(),
-              sort: '-createdAt'
+              sort: '-createdAt',
+              type: 'negative'
           });
 
-          // Using the /admin/credits/positive endpoint and filtering by type=negative on the backend
-          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?type=negative&${params.toString()}`, {
+          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?${params.toString()}`, {
               headers: { Authorization: `Bearer ${adminToken}` },
           });
   
@@ -519,3 +519,5 @@ export default function ManageRemarksPage() {
     </div>
   )
 }
+
+    
