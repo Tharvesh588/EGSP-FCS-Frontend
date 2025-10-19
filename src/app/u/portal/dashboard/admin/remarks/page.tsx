@@ -170,11 +170,10 @@ export default function ManageRemarksPage() {
           const params = new URLSearchParams({
               page: currentPage.toString(),
               limit: limit.toString(),
-              sort: '-createdAt',
-              type: 'negative'
+              sort: '-createdAt'
           });
 
-          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/positive?${params.toString()}`, {
+          const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative?${params.toString()}`, {
               headers: { Authorization: `Bearer ${adminToken}` },
           });
   
@@ -326,10 +325,18 @@ export default function ManageRemarksPage() {
   };
 
   const getProofUrl = (url: string) => {
+    if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
+        return url;
     }
-    return `${API_BASE_URL}${url}`;
+    // Check for duplicated base URL
+    if (url.includes('https//') || url.includes('http//')) {
+        const parts = url.split('https//');
+        if (parts.length > 1) return `https://${parts[parts.length -1]}`;
+        const httpParts = url.split('http//');
+        if (httpParts.length > 1) return `http://${httpParts[httpParts.length-1]}`;
+    }
+    return `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   return (
@@ -519,5 +526,3 @@ export default function ManageRemarksPage() {
     </div>
   )
 }
-
-    
