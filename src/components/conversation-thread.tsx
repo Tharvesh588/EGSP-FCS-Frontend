@@ -239,8 +239,11 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         messages.forEach((message) => {
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
-            const messageId = message.tempId || message._id;
             
+            // This is the fix: ensure a unique ID for the renderable item.
+            // Use tempId, then _id, and fallback to a composite key if both are missing.
+            const messageId = message.tempId || message._id || `${message.createdAt}-${message.content.text.slice(0, 10)}`;
+
             if (lastDate !== messageDate) {
                 items.push({ type: 'divider', id: messageDate, date: message.createdAt });
                 lastDate = messageDate;
