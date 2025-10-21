@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useRef } from "react";
@@ -109,7 +110,7 @@ export default function AppealsPage() {
             );
 
             const fetchedAppealable = allCredits.filter(credit => 
-                credit.type === 'negative' && credit.status !== 'appealed'
+                credit.type === 'negative' && credit.status !== 'appealed' && !credit.appeal
             );
 
             setAppeals(fetchedAppeals);
@@ -143,39 +144,6 @@ export default function AppealsPage() {
     setActiveConversation(null);
   }, [selectedAppeal]);
 
-  useEffect(() => {
-    if (!token) return;
-
-    const socket = io(API_BASE_URL, {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-    });
-    socketRef.current = socket;
-
-    socket.on('connect', () => console.log('Faculty socket connected for appeals.'));
-    
-    socket.on(`faculty:${facultyId}:creditUpdate`, (data) => {
-        toast({
-            title: "An item was updated",
-            description: `Your record for "${data.title}" has been updated.`,
-        });
-        fetchAppealsAndRemarks();
-    });
-
-    socket.on('connect_error', (err) => {
-        console.error('Socket error:', err.message)
-        toast({
-            title: "Connection Issue",
-            description: "Could not connect to real-time server. Retrying...",
-            variant: "destructive"
-        });
-    });
-
-    return () => {
-        socket.disconnect();
-    };
-  }, [token, facultyId, toast]);
-
   const handleAppealSubmit = async () => {
     if (!selectedRemarkId || !appealReason) {
         toast({
@@ -194,7 +162,7 @@ export default function AppealsPage() {
                 "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ reason: appealReason }),
+            body: JSON.stringify({ reason: appealReason, creditId: selectedRemarkId }),
         });
 
         const responseData = await response.json();
@@ -511,3 +479,5 @@ export default function AppealsPage() {
     </div>
   )
 }
+
+    
