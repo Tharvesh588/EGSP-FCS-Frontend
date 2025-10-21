@@ -120,7 +120,7 @@ export default function NegativeRemarksPage() {
           if (academicYearFilter !== 'all') params.append('academicYear', academicYearFilter);
           if (statusFilter !== 'all') params.append('status', statusFilter);
          
-          const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}/negative?${params.toString()}`, {
+          const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative?${params.toString()}`, {
               headers: { Authorization: `Bearer ${token}` },
           });
   
