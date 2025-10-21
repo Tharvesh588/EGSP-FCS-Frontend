@@ -86,7 +86,6 @@ export default function NegativeRemarksPage() {
   // Appeal state
   const [isAppealDialogOpen, setIsAppealDialogOpen] = useState(false);
   const [appealReason, setAppealReason] = useState("");
-  const [appealProof, setAppealProof] = useState<File | null>(null);
   const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
 
 
@@ -136,7 +135,7 @@ export default function NegativeRemarksPage() {
     if (token && facultyId) {
         fetchRemarks();
     }
-  }, [token, facultyId, toast]);
+  }, [token, facultyId]);
   
   const handleOpenAppealDialog = (remark: NegativeCredit) => {
     setSelectedRemark(remark);
@@ -144,7 +143,7 @@ export default function NegativeRemarksPage() {
   };
 
   const handleAppealSubmit = async () => {
-    if (!selectedRemark || !appealReason) {
+    if (!selectedRemark || !appealReason.trim()) {
         toast({
             variant: "destructive",
             title: "Incomplete Form",
@@ -153,20 +152,18 @@ export default function NegativeRemarksPage() {
         return;
     }
     setIsSubmittingAppeal(true);
-
-    const formData = new FormData();
-    formData.append('reason', appealReason);
-    if (appealProof) {
-        formData.append('proof', appealProof);
-    }
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/${selectedRemark._id}/appeal`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/${selectedRemark._id}/appeal`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
             },
-            body: formData,
+            body: JSON.stringify({
+              creditId: selectedRemark._id,
+              reason: appealReason,
+            }),
         });
 
         const responseData = await response.json();
@@ -181,7 +178,6 @@ export default function NegativeRemarksPage() {
 
         setIsAppealDialogOpen(false);
         setAppealReason("");
-        setAppealProof(null);
         fetchRemarks();
         router.push(`/u/portal/dashboard/appeals?uid=${searchParams.get('uid')}`);
 
@@ -282,7 +278,7 @@ export default function NegativeRemarksPage() {
           <DialogHeader>
             <DialogTitle>Create an Appeal for "{selectedRemark?.title}"</DialogTitle>
             <DialogDescription>
-              Provide a reason and optional proof for your appeal. This action cannot be undone.
+              Provide a reason for your appeal. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -296,16 +292,12 @@ export default function NegativeRemarksPage() {
                     rows={4}
                 />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="proof" className="text-sm font-medium">Proof (Optional)</label>
-              <FileUpload onFileSelect={setAppealProof} />
-            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
                 <Button type="button" variant="secondary">Cancel</Button>
             </DialogClose>
-            <Button onClick={handleAppealSubmit} disabled={isSubmittingAppeal || !appealReason}>
+            <Button onClick={handleAppealSubmit} disabled={isSubmittingAppeal || !appealReason.trim()}>
                 {isSubmittingAppeal ? 'Submitting...' : 'Submit Appeal'}
             </Button>
           </DialogFooter>
