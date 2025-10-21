@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -279,11 +280,11 @@ export default function NegativeRemarksPage() {
       </Card>
       
       <Dialog open={isAppealDialogOpen} onOpenChange={setIsAppealDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create an Appeal for "{selectedRemark?.title}"</DialogTitle>
             <DialogDescription>
-              Provide a reason and optional proof for your appeal.
+              Provide a reason and optional proof for your appeal. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

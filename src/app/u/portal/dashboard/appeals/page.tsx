@@ -29,6 +29,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { ConversationThread } from "@/components/conversation-thread";
 import { FileUpload } from "@/components/file-upload";
 import { io, type Socket } from "socket.io-client";
+import { cn } from "@/lib/utils";
+
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -242,8 +244,11 @@ export default function AppealsPage() {
   }
 
   return (
-    <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 flex flex-col gap-6">
+    <div className="flex flex-col md:flex-row flex-1 gap-6">
+      <div className={cn(
+        "flex flex-col gap-6 w-full",
+        selectedAppeal ? "md:w-2/3" : "md:w-full"
+      )}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">My Appeals</h2>
@@ -271,7 +276,7 @@ export default function AppealsPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                    <TableRow><TableCell colSpan={4} className="text-center">Loading appeals...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center h-24">Loading appeals...</TableCell></TableRow>
                 ) : appeals.length > 0 ? (
                     appeals.map((appeal) => (
                     <TableRow
@@ -299,7 +304,10 @@ export default function AppealsPage() {
           </div>
         </div>
       </div>
-      <aside className="lg:col-span-1 bg-card rounded-lg border flex flex-col p-6 gap-6 h-fit sticky top-6">
+      <aside className={cn(
+        "bg-card rounded-lg border flex flex-col p-6 gap-6 h-fit sticky top-6 transition-all duration-300",
+        selectedAppeal ? "w-full md:w-1/3" : "w-0 hidden"
+      )}>
         {selectedAppeal ? (
             <div className="flex flex-col h-full">
                 <h3 className="text-xl font-bold mb-4">Appeal Details</h3>
@@ -387,5 +395,3 @@ export default function AppealsPage() {
     </div>
   )
 }
-
-    
