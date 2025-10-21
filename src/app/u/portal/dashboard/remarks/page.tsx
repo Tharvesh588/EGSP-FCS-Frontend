@@ -120,10 +120,15 @@ export default function NegativeRemarksPage() {
           if (academicYearFilter !== 'all') params.append('academicYear', academicYearFilter);
           if (statusFilter !== 'all') params.append('status', statusFilter);
          
-          const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative?${params.toString()}`, {
+          const response = await fetch(`${API_BASE_URL}/api/v1/credits/negative?${params.toString()}`, {
               headers: { Authorization: `Bearer ${token}` },
           });
   
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch remarks: ${errorText}`);
+          }
+          
           const data = await response.json();
           if (data.success) {
               setRemarks(data.items);
@@ -132,9 +137,13 @@ export default function NegativeRemarksPage() {
               throw new Error(data.message || "Failed to fetch remarks");
           }
       } catch (error: any) {
-          toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
-          setRemarks([]);
-          setTotal(0);
+        if (error.message.includes('DOCTYPE')) {
+             toast({ variant: "destructive", title: "Error fetching remarks", description: "The API returned an invalid response. The endpoint might be incorrect." });
+        } else {
+             toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
+        }
+        setRemarks([]);
+        setTotal(0);
       } finally {
           setIsLoadingRemarks(false);
       }
