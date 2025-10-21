@@ -63,13 +63,6 @@ export default function AppealsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('all');
-
-  const [isAppealDialogOpen, setIsAppealDialogOpen] = useState(false);
-  const [appealableRemarks, setAppealableRemarks] = useState<NegativeCredit[]>([]);
-  const [selectedRemarkId, setSelectedRemarkId] = useState("");
-  const [appealReason, setAppealReason] = useState("");
-  const [appealProof, setAppealProof] = useState<File | null>(null);
-  const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
   
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [isStartingConversation, setIsStartingConversation] = useState(false);
@@ -78,7 +71,7 @@ export default function AppealsPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
   const socketRef = useRef<Socket | null>(null);
 
-  const fetchNegativeCredits = async () => {
+  const fetchAppeals = async () => {
       setIsLoading(true);
       if (!token) {
         toast({ variant: "destructive", title: "Authentication Error" });
@@ -89,8 +82,16 @@ export default function AppealsPage() {
       try {
         const params = new URLSearchParams({ 
             limit: '200', 
-            sort: '-createdAt' 
+            sort: '-appeal.createdAt',
+            status: 'appealed', // We only want items that have been appealed
         });
+        
+        if (filter !== 'all') {
+            // This assumes the backend can filter by appeal.status.
+            // If not, client-side filtering is needed after fetching all 'appealed' credits.
+            // Let's assume the backend supports it for now.
+             params.append('appealStatus', filter);
+        }
 
         const response = await fetch(`${API_BASE_URL}/api/v1/credits/negative?${params.toString()}`, {
           headers: { "Authorization": `Bearer ${token}` }
@@ -109,21 +110,20 @@ export default function AppealsPage() {
         const resData = await response.json();
 
         if (resData.success) {
-            const allNegativeCredits: NegativeCredit[] = resData.items;
-            
-            const fetchedAppeals = allNegativeCredits.filter((credit): credit is Appeal => 
+            const fetchedAppeals = resData.items.filter((credit: NegativeCredit): credit is Appeal => 
               !!credit.appeal
             );
+            
+            // Apply client-side filtering if backend doesn't support appealStatus
+            const finalAppeals = filter === 'all' 
+                ? fetchedAppeals
+                : fetchedAppeals.filter(a => a.appeal.status === filter);
 
-            const fetchedAppealable = allNegativeCredits.filter(credit => 
-                !credit.appeal
-            );
 
-            setAppeals(fetchedAppeals);
-            setAppealableRemarks(fetchedAppealable);
+            setAppeals(finalAppeals);
 
-            if (fetchedAppeals.length > 0) {
-              const currentSelection = fetchedAppeals.find((item: Appeal) => item._id === selectedAppeal?._id) || fetchedAppeals[0];
+            if (finalAppeals.length > 0) {
+              const currentSelection = finalAppeals.find((item: Appeal) => item._id === selectedAppeal?._id) || finalAppeals[0];
               setSelectedAppeal(currentSelection);
             } else {
               setSelectedAppeal(null);
@@ -134,7 +134,6 @@ export default function AppealsPage() {
       } catch (error: any) {
           toast({ variant: "destructive", title: "Failed to fetch data", description: error.message });
           setAppeals([]);
-          setAppealableRemarks([]);
       } finally {
           setIsLoading(false);
       }
@@ -142,66 +141,14 @@ export default function AppealsPage() {
   
   useEffect(() => {
     if (facultyId) {
-        fetchNegativeCredits();
+        fetchAppeals();
     }
-  }, [facultyId, toast]);
+  }, [facultyId, filter, toast]);
   
   useEffect(() => {
     setActiveConversation(null);
   }, [selectedAppeal]);
 
-  const handleAppealSubmit = async () => {
-    if (!selectedRemarkId || !appealReason) {
-        toast({
-            variant: "destructive",
-            title: "Incomplete Form",
-            description: "Please select a remark and provide a reason.",
-        });
-        return;
-    }
-    setIsSubmittingAppeal(true);
-
-    const formData = new FormData();
-    formData.append('reason', appealReason);
-    if (appealProof) {
-        formData.append('proof', appealProof);
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/${selectedRemarkId}/appeal`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-            },
-            body: formData,
-        });
-
-        const responseData = await response.json();
-        if (!response.ok || !responseData.success) {
-            throw new Error(responseData.message || "Failed to submit appeal.");
-        }
-        
-        toast({
-            title: "Appeal Submitted",
-            description: "Your appeal has been successfully submitted for review.",
-        });
-
-        setIsAppealDialogOpen(false);
-        setSelectedRemarkId("");
-        setAppealReason("");
-        setAppealProof(null);
-        fetchNegativeCredits();
-
-    } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Appeal Failed",
-            description: error.message,
-        });
-    } finally {
-        setIsSubmittingAppeal(false);
-    }
-  };
   
   const handleStartConversation = async () => {
     if (!selectedAppeal || !facultyId) return;
@@ -243,8 +190,6 @@ export default function AppealsPage() {
     }
   };
 
-  const filteredAppeals = appeals.filter(appeal => filter === 'all' || appeal.appeal.status === filter);
-  
   const getStatusVariant = (status: Appeal['appeal']['status']) => {
       switch (status) {
           case 'accepted': return 'default';
@@ -304,10 +249,6 @@ export default function AppealsPage() {
             <h2 className="text-2xl font-bold tracking-tight">My Appeals</h2>
             <p className="text-muted-foreground">Review and track your submitted appeals.</p>
           </div>
-           <Button onClick={() => setIsAppealDialogOpen(true)}>
-              <span className="material-symbols-outlined -ml-1 mr-2 h-5 w-5">add</span>
-              Create Appeal
-            </Button>
         </div>
 
         <div className="flex items-center gap-2 border-b pb-2">
@@ -331,8 +272,8 @@ export default function AppealsPage() {
               <TableBody>
                 {isLoading ? (
                     <TableRow><TableCell colSpan={4} className="text-center">Loading appeals...</TableCell></TableRow>
-                ) : filteredAppeals.length > 0 ? (
-                    filteredAppeals.map((appeal) => (
+                ) : appeals.length > 0 ? (
+                    appeals.map((appeal) => (
                     <TableRow
                         key={appeal._id}
                         className={`cursor-pointer ${selectedAppeal?._id === appeal._id ? "bg-primary/5" : ""}`}
@@ -351,7 +292,7 @@ export default function AppealsPage() {
                     </TableRow>
                     ))
                 ) : (
-                    <TableRow><TableCell colSpan={4} className="text-center">No appeals found for this filter.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center h-24">No appeals found for this filter.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -443,61 +384,8 @@ export default function AppealsPage() {
             </div>
         )}
       </aside>
-
-      <Dialog open={isAppealDialogOpen} onOpenChange={setIsAppealDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create an Appeal</DialogTitle>
-            <DialogDescription>
-              Select a negative remark you wish to appeal and provide your reason.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-                <label className="text-sm font-medium">Negative Remark</label>
-                <Select onValueChange={setSelectedRemarkId} value={selectedRemarkId}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select a remark to appeal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {appealableRemarks.length > 0 ? (
-                           appealableRemarks.map(remark => (
-                            <SelectItem key={remark._id} value={remark._id}>
-                                {remark.title} ({new Date(remark.createdAt).toLocaleDateString()})
-                            </SelectItem>
-                           ))
-                        ) : (
-                           <div className="p-4 text-sm text-muted-foreground text-center">No remarks are currently eligible for appeal.</div>
-                        )}
-                    </SelectContent>
-                </Select>
-                 <p className="text-xs text-muted-foreground px-1">Only remarks without a pending appeal are shown.</p>
-            </div>
-            <div className="space-y-2">
-                <label htmlFor="reason" className="text-sm font-medium">Reason for Appeal</label>
-                <Textarea 
-                    id="reason" 
-                    placeholder="Explain why you are appealing this remark..."
-                    value={appealReason}
-                    onChange={(e) => setAppealReason(e.target.value)} 
-                    rows={4}
-                />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="proof" className="text-sm font-medium">Proof (Optional)</label>
-              <FileUpload onFileSelect={setAppealProof} />
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary">Cancel</Button>
-            </DialogClose>
-            <Button onClick={handleAppealSubmit} disabled={isSubmittingAppeal || !selectedRemarkId || !appealReason}>
-                {isSubmittingAppeal ? 'Submitting...' : 'Submit Appeal'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
+
+    

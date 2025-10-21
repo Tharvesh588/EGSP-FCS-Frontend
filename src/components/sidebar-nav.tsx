@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -25,6 +26,7 @@ const getFacultyNav = (uid: string) => [
   { name: "Dashboard", href: `/u/portal/dashboard?uid=${uid}`, icon: LayoutDashboard },
   { name: "Good Works", href: `/u/portal/dashboard/good-works?uid=${uid}`, icon: Award },
   { name: "Submit", href: `/u/portal/dashboard/good-works/submit?uid=${uid}`, icon: Files },
+  { name: "Negative Remarks", href: `/u/portal/dashboard/remarks?uid=${uid}`, icon: MessageSquareWarning },
   { name: "Appeals", href: `/u/portal/dashboard/appeals?uid=${uid}`, icon: ShieldCheck },
   { name: "Conversations", href: `/u/portal/dashboard/conversations?uid=${uid}`, icon: GanttChart },
   { name: "Notifications", href: `/u/portal/dashboard/notifications?uid=${uid}`, icon: Bell },
@@ -102,3 +104,5 @@ export function SidebarNav({ role }: SidebarNavProps) {
     </Sidebar>
   );
 }
+
+    
