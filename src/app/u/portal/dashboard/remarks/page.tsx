@@ -80,16 +80,9 @@ export default function NegativeRemarksPage() {
   // Data for table and filters
   const [remarks, setRemarks] = useState<NegativeCredit[]>([]);
   const [isLoadingRemarks, setIsLoadingRemarks] = useState(true);
-  const [page, setPage] = useState(1);
-  const [limit] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [academicYearFilter, setAcademicYearFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
   
   // Details view state
   const [selectedRemark, setSelectedRemark] = useState<NegativeCredit | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Appeal state
   const [isAppealDialogOpen, setIsAppealDialogOpen] = useState(false);
@@ -100,9 +93,8 @@ export default function NegativeRemarksPage() {
 
   const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
   const facultyId = searchParams.get('uid');
-  const totalPages = Math.ceil(total / limit);
 
-  const fetchRemarks = async (currentPage: number) => {
+  const fetchRemarks = async () => {
       setIsLoadingRemarks(true);
       if (!token || !facultyId) {
           setIsLoadingRemarks(false);
@@ -110,17 +102,7 @@ export default function NegativeRemarksPage() {
       }
   
       try {
-          const params = new URLSearchParams({
-              page: currentPage.toString(),
-              limit: limit.toString(),
-              sort: '-createdAt',
-          });
-
-          if (searchTerm) params.append('search', searchTerm);
-          if (academicYearFilter !== 'all') params.append('academicYear', academicYearFilter);
-          if (statusFilter !== 'all') params.append('status', statusFilter);
-         
-          const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative?${params.toString()}`, {
+          const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative`, {
               headers: { Authorization: `Bearer ${token}` },
           });
   
@@ -137,7 +119,6 @@ export default function NegativeRemarksPage() {
           const data = await response.json();
           if (data.success) {
               setRemarks(data.items);
-              setTotal(data.total);
           } else {
               throw new Error(data.message || "Failed to fetch remarks");
           }
@@ -147,24 +128,16 @@ export default function NegativeRemarksPage() {
             toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
         }
         setRemarks([]);
-        setTotal(0);
       } finally {
           setIsLoadingRemarks(false);
       }
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-        if (token && facultyId) {
-            fetchRemarks(page);
-        }
-    }, 500); // Debounce API call
-    return () => clearTimeout(timer);
-  }, [page, token, facultyId, searchTerm, academicYearFilter, statusFilter]);
-  
-  useEffect(() => {
-    setPage(1); // Reset to first page whenever filters change
-  }, [searchTerm, academicYearFilter, statusFilter]);
+    if (token && facultyId) {
+        fetchRemarks();
+    }
+  }, [token, facultyId]);
   
   const handleOpenAppealDialog = (remark: NegativeCredit) => {
     setSelectedRemark(remark);
@@ -210,7 +183,7 @@ export default function NegativeRemarksPage() {
         setIsAppealDialogOpen(false);
         setAppealReason("");
         setAppealProof(null);
-        fetchRemarks(1); // refetch and go to first page
+        fetchRemarks();
         router.push(`/u/portal/dashboard/appeals?uid=${searchParams.get('uid')}`);
 
     } catch (error: any) {
@@ -263,37 +236,6 @@ export default function NegativeRemarksPage() {
             <CardDescription>A log of all negative remarks issued to you.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              <div className="relative lg:col-span-1">
-                  <Input 
-                      placeholder="Search by title..." 
-                      className="pl-4"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-              </div>
-              <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
-                  <SelectTrigger>
-                      <SelectValue placeholder="Select Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="all">All Years</SelectItem>
-                      {generateYearOptions().map(year => (<SelectItem key={year} value={year}>{year}</SelectItem>))}
-                  </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="appealed">Appealed</SelectItem>
-                </SelectContent>
-              </Select>
-          </div>
           <div className="overflow-x-auto border rounded-lg">
             <Table>
               <TableHeader>
@@ -328,25 +270,12 @@ export default function NegativeRemarksPage() {
                   </TableRow>
                 ))
                 ) : (
-                    <TableRow><TableCell colSpan={5} className="text-center h-24">No remarks found for the selected filters.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">No remarks found.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
-        <CardFooter className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-                Page {page} of {totalPages || 1}
-            </div>
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                    Previous
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
-                    Next
-                </Button>
-            </div>
-        </CardFooter>
       </Card>
       
       <Dialog open={isAppealDialogOpen} onOpenChange={setIsAppealDialogOpen}>
