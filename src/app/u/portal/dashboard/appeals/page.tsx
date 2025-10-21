@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useRef } from "react";
@@ -201,10 +200,9 @@ export default function AppealsPage() {
   };
   
   const getTimelineIcon = (status: 'submitted' | Appeal['appeal']['status'], currentStatus: Appeal['appeal']['status']) => {
-    const isPast = (
+    const isPast = 
       (status === 'submitted' && ['pending', 'accepted', 'rejected'].includes(currentStatus)) ||
-      (status === 'pending' && ['accepted', 'rejected'].includes(currentStatus))
-    );
+      (status === 'pending' && ['accepted', 'rejected'].includes(currentStatus));
     const isCurrent = status === currentStatus;
 
     if (isPast) {
@@ -348,37 +346,35 @@ export default function AppealsPage() {
 
                         <div className="border-t pt-6 mt-6">
                           <h4 className="font-semibold mb-4">Appeal Timeline</h4>
-                          <div className="relative">
-                            <div className="absolute left-3 top-3 bottom-3 w-0.5 bg-border"></div>
-                            <ul className="space-y-6">
-                                <li className="flex items-start gap-4">
-                                    {getTimelineIcon('submitted', selectedAppeal.appeal.status)}
-                                    <div className="mt-0.5">
-                                        <p className="font-medium">Appeal Submitted</p>
-                                        <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
-                                    </div>
-                                </li>
-                                <li className="flex items-start gap-4">
-                                    {getTimelineIcon('pending', selectedAppeal.appeal.status)}
-                                    <div className="mt-0.5">
-                                        <p className="font-medium">Under Review</p>
-                                        {(selectedAppeal.appeal.status === 'pending' || selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
-                                            <p className="text-sm text-muted-foreground">Your appeal is being reviewed by the admin.</p>
-                                        )}
-                                    </div>
-                                </li>
-                                <li className="flex items-start gap-4">
-                                    {getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}
-                                    <div className="mt-0.5">
-                                        <p className="font-medium">Decision</p>
-                                        {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
-                                            <p className="text-sm text-muted-foreground">
-                                                {selectedAppeal.appeal.status === 'accepted' ? 'Your appeal has been approved.' : 'Your appeal has been rejected.'}
-                                            </p>
-                                        )}
-                                    </div>
-                                </li>
-                            </ul>
+                          <div className="relative pl-4 space-y-6">
+                              <div className="absolute left-7 top-1 bottom-1 w-0.5 bg-border -translate-x-1/2"></div>
+                              <div className="flex items-start gap-4 relative">
+                                  {getTimelineIcon('submitted', selectedAppeal.appeal.status)}
+                                  <div className="flex-1">
+                                      <p className="font-medium">Appeal Submitted</p>
+                                      <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
+                                  </div>
+                              </div>
+                              <div className="flex items-start gap-4 relative">
+                                  {getTimelineIcon('pending', selectedAppeal.appeal.status)}
+                                   <div className="flex-1">
+                                      <p className="font-medium">Under Review</p>
+                                      {(selectedAppeal.appeal.status === 'pending' || selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
+                                          <p className="text-sm text-muted-foreground">Your appeal is being reviewed by the admin.</p>
+                                      )}
+                                  </div>
+                              </div>
+                              <div className="flex items-start gap-4 relative">
+                                  {getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}
+                                   <div className="flex-1">
+                                      <p className="font-medium">Decision</p>
+                                      {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
+                                          <p className="text-sm text-muted-foreground">
+                                              {selectedAppeal.appeal.status === 'accepted' ? 'Your appeal has been approved.' : 'Your appeal has been rejected.'}
+                                          </p>
+                                      )}
+                                  </div>
+                              </div>
                           </div>
                         </div>
                     </>
