@@ -27,7 +27,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ConversationThread } from "@/components/conversation-thread";
-import { FileUpload } from "@/components/file-upload";
 import { io, type Socket } from "socket.io-client";
 import { cn } from "@/lib/utils";
 
@@ -85,17 +84,14 @@ export default function AppealsPage() {
         const params = new URLSearchParams({ 
             limit: '200', 
             sort: '-appeal.createdAt',
-            status: 'appealed', // We only want items that have been appealed
         });
         
+        let url = `${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative`;
         if (filter !== 'all') {
-            // This assumes the backend can filter by appeal.status.
-            // If not, client-side filtering is needed after fetching all 'appealed' credits.
-            // Let's assume the backend supports it for now.
-             params.append('appealStatus', filter);
+            params.append('appealStatus', filter);
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/negative?${params.toString()}`, {
+        const response = await fetch(`${url}?${params.toString()}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         
@@ -116,16 +112,10 @@ export default function AppealsPage() {
               !!credit.appeal
             );
             
-            // Apply client-side filtering if backend doesn't support appealStatus
-            const finalAppeals = filter === 'all' 
-                ? fetchedAppeals
-                : fetchedAppeals.filter(a => a.appeal.status === filter);
+            setAppeals(fetchedAppeals);
 
-
-            setAppeals(finalAppeals);
-
-            if (finalAppeals.length > 0) {
-              const currentSelection = finalAppeals.find((item: Appeal) => item._id === selectedAppeal?._id) || finalAppeals[0];
+            if (fetchedAppeals.length > 0) {
+              const currentSelection = fetchedAppeals.find((item: Appeal) => item._id === selectedAppeal?._id) || fetchedAppeals[0];
               setSelectedAppeal(currentSelection);
             } else {
               setSelectedAppeal(null);
@@ -210,38 +200,54 @@ export default function AppealsPage() {
       }
   };
   
-  const getTimelineIcon = (status: Appeal['appeal']['status'] | 'submitted', currentStatus: Appeal['appeal']['status']) => {
-      const timelineHierarchy = ['submitted', 'pending', 'accepted', 'rejected'];
-      const itemIndex = status === 'submitted' ? 0 : timelineHierarchy.indexOf(status);
-      const currentIndex = timelineHierarchy.indexOf(currentStatus);
+  const getTimelineIcon = (status: 'submitted' | Appeal['appeal']['status'], currentStatus: Appeal['appeal']['status']) => {
+    const isPast = (
+      (status === 'submitted' && ['pending', 'accepted', 'rejected'].includes(currentStatus)) ||
+      (status === 'pending' && ['accepted', 'rejected'].includes(currentStatus))
+    );
+    const isCurrent = status === currentStatus;
 
-      let icon = 'radio_button_unchecked';
-      let color = 'text-muted-foreground';
+    if (isPast) {
+      return (
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <span className="material-symbols-outlined text-base">check</span>
+        </div>
+      );
+    }
+    
+    if (isCurrent) {
+        let icon, colorClass;
+        switch(currentStatus) {
+            case 'pending':
+                icon = 'timelapse';
+                colorClass = 'bg-primary/20 text-primary animate-pulse';
+                break;
+            case 'accepted':
+                icon = 'check_circle';
+                colorClass = 'bg-green-100 text-green-600';
+                break;
+            case 'rejected':
+                icon = 'cancel';
+                colorClass = 'bg-red-100 text-destructive';
+                break;
+            default:
+                icon = 'radio_button_unchecked';
+                colorClass = 'bg-muted text-muted-foreground';
+        }
+       return (
+         <div className={`flex h-6 w-6 items-center justify-center rounded-full ${colorClass}`}>
+           <span className="material-symbols-outlined text-base">{icon}</span>
+         </div>
+       );
+    }
 
-      if (itemIndex < currentIndex || (itemIndex === 0 && currentIndex > 0) ) {
-          icon = 'check_circle';
-          color = 'text-primary';
-      } else if (itemIndex === currentIndex) {
-          if (currentStatus === 'accepted') {
-            icon = 'check_circle';
-            color = 'text-green-600';
-          } else if (currentStatus === 'rejected') {
-            icon = 'cancel';
-            color = 'text-destructive';
-          } else {
-            icon = 'timelapse';
-            color = 'text-primary animate-pulse';
-          }
-      }
-      
-      if(status === 'submitted') {
-          icon = 'check_circle';
-          color = 'text-primary';
-      }
+    return (
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <span className="material-symbols-outlined text-base">radio_button_unchecked</span>
+        </div>
+    );
+  };
 
-
-      return <span className={`material-symbols-outlined ${color}`}>{icon}</span>;
-  }
 
   return (
     <div className="flex flex-col md:flex-row flex-1 gap-6">
@@ -342,33 +348,37 @@ export default function AppealsPage() {
 
                         <div className="border-t pt-6 mt-6">
                           <h4 className="font-semibold mb-4">Appeal Timeline</h4>
-                          <div className="relative pl-4 space-y-6">
-                                <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-border -translate-x-1/2"></div>
-                                <div className="relative flex items-start gap-4">
-                                  {getTimelineIcon('submitted', selectedAppeal.appeal.status)}
-                                  <div>
-                                    <p className="font-medium">Appeal Submitted</p>
-                                    <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
-                                  </div>
-                                </div>
-                                <div className="relative flex items-start gap-4">
-                                   {getTimelineIcon('pending', selectedAppeal.appeal.status)}
-                                  <div>
-                                    <p className="font-medium">Under Review</p>
-                                     {(selectedAppeal.appeal.status === 'pending' || selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && <p className="text-sm text-muted-foreground">Your appeal is being reviewed.</p>}
-                                  </div>
-                                </div>
-                                <div className="relative flex items-start gap-4">
-                                   {getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}
-                                  <div>
-                                    <p className="font-medium">Decision</p>
-                                     {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
-                                        <p className="text-sm text-muted-foreground">
-                                            {selectedAppeal.appeal.status === 'accepted' ? 'Your appeal was approved.' : 'Your appeal was rejected.'}
-                                        </p>
-                                     )}
-                                  </div>
-                                </div>
+                          <div className="relative">
+                            <div className="absolute left-3 top-3 bottom-3 w-0.5 bg-border"></div>
+                            <ul className="space-y-6">
+                                <li className="flex items-start gap-4">
+                                    {getTimelineIcon('submitted', selectedAppeal.appeal.status)}
+                                    <div className="mt-0.5">
+                                        <p className="font-medium">Appeal Submitted</p>
+                                        <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
+                                    </div>
+                                </li>
+                                <li className="flex items-start gap-4">
+                                    {getTimelineIcon('pending', selectedAppeal.appeal.status)}
+                                    <div className="mt-0.5">
+                                        <p className="font-medium">Under Review</p>
+                                        {(selectedAppeal.appeal.status === 'pending' || selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
+                                            <p className="text-sm text-muted-foreground">Your appeal is being reviewed by the admin.</p>
+                                        )}
+                                    </div>
+                                </li>
+                                <li className="flex items-start gap-4">
+                                    {getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}
+                                    <div className="mt-0.5">
+                                        <p className="font-medium">Decision</p>
+                                        {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
+                                            <p className="text-sm text-muted-foreground">
+                                                {selectedAppeal.appeal.status === 'accepted' ? 'Your appeal has been approved.' : 'Your appeal has been rejected.'}
+                                            </p>
+                                        )}
+                                    </div>
+                                </li>
+                            </ul>
                           </div>
                         </div>
                     </>
