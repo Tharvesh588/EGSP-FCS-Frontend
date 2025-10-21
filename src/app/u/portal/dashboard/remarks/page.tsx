@@ -161,7 +161,7 @@ export default function NegativeRemarksPage() {
     }
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/${selectedRemark._id}/appeal`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/${selectedRemark._id}/appeal`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
