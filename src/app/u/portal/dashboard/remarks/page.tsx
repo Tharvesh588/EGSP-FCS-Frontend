@@ -126,7 +126,12 @@ export default function NegativeRemarksPage() {
   
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`Failed to fetch remarks: ${errorText}`);
+             if (errorText.includes('<!DOCTYPE')) {
+                toast({ variant: "destructive", title: "Error fetching remarks", description: "The API returned an invalid response. The endpoint might be incorrect." });
+            } else {
+                toast({ variant: "destructive", title: "Error fetching remarks", description: errorText });
+            }
+            throw new Error(`Failed to fetch remarks`);
           }
           
           const data = await response.json();
@@ -137,10 +142,9 @@ export default function NegativeRemarksPage() {
               throw new Error(data.message || "Failed to fetch remarks");
           }
       } catch (error: any) {
-        if (error.message.includes('DOCTYPE')) {
-             toast({ variant: "destructive", title: "Error fetching remarks", description: "The API returned an invalid response. The endpoint might be incorrect." });
-        } else {
-             toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
+        // Avoid double-toasting if already handled
+        if (!error.message.includes('Failed to fetch remarks')) {
+            toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
         }
         setRemarks([]);
         setTotal(0);
@@ -382,5 +386,3 @@ export default function NegativeRemarksPage() {
     </div>
   )
 }
-
-    
