@@ -1,7 +1,8 @@
+
 "use client"
 
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -59,6 +60,7 @@ type Conversation = {
 export default function AppealsPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
@@ -73,7 +75,7 @@ export default function AppealsPage() {
 
   const fetchAppeals = async () => {
       setIsLoading(true);
-      if (!token) {
+      if (!token || !facultyId) {
         toast({ variant: "destructive", title: "Authentication Error" });
         setIsLoading(false);
         return;
@@ -85,7 +87,7 @@ export default function AppealsPage() {
             sort: '-appeal.createdAt',
         });
         
-        let url = `${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative`;
+        let url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}/negative`;
         if (filter !== 'all') {
             params.append('appealStatus', filter);
         }
@@ -170,7 +172,8 @@ export default function AppealsPage() {
 
         const data = await response.json();
         if (data.conversation) {
-            setActiveConversation(data.conversation);
+            toast({ title: 'Success', description: 'Conversation started. Redirecting...' });
+            router.push(`/u/portal/dashboard/conversations?uid=${facultyId}`);
         } else {
             throw new Error(data.message || "Failed to start conversation.");
         }
@@ -346,36 +349,35 @@ export default function AppealsPage() {
 
                         <div className="border-t pt-6 mt-6">
                           <h4 className="font-semibold mb-4">Appeal Timeline</h4>
-                          <div className="relative pl-4 space-y-6">
-                              <div className="absolute left-7 top-1 bottom-1 w-0.5 bg-border -translate-x-1/2"></div>
-                              <div className="flex items-start gap-4 relative">
-                                  {getTimelineIcon('submitted', selectedAppeal.appeal.status)}
-                                  <div className="flex-1">
-                                      <p className="font-medium">Appeal Submitted</p>
-                                      <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
-                                  </div>
-                              </div>
-                              <div className="flex items-start gap-4 relative">
-                                  {getTimelineIcon('pending', selectedAppeal.appeal.status)}
-                                   <div className="flex-1">
-                                      <p className="font-medium">Under Review</p>
-                                      {(selectedAppeal.appeal.status === 'pending' || selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
-                                          <p className="text-sm text-muted-foreground">Your appeal is being reviewed by the admin.</p>
-                                      )}
-                                  </div>
-                              </div>
-                              <div className="flex items-start gap-4 relative">
-                                  {getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}
-                                   <div className="flex-1">
-                                      <p className="font-medium">Decision</p>
-                                      {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
-                                          <p className="text-sm text-muted-foreground">
-                                              {selectedAppeal.appeal.status === 'accepted' ? 'Your appeal has been approved.' : 'Your appeal has been rejected.'}
-                                          </p>
-                                      )}
-                                  </div>
-                              </div>
-                          </div>
+                           <ul className="space-y-6">
+                                <li className="flex gap-4">
+                                    {getTimelineIcon('submitted', selectedAppeal.appeal.status)}
+                                    <div>
+                                        <p className="font-medium">Appeal Submitted</p>
+                                        <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
+                                    </div>
+                                </li>
+                                <li className="flex gap-4">
+                                     {getTimelineIcon('pending', selectedAppeal.appeal.status)}
+                                    <div>
+                                        <p className="font-medium">Under Review</p>
+                                        {(selectedAppeal.appeal.status === 'pending' || selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
+                                            <p className="text-sm text-muted-foreground">Your appeal is being reviewed by the admin.</p>
+                                        )}
+                                    </div>
+                                </li>
+                                <li className="flex gap-4">
+                                    {getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}
+                                    <div>
+                                        <p className="font-medium">Decision</p>
+                                        {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
+                                            <p className="text-sm text-muted-foreground">
+                                                {selectedAppeal.appeal.status === 'accepted' ? 'Your appeal has been approved.' : 'Your appeal has been rejected.'}
+                                            </p>
+                                        )}
+                                    </div>
+                                </li>
+                            </ul>
                         </div>
                     </>
                 )}
@@ -401,3 +403,5 @@ export default function AppealsPage() {
     </div>
   )
 }
+
+    

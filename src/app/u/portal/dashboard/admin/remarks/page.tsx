@@ -23,7 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { FileUpload } from "@/components/file-upload";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import {
@@ -102,6 +102,7 @@ const generateYearOptions = () => {
 export default function ManageRemarksPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   // Form state
   const [facultyId, setFacultyId] = useState("");
@@ -342,12 +343,17 @@ export default function ManageRemarksPage() {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to start conversation');
       }
+      
+      const data = await response.json();
 
       toast({
         title: 'Conversation Started',
         description: 'You can now chat with the faculty member in the Conversations tab.',
       });
       setIsDetailsOpen(false);
+      if (data.conversation) {
+        router.push(`/u/portal/dashboard/admin/conversations?uid=${uid}`);
+      }
 
     } catch (error: any) {
       toast({
@@ -603,3 +609,5 @@ export default function ManageRemarksPage() {
     </div>
   )
 }
+
+    
