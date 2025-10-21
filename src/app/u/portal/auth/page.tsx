@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
+import Turnstile from "react-turnstile";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
@@ -19,13 +20,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   
   const isAdminLogin = searchParams.has('admin');
-
-  useEffect(() => {
-    // This effect can be used for other purposes if needed,
-    // but the auto-filling logic is removed.
-  }, [searchParams]);
+  const showTurnstile = email && password;
 
   useEffect(() => {
     const updateTimestamp = () => {
@@ -38,15 +36,22 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!turnstileToken) {
+        toast({
+            variant: "destructive",
+            title: "Verification Failed",
+            description: "Please complete the security check before logging in.",
+        });
+        return;
+    }
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, turnstileToken }),
       });
 
-      // Check if the response is JSON before parsing
       const contentType = response.headers.get("content-type");
       if (!response.ok) {
         if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -69,10 +74,8 @@ export default function LoginPage() {
       localStorage.setItem("token", token);
       localStorage.setItem("userRole", role);
       
-      // Set session expiration
       const sessionExpiresAt = Date.now() + SESSION_DURATION_SECONDS * 1000;
       localStorage.setItem("sessionExpiresAt", sessionExpiresAt.toString());
-
 
       const redirectUrl = role === 'admin' 
         ? `/u/portal/dashboard/admin?uid=${id}`
@@ -141,13 +144,25 @@ export default function LoginPage() {
                         </div>
                     </div>
                 </div>
+
+                {showTurnstile && (
+                    <div className="flex justify-center">
+                        <Turnstile
+                            sitekey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY!}
+                            onVerify={(token) => setTurnstileToken(token)}
+                            onExpire={() => setTurnstileToken(null)}
+                            theme="light"
+                        />
+                    </div>
+                )}
+                
                 <div className="flex items-center justify-end">
                     <div className="text-sm">
                         <a href="#" className="font-medium text-primary hover:text-primary/80">Forgot your password?</a>
                     </div>
                 </div>
                 <div>
-                    <button type="submit" disabled={isLoading} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-background transition-colors disabled:opacity-50">
+                    <button type="submit" disabled={isLoading || !turnstileToken} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-background transition-colors disabled:opacity-50">
                         {isLoading ? 'Logging in...' : 'Login'}
                     </button>
                 </div>
