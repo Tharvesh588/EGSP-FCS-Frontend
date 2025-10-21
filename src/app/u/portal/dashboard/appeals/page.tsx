@@ -203,12 +203,17 @@ export default function AppealsPage() {
   };
   
   const getTimelineIcon = (status: 'submitted' | Appeal['appeal']['status'], currentStatus: Appeal['appeal']['status']) => {
-    const isPast = 
-      (status === 'submitted' && ['pending', 'accepted', 'rejected'].includes(currentStatus)) ||
-      (status === 'pending' && ['accepted', 'rejected'].includes(currentStatus));
+    const statusOrder = ['submitted', 'pending', 'accepted', 'rejected'];
+    const currentIndex = statusOrder.indexOf(currentStatus);
+    const itemIndex = statusOrder.indexOf(status);
+
+    const isPast = itemIndex < currentIndex && currentStatus !== 'rejected';
+    if(status === 'submitted' && currentStatus !== 'submitted') isPast;
+
+
     const isCurrent = status === currentStatus;
 
-    if (isPast) {
+    if (isPast || (status === 'submitted' && currentStatus !== 'submitted')) {
       return (
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
           <span className="material-symbols-outlined text-base">check</span>
@@ -346,35 +351,43 @@ export default function AppealsPage() {
                             </Card>
 
                         </div>
-                         <div className="relative pl-4 space-y-6 mt-6 border-t pt-6">
-                            <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-border -translate-x-1/2"></div>
-                             <div className="flex gap-4 items-start">
-                                <div className="relative z-10">{getTimelineIcon('submitted', selectedAppeal.appeal.status)}</div>
-                                <div>
-                                    <p className="font-medium">Appeal Submitted</p>
-                                    <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
-                                </div>
-                            </div>
-                             <div className="flex gap-4 items-start">
-                                <div className="relative z-10">{getTimelineIcon('pending', selectedAppeal.appeal.status)}</div>
-                                <div>
-                                    <p className="font-medium">Under Review</p>
-                                    {(selectedAppeal.appeal.status === 'pending' || selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
-                                        <p className="text-sm text-muted-foreground">Your appeal is being reviewed by the admin.</p>
-                                    )}
-                                </div>
-                            </div>
-                           <div className="flex gap-4 items-start">
-                                <div className="relative z-10">{getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}</div>
-                                <div>
-                                    <p className="font-medium">Decision</p>
-                                    {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') && (
-                                        <p className="text-sm text-muted-foreground">
-                                            {selectedAppeal.appeal.status === 'accepted' ? 'Your appeal has been approved.' : 'Your appeal has been rejected.'}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
+                         <div className="mt-6 border-t pt-6">
+                            <h4 className="font-semibold mb-4">Appeal Timeline</h4>
+                            <ul className="space-y-6">
+                                <li className="flex gap-4">
+                                    <div className="flex flex-col items-center">
+                                        <div className="flex-shrink-0">{getTimelineIcon('submitted', selectedAppeal.appeal.status)}</div>
+                                        <div className="w-px h-full bg-border"></div>
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">Submitted</p>
+                                        <p className="text-sm text-muted-foreground">{new Date(selectedAppeal.appeal.createdAt).toDateString()}</p>
+                                    </div>
+                                </li>
+                                <li className="flex gap-4">
+                                     <div className="flex flex-col items-center">
+                                        <div className="flex-shrink-0">{getTimelineIcon('pending', selectedAppeal.appeal.status)}</div>
+                                        <div className="w-px h-full bg-border"></div>
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">In Review</p>
+                                        <p className="text-sm text-muted-foreground">The admin team is reviewing your appeal.</p>
+                                    </div>
+                                </li>
+                                <li className="flex gap-4">
+                                    <div className="flex-shrink-0">{getTimelineIcon(selectedAppeal.appeal.status, selectedAppeal.appeal.status)}</div>
+                                    <div>
+                                        <p className="font-medium">Final Decision</p>
+                                        {(selectedAppeal.appeal.status === 'accepted' || selectedAppeal.appeal.status === 'rejected') ? (
+                                            <p className="text-sm text-muted-foreground">
+                                                Your appeal has been {selectedAppeal.appeal.status}.
+                                            </p>
+                                        ): (
+                                            <p className="text-sm text-muted-foreground">A decision is pending.</p>
+                                        )}
+                                    </div>
+                                </li>
+                            </ul>
                         </div>
                     </>
                 )}
