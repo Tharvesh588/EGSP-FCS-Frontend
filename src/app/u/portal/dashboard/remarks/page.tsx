@@ -52,6 +52,7 @@ type NegativeCredit = {
 const getCurrentAcademicYear = () => {
     const today = new Date();
     const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
     if (currentMonth >= 5) { // June or later
       return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
     }
@@ -371,5 +372,3 @@ export default function NegativeRemarksPage() {
     </div>
   )
 }
-
-    
