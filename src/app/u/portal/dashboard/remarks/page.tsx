@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -135,6 +134,7 @@ export default function NegativeRemarksPage() {
 
   useEffect(() => {
     if (token && facultyId) {
+        console.log('Faculty ID for fetching remarks:', facultyId);
         fetchRemarks();
     }
   }, [token, facultyId]);

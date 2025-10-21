@@ -33,8 +33,8 @@ export function useSubmitAchievement() {
     }
     
     try {
-      // The correct endpoint is /api/v1/credits/credits/positive
-      const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/positive`, {
+      // The correct endpoint is /api/v1/credits/positive
+      const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
