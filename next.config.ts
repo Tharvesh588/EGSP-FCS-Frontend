@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https'
+        protocol: 'https',
         hostname: 'egspgroup.in',
         port: '',
         pathname: '/**',
