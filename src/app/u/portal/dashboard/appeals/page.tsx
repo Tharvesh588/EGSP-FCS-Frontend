@@ -93,7 +93,7 @@ export default function AppealsPage() {
              params.append('appealStatus', filter);
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/negative?${params.toString()}`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/negative?${params.toString()}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         
