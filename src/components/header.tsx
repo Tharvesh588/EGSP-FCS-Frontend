@@ -94,22 +94,18 @@ export function Header({ user }: { user: User }) {
             }
 
             try {
-                const url = `${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}`;
+                const url = `${API_BASE_URL}/api/v1/credits/faculty/${facultyId}/negative`;
                 const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
                 
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    // Check if the error is HTML (like a 404 page)
-                    if (errorText.trim().startsWith("<!DOCTYPE html>")) {
-                       throw new Error(`API endpoint not found. Please check the URL. Status: ${response.status}`);
-                    }
-                    // Try to parse as JSON
-                    try {
-                      const errorJson = JSON.parse(errorText);
-                      throw new Error(errorJson.message || "An unknown server error occurred.");
-                    } catch (e) {
-                      throw new Error(errorText || `Server responded with status: ${response.status}`);
-                    }
+                    // For other errors, we can be less disruptive.
+                    console.error(`Failed to check notifications. Status: ${response.status}`);
+                    return;
                 }
 
                 const data = await response.json();
