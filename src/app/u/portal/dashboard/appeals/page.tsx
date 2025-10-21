@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ConversationThread } from "@/components/conversation-thread";
+import { FileUpload } from "@/components/file-upload";
 import { io, type Socket } from "socket.io-client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -35,10 +36,9 @@ type NegativeCredit = {
   _id: string;
   title: string;
   createdAt: string;
-  type: "positive" | "negative";
   points: number;
   notes: string;
-  proof: string;
+  proofUrl?: string;
   appeal?: {
     by: string;
     reason: string;
@@ -68,6 +68,7 @@ export default function AppealsPage() {
   const [appealableRemarks, setAppealableRemarks] = useState<NegativeCredit[]>([]);
   const [selectedRemarkId, setSelectedRemarkId] = useState("");
   const [appealReason, setAppealReason] = useState("");
+  const [appealProof, setAppealProof] = useState<File | null>(null);
   const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
   
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
@@ -77,16 +78,21 @@ export default function AppealsPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
   const socketRef = useRef<Socket | null>(null);
 
-  const fetchAppealsAndRemarks = async () => {
+  const fetchNegativeCredits = async () => {
       setIsLoading(true);
-      if (!token || !facultyId) {
+      if (!token) {
         toast({ variant: "destructive", title: "Authentication Error" });
         setIsLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}?limit=200`, {
+        const params = new URLSearchParams({ 
+            limit: '200', 
+            sort: '-createdAt' 
+        });
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/negative?${params.toString()}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         
@@ -96,21 +102,21 @@ export default function AppealsPage() {
                 const errorJson = JSON.parse(errorText);
                 throw new Error(errorJson.message || "Server returned an error");
             } catch (e) {
-                throw new Error(`Failed to fetch data. The server responded with an error: ${response.status}.`);
+                throw new Error(`Failed to fetch data. Status: ${response.status}.`);
             }
         }
 
         const resData = await response.json();
 
         if (resData.success) {
-            const allCredits: NegativeCredit[] = resData.items;
+            const allNegativeCredits: NegativeCredit[] = resData.items;
             
-            const fetchedAppeals = allCredits.filter((credit): credit is Appeal => 
-              credit.type === 'negative' && !!credit.appeal
+            const fetchedAppeals = allNegativeCredits.filter((credit): credit is Appeal => 
+              !!credit.appeal
             );
 
-            const fetchedAppealable = allCredits.filter(credit => 
-                credit.type === 'negative' && credit.status !== 'appealed' && !credit.appeal
+            const fetchedAppealable = allNegativeCredits.filter(credit => 
+                !credit.appeal
             );
 
             setAppeals(fetchedAppeals);
@@ -136,7 +142,7 @@ export default function AppealsPage() {
   
   useEffect(() => {
     if (facultyId) {
-        fetchAppealsAndRemarks();
+        fetchNegativeCredits();
     }
   }, [facultyId, toast]);
   
@@ -154,15 +160,20 @@ export default function AppealsPage() {
         return;
     }
     setIsSubmittingAppeal(true);
+
+    const formData = new FormData();
+    formData.append('reason', appealReason);
+    if (appealProof) {
+        formData.append('proof', appealProof);
+    }
     
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/credits/${selectedRemarkId}/appeal`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json",
             },
-            body: JSON.stringify({ reason: appealReason, creditId: selectedRemarkId }),
+            body: formData,
         });
 
         const responseData = await response.json();
@@ -178,7 +189,8 @@ export default function AppealsPage() {
         setIsAppealDialogOpen(false);
         setSelectedRemarkId("");
         setAppealReason("");
-        fetchAppealsAndRemarks();
+        setAppealProof(null);
+        fetchNegativeCredits();
 
     } catch (error: any) {
         toast({
@@ -259,7 +271,7 @@ export default function AppealsPage() {
       let icon = 'radio_button_unchecked';
       let color = 'text-muted-foreground';
 
-      if (itemIndex < currentIndex) {
+      if (itemIndex < currentIndex || (itemIndex === 0 && currentIndex > 0) ) {
           icon = 'check_circle';
           color = 'text-primary';
       } else if (itemIndex === currentIndex) {
@@ -274,6 +286,12 @@ export default function AppealsPage() {
             color = 'text-primary animate-pulse';
           }
       }
+      
+      if(status === 'submitted') {
+          icon = 'check_circle';
+          color = 'text-primary';
+      }
+
 
       return <span className={`material-symbols-outlined ${color}`}>{icon}</span>;
   }
@@ -464,6 +482,10 @@ export default function AppealsPage() {
                     onChange={(e) => setAppealReason(e.target.value)} 
                     rows={4}
                 />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="proof" className="text-sm font-medium">Proof (Optional)</label>
+              <FileUpload onFileSelect={setAppealProof} />
             </div>
           </div>
           <DialogFooter>
