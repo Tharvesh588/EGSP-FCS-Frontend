@@ -101,7 +101,7 @@ export default function NegativeRemarksPage() {
       }
   
       try {
-          const response = await fetch(`${API_BASE_URL}/api/v1/credits/faculty/${facultyId}/negative`, {
+          const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative`, {
               headers: { Authorization: `Bearer ${token}` },
           });
   
