@@ -99,11 +99,12 @@ export default function NegativeRemarksPage() {
 
 
   const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+  const facultyId = searchParams.get('uid');
   const totalPages = Math.ceil(total / limit);
 
   const fetchRemarks = async (currentPage: number) => {
       setIsLoadingRemarks(true);
-      if (!token) {
+      if (!token || !facultyId) {
           setIsLoadingRemarks(false);
           return;
       }
@@ -119,7 +120,7 @@ export default function NegativeRemarksPage() {
           if (academicYearFilter !== 'all') params.append('academicYear', academicYearFilter);
           if (statusFilter !== 'all') params.append('status', statusFilter);
          
-          const response = await fetch(`${API_BASE_URL}/api/v1/credits/negative?${params.toString()}`, {
+          const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative?${params.toString()}`, {
               headers: { Authorization: `Bearer ${token}` },
           });
   
@@ -141,12 +142,12 @@ export default function NegativeRemarksPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-        if (token) {
+        if (token && facultyId) {
             fetchRemarks(page);
         }
     }, 500); // Debounce API call
     return () => clearTimeout(timer);
-  }, [page, token, searchTerm, academicYearFilter, statusFilter]);
+  }, [page, token, facultyId, searchTerm, academicYearFilter, statusFilter]);
   
   useEffect(() => {
     setPage(1); // Reset to first page whenever filters change
