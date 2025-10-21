@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -135,10 +134,9 @@ export default function NegativeRemarksPage() {
 
   useEffect(() => {
     if (token && facultyId) {
-        console.log('Faculty ID for fetching remarks:', facultyId);
         fetchRemarks();
     }
-  }, [token, facultyId]);
+  }, [token, facultyId, toast]);
   
   const handleOpenAppealDialog = (remark: NegativeCredit) => {
     setSelectedRemark(remark);
@@ -163,7 +161,7 @@ export default function NegativeRemarksPage() {
     }
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/${selectedRemark._id}/appeal`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/${selectedRemark._id}/appeal`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
