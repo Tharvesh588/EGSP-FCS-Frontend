@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { ConversationThread } from '@/components/conversation-thread';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +15,12 @@ import { io, type Socket } from 'socket.io-client';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
+type Participant = {
+    _id: string;
+    name: string;
+    profileImage?: string;
+};
+
 type Conversation = {
     _id: string;
     credit: {
@@ -22,11 +28,7 @@ type Conversation = {
         title: string;
         academicYear: string;
     };
-    participants: {
-      _id: string;
-      name: string;
-      profileImage?: string;
-    }[];
+    participants: Participant[];
     lastMessage?: {
         text: string;
         sender: string;
@@ -55,17 +57,12 @@ export default function ConversationsPage() {
     const currentUserId = searchParams.get('uid');
     const [token, setToken] = useState<string | null>(null);
     const socketRef = useRef<Socket | null>(null);
+    const [currentUser, setCurrentUser] = useState<Participant | null>(null);
 
     const formatTimestamp = (dateString: string) => {
         if (!dateString) return '';
         const date = parseISO(dateString);
-        if (isToday(date)) {
-            return format(date, 'p'); // e.g., 4:30 PM
-        }
-        if (isYesterday(date)) {
-            return 'Yesterday';
-        }
-        return format(date, 'MMM d'); // e.g., Aug 19
+        return format(date, "MMM d, yyyy, h:mm a");
     };
 
     useEffect(() => {
@@ -99,6 +96,14 @@ export default function ConversationsPage() {
                        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
                        return dateB - dateA;
                     });
+
+                    // Set current user from the first conversation if available
+                    if (sortedConversations.length > 0 && currentUserId) {
+                        const firstConvo = sortedConversations[0];
+                        const user = firstConvo.participants.find(p => p._id === currentUserId);
+                        if(user) setCurrentUser(user);
+                    }
+
                     setConversations(sortedConversations);
                     if (sortedConversations.length > 0) {
                         if (window.innerWidth >= 768 && !selectedConversation) {
@@ -244,10 +249,17 @@ export default function ConversationsPage() {
                               onClick={() => setSelectedConversation(convo)}
                           >
                               <div className="flex items-start gap-3">
-                                  <Avatar className="h-10 w-10">
-                                      <AvatarFallback>{otherParticipant?.name?.charAt(0) ?? '?'}</AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 overflow-hidden">
+                                  <div className="relative flex-shrink-0">
+                                      <Avatar className="h-10 w-10 border-2 border-background">
+                                          <AvatarImage src={otherParticipant?.profileImage} />
+                                          <AvatarFallback>{otherParticipant?.name?.charAt(0) ?? '?'}</AvatarFallback>
+                                      </Avatar>
+                                      <Avatar className="absolute -right-2 -bottom-1 h-6 w-6 border-2 border-card">
+                                          <AvatarImage src={currentUser?.profileImage} />
+                                          <AvatarFallback>{currentUser?.name?.charAt(0) ?? 'A'}</AvatarFallback>
+                                      </Avatar>
+                                  </div>
+                                  <div className="flex-1 overflow-hidden ml-1">
                                       <div className="flex justify-between items-baseline">
                                         <p className="font-semibold truncate pr-2">{otherParticipant?.name || "Unknown User"}</p>
                                         <p className="text-xs text-muted-foreground whitespace-nowrap">
@@ -271,7 +283,6 @@ export default function ConversationsPage() {
           )}>
               {selectedConversation && token && currentUserId ? (
                   <ConversationThread
-                    key={selectedConversation._id}
                     conversationId={selectedConversation._id}
                     conversationDetails={selectedConversation}
                     socket={socketRef.current}
@@ -290,7 +301,3 @@ export default function ConversationsPage() {
         </div>
     );
 }
-
-    
-
-    
