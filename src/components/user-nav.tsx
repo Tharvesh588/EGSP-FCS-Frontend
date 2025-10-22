@@ -32,15 +32,12 @@ export function UserNav({ user, logout }: UserNavProps) {
     ? `/u/portal/dashboard/admin/settings?uid=${uid}`
     : `/u/portal/dashboard/settings?uid=${uid}`;
     
-  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
-
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={avatarUrl} alt={user.name} />
+            <AvatarImage src={user.avatar} alt={user.name} />
             <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
           </Avatar>
         </Button>

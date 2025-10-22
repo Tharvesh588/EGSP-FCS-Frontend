@@ -4,7 +4,7 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Header } from "@/components/header";
 import { SidebarNav } from "@/components/sidebar-nav";
-import { useState, useEffect, type ReactNode } from "react";
+import React, { useState, useEffect, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -55,13 +55,23 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         }
 
         const userData = responseData.data;
+        
+        const getAvatarUrl = (user: any) => {
+            if (user.profileImage) {
+                if (user.profileImage.startsWith('http')) {
+                    return user.profileImage;
+                }
+                return `${API_BASE_URL}${user.profileImage.startsWith('/') ? '' : '/'}${user.profileImage}`;
+            }
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+        };
 
         const userPayload: User = {
           id: userData._id,
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`
+          avatar: getAvatarUrl(userData)
         };
         
         setUser(userPayload);
