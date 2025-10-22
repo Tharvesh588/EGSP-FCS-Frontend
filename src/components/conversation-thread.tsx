@@ -121,15 +121,12 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: Message) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
-                    // If the message is an optimistic one (has a tempId), replace it with the real one.
                     if (msg.tempId && prev.some(m => m.tempId === msg.tempId)) {
                         return prev.map(m => m.tempId === msg.tempId ? { ...msg, isPending: false, error: undefined } : m);
                     }
-                    // If it's a new message from the other user, add it.
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
-                    // If the message already exists (to prevent duplication), return the state as is.
                     return prev;
                 });
                 if (msg.sender !== currentUserId) {
@@ -191,7 +188,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const currentUserDetails = conversationDetails.participants.find(p => p._id === currentUserId);
 
         const optimisticMessage: Message = {
-            _id: tempId,
+            _id: tempId, // Use tempId as _id for optimistic message
             tempId: tempId,
             sender: currentUserId,
             senderSnapshot: { 
@@ -264,8 +261,9 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             const isSender = message.sender === currentUserId;
             const links = message.content.text.match(urlRegex);
             const firstLink = links ? links[0] : null;
-
-            const itemKey = `message-${item.id}`;
+            
+            // This is the crucial fix: ensure a key is always unique, using index as the ultimate fallback.
+            const itemKey = `message-${item.id || message.createdAt}-${index}`;
 
             return (
                 <div key={itemKey} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
