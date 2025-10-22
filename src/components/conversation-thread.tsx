@@ -121,17 +121,20 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const handleNewMessage = (msg: Message) => {
             if (msg.conversationId === conversationId) {
                 setMessages(prev => {
-                    // This logic handles replacing the optimistic message with the real one from the server
+                    // If the message is an optimistic one (has a tempId), replace it with the real one.
                     if (msg.tempId && prev.some(m => m.tempId === msg.tempId)) {
                         return prev.map(m => m.tempId === msg.tempId ? { ...msg, isPending: false, error: undefined } : m);
                     }
-                    // This handles receiving a new message from the other user
+                    // If it's a new message from the other user, add it.
                     if (!prev.some(m => m._id === msg._id)) {
                         return [...prev, msg];
                     }
+                    // If the message already exists (to prevent duplication), return the state as is.
                     return prev;
                 });
-                socket.emit('message:ack', { conversationId, messageCreatedAt: msg.createdAt });
+                if (msg.sender !== currentUserId) {
+                    socket.emit('message:ack', { conversationId, messageCreatedAt: msg.createdAt });
+                }
             }
         };
         
@@ -240,7 +243,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             
-            const itemKey = message.tempId || message._id || `${message.createdAt}-${index}`;
+            const itemKey = message.tempId || message._id;
             
             if (lastDate !== messageDate) {
                 items.push({ type: 'divider', id: messageDate, date: message.createdAt });
@@ -371,6 +374,5 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
 
     
