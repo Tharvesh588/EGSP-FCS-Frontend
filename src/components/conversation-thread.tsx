@@ -86,8 +86,39 @@ export function ConversationThread({ conversationId, conversationDetails, socket
     
     useEffect(() => {
         if (!socket || !conversationId) return;
+
+        let isMounted = true;
+
+        const handleNewMessage = (msg: Message) => {
+            if (msg.conversationId === conversationId) {
+                setMessages(prev => {
+                    // If the message is a temporary one being confirmed by the server
+                    if (msg.tempId && prev.some(m => m.tempId === msg.tempId)) {
+                        return prev.map(m => m.tempId === msg.tempId ? { ...msg, isPending: false, error: undefined } : m);
+                    }
+                    // If it's a new message from the other user
+                    if (!prev.some(m => m._id === msg._id)) {
+                        return [...prev, msg];
+                    }
+                    return prev;
+                });
+                if (msg.sender !== currentUserId) {
+                    socket.emit('message:ack', { conversationId, messageCreatedAt: msg.createdAt });
+                }
+            }
+        };
+
+        const handleTyping = (data: { conversationId: string; user: { id: string; name: string; }, typing: boolean; }) => {
+            if (data.conversationId === conversationId && data.user.id !== currentUserId) {
+                if(isMounted) setIsTyping(data.typing);
+            }
+        };
         
+        socket.on('message:new', handleNewMessage);
+        socket.on('typing', handleTyping);
+
         socket.emit('join', { conversationId }, (resp: {ok: boolean; error?: string}) => {
+            if (!isMounted) return;
             if (resp && resp.ok) {
                 console.log(`Joined conversation ${conversationId}`);
             } else {
@@ -107,44 +138,25 @@ export function ConversationThread({ conversationId, conversationDetails, socket
                 });
                 if (!res.ok) throw new Error('Failed to fetch messages');
                 const data = await res.json();
-                const sortedMessages = data.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-                setMessages(sortedMessages);
+                if (isMounted) {
+                    const sortedMessages = data.messages.sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                    setMessages(sortedMessages);
+                }
             } catch (error: any) {
-                toast({ variant: "destructive", title: "Error", description: error.message });
+                if (isMounted) {
+                    toast({ variant: "destructive", title: "Error", description: error.message });
+                }
             } finally {
-                setIsLoading(false);
+                if (isMounted) {
+                    setIsLoading(false);
+                }
             }
         };
 
         fetchMessages();
-
-        const handleNewMessage = (msg: Message) => {
-            if (msg.conversationId === conversationId) {
-                setMessages(prev => {
-                    if (msg.tempId && prev.some(m => m.tempId === msg.tempId)) {
-                        return prev.map(m => m.tempId === msg.tempId ? { ...msg, isPending: false, error: undefined } : m);
-                    }
-                    if (!prev.some(m => m._id === msg._id)) {
-                        return [...prev, msg];
-                    }
-                    return prev;
-                });
-                if (msg.sender !== currentUserId) {
-                    socket.emit('message:ack', { conversationId, messageCreatedAt: msg.createdAt });
-                }
-            }
-        };
         
-        const handleTyping = (data: { conversationId: string; user: { id: string; name: string; }, typing: boolean; }) => {
-            if (data.conversationId === conversationId && data.user.id !== currentUserId) {
-                setIsTyping(data.typing);
-            }
-        };
-
-        socket.on('message:new', handleNewMessage);
-        socket.on('typing', handleTyping);
-
         return () => {
+          isMounted = false;
           socket.off('message:new', handleNewMessage);
           socket.off('typing', handleTyping);
           socket.emit('leave', { conversationId });
@@ -188,7 +200,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const currentUserDetails = conversationDetails.participants.find(p => p._id === currentUserId);
 
         const optimisticMessage: Message = {
-            _id: tempId, // Use tempId as _id for optimistic message
+            _id: tempId,
             tempId: tempId,
             sender: currentUserId,
             senderSnapshot: { 
@@ -200,10 +212,11 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             createdAt: new Date().toISOString(),
             isPending: true,
         };
-
+        
         if (retryMessage) {
             setMessages(prev => prev.map(m => m.tempId === retryMessage.tempId ? optimisticMessage : m));
         } else {
+             // Use a callback to ensure we're updating the latest state
             setMessages(prev => [...prev, optimisticMessage]);
         }
         setNewMessage('');
@@ -240,7 +253,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             
-            const itemKey = message.tempId || message._id;
+            const itemKey = message.tempId || message._id || `${message.createdAt}-${index}`;
             
             if (lastDate !== messageDate) {
                 items.push({ type: 'divider', id: messageDate, date: message.createdAt });
@@ -262,8 +275,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             const links = message.content.text.match(urlRegex);
             const firstLink = links ? links[0] : null;
             
-            // This is the crucial fix: ensure a key is always unique, using index as the ultimate fallback.
-            const itemKey = `message-${item.id || message.createdAt}-${index}`;
+            const itemKey = `message-${item.id}`;
 
             return (
                 <div key={itemKey} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
@@ -372,5 +384,3 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
-    
