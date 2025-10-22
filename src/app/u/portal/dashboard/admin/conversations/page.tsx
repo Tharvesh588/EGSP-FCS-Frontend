@@ -237,6 +237,7 @@ export default function ConversationsPage() {
                     <div className="flex flex-col">
                       {filteredConversations.map(convo => {
                           const otherParticipant = convo.participants.find(p => p._id !== currentUserId);
+                          const currentUser = convo.participants.find(p => p._id === currentUserId);
                           return (
                           <button
                               key={convo._id}
