@@ -240,7 +240,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             
-            const itemKey = message.tempId || message._id;
+            const itemKey = message.tempId || message._id || `${message.createdAt}-${index}`;
             
             if (lastDate !== messageDate) {
                 items.push({ type: 'divider', id: messageDate, date: message.createdAt });
@@ -371,5 +371,6 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
+
 
     
