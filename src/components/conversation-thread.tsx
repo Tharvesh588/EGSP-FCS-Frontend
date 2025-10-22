@@ -184,7 +184,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         socket.emit('typing', { conversationId, typing: false });
 
-        const tempId = retryMessage?.tempId || `t_${Date.now()}`;
+        const tempId = retryMessage?.tempId || `${Date.now()}-${Math.random()}`;
         const currentUserDetails = conversationDetails.participants.find(p => p._id === currentUserId);
 
         const optimisticMessage: Message = {
@@ -208,7 +208,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         }
         setNewMessage('');
         
-        socket.emit('message', { conversationId, text }, (resp: { ok: boolean; message?: Message, error?: string }) => {
+        socket.emit('message', { conversationId, text, tempId }, (resp: { ok: boolean; message?: Message, error?: string }) => {
             if (resp && resp.ok && resp.message) {
                  setMessages(prev => prev.map(m => m.tempId === tempId ? { ...resp.message!, isPending: false } : m));
             } else {
@@ -240,14 +240,14 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             
-            const messageId = message.tempId || message._id || `${message.createdAt}-${message.content.text.slice(0, 10)}-${index}`;
-
+            const itemKey = message.tempId || message._id;
+            
             if (lastDate !== messageDate) {
                 items.push({ type: 'divider', id: messageDate, date: message.createdAt });
                 lastDate = messageDate;
             }
             
-            items.push({ type: 'message', id: messageId, message });
+            items.push({ type: 'message', id: itemKey, message });
         });
 
         return items.map((item, index) => {
@@ -371,3 +371,5 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
+
+    
