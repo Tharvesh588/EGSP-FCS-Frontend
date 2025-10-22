@@ -236,13 +236,11 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         const items: RenderableItem[] = [];
         let lastDate: string | null = null;
 
-        messages.forEach((message) => {
+        messages.forEach((message, index) => {
             if (!message || !message.createdAt) return;
             const messageDate = new Date(message.createdAt).toDateString();
             
-            // This is the fix: ensure a unique ID for the renderable item.
-            // Use tempId, then _id, and fallback to a composite key if both are missing.
-            const messageId = message.tempId || message._id || `${message.createdAt}-${message.content.text.slice(0, 10)}`;
+            const messageId = message.tempId || message._id || `${message.createdAt}-${message.content.text.slice(0, 10)}-${index}`;
 
             if (lastDate !== messageDate) {
                 items.push({ type: 'divider', id: messageDate, date: message.createdAt });
@@ -252,7 +250,7 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             items.push({ type: 'message', id: messageId, message });
         });
 
-        return items.map((item) => {
+        return items.map((item, index) => {
             if (item.type === 'divider') {
                 return <DayDivider key={`divider-${item.id}`} date={item.date} />;
             }
@@ -264,8 +262,10 @@ export function ConversationThread({ conversationId, conversationDetails, socket
             const links = message.content.text.match(urlRegex);
             const firstLink = links ? links[0] : null;
 
+            const itemKey = `message-${item.id}`;
+
             return (
-                <div key={`message-${item.id}`} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                <div key={itemKey} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
                     {!isSender && (
                         <Avatar className="h-8 w-8 self-end mb-1">
                              <AvatarImage src={message.senderSnapshot?.profileImage} />
@@ -371,5 +371,3 @@ export function ConversationThread({ conversationId, conversationDetails, socket
         </div>
     );
 }
-
-    
