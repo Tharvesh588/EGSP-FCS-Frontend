@@ -301,6 +301,37 @@ export default function ManageRemarksPage() {
         description: "The negative remark has been successfully recorded.",
       });
 
+      // After successful remark creation, trigger the email
+      try {
+        const emailResponse = await fetch(`${API_BASE_URL}/api/v1/email/send-remark-notification`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            facultyId: facultyId,
+            remark: responseData.data, // Pass the newly created remark data
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          // Non-blocking error for email
+          toast({
+            variant: "destructive",
+            title: "Email Notification Failed",
+            description: "The remark was saved, but the email notification could not be sent.",
+          });
+        }
+      } catch (emailError: any) {
+         toast({
+            variant: "destructive",
+            title: "Email Sending Error",
+            description: emailError.message || "An error occurred while trying to send the email.",
+          });
+      }
+
+
       // Reset form
       setFacultyId("");
       setCreditTitleId("");
@@ -609,5 +640,3 @@ export default function ManageRemarksPage() {
     </div>
   )
 }
-
-    
