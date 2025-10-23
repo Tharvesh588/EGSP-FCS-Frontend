@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remark Notification</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #f4f4f7;
+            font-family: Arial, sans-serif;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .email-header {
+            background-color: #143990; /* primary color */
+            color: #ffffff;
+            padding: 30px;
+            text-align: center;
+        }
+        .email-header img {
+            max-width: 150px;
+        }
+        .email-header h1 {
+            margin: 10px 0 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .email-body {
+            padding: 30px;
+            color: #111827; /* foreground */
+            line-height: 1.6;
+        }
+        .email-body p {
+            margin: 0 0 15px;
+        }
+        .remark-details {
+            background-color: #f6f6f8; /* background */
+            border: 1px solid #e5e7eb; /* secondary */
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .remark-details h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #143990;
+            font-size: 18px;
+        }
+        .remark-details ul {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .remark-details li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+        }
+        .remark-details li:last-child {
+            border-bottom: none;
+        }
+        .remark-details li strong {
+            color: #6b7280; /* muted-foreground */
+            margin-right: 10px;
+        }
+        .remark-points {
+            font-weight: bold;
+            color: #dc2626; /* destructive */
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #143990;
+            color: #ffffff;
+            padding: 12px 25px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .email-footer {
+            background-color: #e5e7eb;
+            color: #6b7280;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+        .email-footer a {
+            color: #143990;
+            text-decoration: none;
+        }
+        @media screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+                margin: 0;
+                border-radius: 0;
+            }
+            .email-body, .email-header {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <!-- You can replace this with your actual logo URL -->
+            <img src="https://egspgroup.in/assets/egspgoi___logo.webp" alt="College Logo">
+            <h1>Remark Notification</h1>
+        </div>
+        <div class="email-body">
+            <p>Dear {{facultyName}},</p>
+            <p>This is a notification that a new remark has been recorded by an administrator in the Faculty Credit System. Please review the details below.</p>
+            
+            <div class="remark-details">
+                <h3>Remark Details</h3>
+                <ul>
+                    <li>
+                        <strong>Title:</strong>
+                        <span>{{remarkTitle}}</span>
+                    </li>
+                    <li>
+                        <strong>Points:</strong>
+                        <span class="remark-points">{{remarkPoints}}</span>
+                    </li>
+                    <li>
+                        <strong>Notes:</strong>
+                        <span>{{remarkNotes}}</span>
+                    </li>
+                    <li>
+                        <strong>Date Issued:</strong>
+                        <span>{{remarkDate}}</span>
+                    </li>
+                </ul>
+            </div>
+
+            <p>You can view this remark in detail and, if necessary, submit an appeal by logging into your faculty portal.</p>
+            
+            <a href="{{portalUrl}}" class="cta-button">View in Portal</a>
+
+            <p style="margin-top: 25px;">If you have any questions, please start a conversation regarding this remark from the portal.</p>
+            <p>Thank you,<br>EGS Pillay Administration</p>
+        </div>
+        <div class="email-footer">
+            <p>&copy; {{currentYear}} E.G.S. Pillay Group of Institutions. All rights reserved.</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+            <p>
+                <a href="#">Privacy Policy</a> &bull; <a href="#">Contact Us</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
