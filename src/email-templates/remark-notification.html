@@ -27,11 +27,14 @@
             background-color: #001b70;
             color: #ffffff;
             padding: 24px;
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .email-header img {
             max-width: 100px;
-            margin-bottom: 16px;
+            background-color: white;
+            border-radius: 4px;
         }
         .email-header h1 {
             margin: 0;
@@ -133,14 +136,18 @@
             .email-body {
                 padding: 24px;
             }
+            .email-header {
+                flex-direction: column;
+                gap: 16px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="email-container">
         <div class="email-header">
-            <img src="https://egspgroup.in/assets/egspgoi___logo.webp" alt="College Logo">
             <h1>Remark Notification</h1>
+            <img src="https://egspgroup.in/assets/egspgoi___logo.webp" alt="College Logo">
         </div>
         <div class="email-body">
             <p>Dear {{facultyName}},</p>
