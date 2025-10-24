@@ -57,10 +57,12 @@ export default function AppealReviewPage() {
 
     try {
       const params = new URLSearchParams({
-        status: status === 'all' ? '' : status,
         sort: '-appeal.createdAt',
         limit: '100' // Fetch more to demonstrate filtering
       });
+      if (status !== 'all') {
+        params.append('status', status);
+      }
       const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative/appeals?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
