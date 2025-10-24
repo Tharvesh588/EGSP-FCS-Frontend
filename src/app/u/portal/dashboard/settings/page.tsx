@@ -152,85 +152,95 @@ export default function SettingsPage() {
       </div>
       <div className="space-y-12">
         <form onSubmit={handleUpdateProfile}>
-          <h2 className="text-xl font-bold text-foreground">
-            Profile Information
-          </h2>
           <div className="rounded-xl border bg-card p-6 mt-6">
+            <h2 className="text-xl font-bold text-foreground mb-6">
+                Profile Information
+            </h2>
             {loading ? (
-                <div className="flex flex-col items-start gap-6 sm:flex-row">
-                    <div className="flex-1 space-y-4">
-                        <Skeleton className="h-6 w-1/2" />
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-4 w-2/3" />
+                <div className="space-y-4">
+                    <div className="flex items-center gap-6">
+                        <Skeleton className="h-24 w-24 rounded-full" />
+                        <div className="space-y-2">
+                            <Skeleton className="h-6 w-48" />
+                            <Skeleton className="h-4 w-64" />
+                        </div>
                     </div>
-                    <Skeleton className="h-32 w-32 rounded-full flex-shrink-0" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
                 </div>
             ) : user ? (
-              <div className="flex flex-col-reverse items-center gap-8 sm:flex-row sm:items-start">
-                <div className="flex-1 space-y-4 w-full">
-                    <div>
-                        <Label htmlFor="name">Name</Label>
-                        <Input id="name" name="name" value={user.name} onChange={handleInputChange} />
-                    </div>
-                    <div>
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" name="email" type="email" value={user.email} onChange={handleInputChange} />
-                    </div>
-                     <div>
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input id="phone" name="phone" type="tel" value={user.phone} onChange={handleInputChange} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label>College</Label>
-                            <Input value={user.college} disabled />
-                        </div>
-                        <div>
-                          <Label htmlFor="department">Department</Label>
-                          <Select onValueChange={handleDepartmentChange} value={user.department}>
-                              <SelectTrigger id="department">
-                                  <SelectValue placeholder="Select department" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  {Object.entries(departments).map(([group, courses]) => (
-                                      <SelectGroup key={group}>
-                                          <SelectLabel>{group}</SelectLabel>
-                                          {courses.map(course => (
-                                              <SelectItem key={course} value={course}>{course}</SelectItem>
-                                          ))}
-                                      </SelectGroup>
-                                  ))}
-                              </SelectContent>
-                          </Select>
-                        </div>
-                    </div>
+                <div>
+                  <div className="flex flex-col items-center sm:flex-row gap-6 mb-8">
+                      <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                          <Label htmlFor="profile-image-upload" className="cursor-pointer">
+                              <Avatar className="h-24 w-24">
+                                  <AvatarImage src={previewImage || user.avatar} />
+                                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                          </Label>
+                          <Input id="profile-image-upload" type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
+                          <Button type="button" variant="ghost" size="sm" asChild>
+                              <Label htmlFor="profile-image-upload" className="cursor-pointer">Change Photo</Label>
+                          </Button>
+                      </div>
+                      <div className="text-center sm:text-left">
+                          <h3 className="text-2xl font-bold">{user.name}</h3>
+                          <p className="text-muted-foreground">{user.email}</p>
+                      </div>
+                  </div>
+
+                  <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                              <Label htmlFor="name">Full Name</Label>
+                              <Input id="name" name="name" value={user.name} onChange={handleInputChange} />
+                          </div>
+                          <div>
+                              <Label htmlFor="phone">Phone</Label>
+                              <Input id="phone" name="phone" type="tel" value={user.phone} onChange={handleInputChange} />
+                          </div>
+                      </div>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                              <Label>College</Label>
+                              <Input value={user.college} disabled className="mt-1 bg-muted/50" />
+                          </div>
+                          <div>
+                            <Label htmlFor="department">Department</Label>
+                            <Select onValueChange={handleDepartmentChange} value={user.department}>
+                                <SelectTrigger id="department">
+                                    <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(departments).map(([group, courses]) => (
+                                        <SelectGroup key={group}>
+                                            <SelectLabel>{group}</SelectLabel>
+                                            {courses.map(course => (
+                                                <SelectItem key={course} value={course}>{course}</SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                          </div>
+                      </div>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                    <Label htmlFor="profile-image-upload">
-                        <Avatar className="h-32 w-32 cursor-pointer">
-                            <AvatarImage src={previewImage || user.avatar} />
-                            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                    </Label>
-                    <Input id="profile-image-upload" type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
-                    <Button type="button" variant="ghost" size="sm" asChild>
-                        <Label htmlFor="profile-image-upload" className="cursor-pointer">Change Photo</Label>
-                    </Button>
-                </div>
-              </div>
             ) : (
                  <p>Could not load user profile.</p>
             )}
-             <div className="pt-6 flex justify-end">
+             <div className="pt-6 mt-6 border-t flex justify-end">
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? "Saving..." : "Update Profile"}
               </Button>
             </div>
           </div>
         </form>
-        <div className="space-y-6">
+        <div className="rounded-xl border bg-card p-6 mt-6">
           <h2 className="text-xl font-bold text-foreground">Change Password</h2>
-          <div className="space-y-4 max-w-lg">
+          <div className="space-y-4 max-w-lg mt-6">
             <div>
               <Label htmlFor="current-password">Current Password</Label>
               <Input
@@ -265,8 +275,8 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-primary">Strong</p>
               </div>
             </div>
-            <div className="pt-2">
-              <Button className="w-full">Update Password</Button>
+            <div className="pt-2 flex justify-end">
+              <Button>Update Password</Button>
             </div>
           </div>
         </div>
