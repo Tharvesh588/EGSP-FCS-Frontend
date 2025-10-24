@@ -191,42 +191,48 @@ export default function AppealReviewPage() {
           </p>
         </div>
         <div className="bg-card p-6 rounded-lg shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div className="relative lg:col-span-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search by faculty, title..." 
-                        className="pl-10"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <Select value={collegeFilter} onValueChange={setCollegeFilter}>
-                    <SelectTrigger><SelectValue placeholder="Select College" /></SelectTrigger>
+            <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-4">
+              <div className="relative flex-grow min-w-[200px] md:max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search by faculty, title..." 
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Select value={collegeFilter} onValueChange={setCollegeFilter}>
+                  <SelectTrigger className="flex-grow min-w-[180px]"><SelectValue placeholder="Select College" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Colleges</SelectItem>
+                      {Object.keys(colleges).map(college => (<SelectItem key={college} value={college}>{college}</SelectItem>))}
+                  </SelectContent>
+              </Select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled={Object.keys(filteredDepartments).length === 0}>
+                  <SelectTrigger className="flex-grow min-w-[180px]"><SelectValue placeholder="Select Department" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {Object.entries(filteredDepartments).map(([group, courses]) => (
+                          <SelectGroup key={group}>
+                              <SelectLabel>{group}</SelectLabel>
+                              {courses.map(course => (
+                                  <SelectItem key={course} value={course}>{course}</SelectItem>
+                              ))}
+                          </SelectGroup>
+                      ))}
+                  </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2 justify-start md:justify-end flex-grow">
+                  <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+                    <SelectTrigger className="w-full md:w-[150px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Colleges</SelectItem>
-                        {Object.keys(colleges).map(college => (<SelectItem key={college} value={college}>{college}</SelectItem>))}
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="accepted">Accepted</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
                     </SelectContent>
-                </Select>
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled={Object.keys(filteredDepartments).length === 0}>
-                    <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Departments</SelectItem>
-                        {Object.entries(filteredDepartments).map(([group, courses]) => (
-                            <SelectGroup key={group}>
-                                <SelectLabel>{group}</SelectLabel>
-                                {courses.map(course => (
-                                    <SelectItem key={course} value={course}>{course}</SelectItem>
-                                ))}
-                            </SelectGroup>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <div className="flex items-center gap-2 justify-end lg:col-span-1">
-                    <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('pending')}>Pending</Button>
-                    <Button variant={statusFilter === 'accepted' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('accepted')}>Accepted</Button>
-                    <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('rejected')}>Rejected</Button>
-                </div>
+                  </Select>
+              </div>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
                 Displaying {filteredAppeals.length} of {allAppeals.length} appeals.
@@ -376,3 +382,5 @@ export default function AppealReviewPage() {
     </div>
   )
 }
+
+    
