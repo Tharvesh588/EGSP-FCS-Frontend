@@ -13,9 +13,13 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
+import { colleges } from "@/lib/colleges"
+import { Search } from "lucide-react"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -24,6 +28,7 @@ type Appeal = {
   faculty: {
     _id: string;
     name: string;
+    college: string;
     department: string;
   };
   title: string;
@@ -37,15 +42,23 @@ type Appeal = {
   createdAt: string; // Credit creation date
 };
 
+type Departments = {
+    [key: string]: string[];
+};
 
 export default function AppealReviewPage() {
   const { toast } = useToast();
   const [allAppeals, setAllAppeals] = useState<Appeal[]>([]);
-  const [filteredAppeals, setFilteredAppeals] = useState<Appeal[]>([]);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'accepted' | 'rejected' | 'all'>('pending');
   const [comments, setComments] = useState("");
+
+  // Filtering and searching state
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'accepted' | 'rejected' | 'all'>('pending');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [collegeFilter, setCollegeFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [filteredDepartments, setFilteredDepartments] = useState<Departments>({});
 
   const fetchAppeals = async () => {
     setIsLoading(true);
@@ -86,19 +99,44 @@ export default function AppealReviewPage() {
   }, [toast]);
 
   useEffect(() => {
-    let newFilteredAppeals = allAppeals;
-    if (statusFilter !== 'all') {
-      newFilteredAppeals = allAppeals.filter(appeal => appeal.appeal.status === statusFilter);
+    if (collegeFilter !== 'all' && colleges[collegeFilter as keyof typeof colleges]) {
+      setFilteredDepartments(colleges[collegeFilter as keyof typeof colleges]);
+    } else {
+      setFilteredDepartments({});
     }
-    setFilteredAppeals(newFilteredAppeals);
+    setDepartmentFilter("all"); // Reset department filter when college changes
+  }, [collegeFilter]);
 
-    if (newFilteredAppeals.length > 0) {
-      const currentSelection = newFilteredAppeals.find((a: Appeal) => a._id === selectedAppeal?._id);
-      setSelectedAppeal(currentSelection || newFilteredAppeals[0]);
+  const filteredAppeals = useMemo(() => {
+    return allAppeals.filter(appeal => {
+      if (statusFilter !== 'all' && appeal.appeal.status !== statusFilter) {
+        return false;
+      }
+      if (collegeFilter !== 'all' && appeal.faculty.college !== collegeFilter) {
+        return false;
+      }
+      if (departmentFilter !== 'all' && appeal.faculty.department !== departmentFilter) {
+        return false;
+      }
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matches = appeal.faculty.name.toLowerCase().includes(term) ||
+                        appeal.faculty._id.toLowerCase().includes(term) ||
+                        appeal.title.toLowerCase().includes(term);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [allAppeals, statusFilter, searchTerm, collegeFilter, departmentFilter]);
+  
+  useEffect(() => {
+    if (filteredAppeals.length > 0) {
+      const currentSelection = filteredAppeals.find((a: Appeal) => a._id === selectedAppeal?._id);
+      setSelectedAppeal(currentSelection || filteredAppeals[0]);
     } else {
       setSelectedAppeal(null);
     }
-  }, [allAppeals, statusFilter, selectedAppeal?._id]);
+  }, [filteredAppeals, selectedAppeal?._id]);
   
   const handleDecision = async (decision: 'accepted' | 'rejected') => {
     if (!selectedAppeal) return;
@@ -125,7 +163,6 @@ export default function AppealReviewPage() {
 
         toast({ title: "Decision Submitted", description: `The appeal has been marked as ${decision}.`});
         
-        // Refetch to get the latest state
         fetchAppeals();
         setComments("");
 
@@ -154,17 +191,46 @@ export default function AppealReviewPage() {
           </p>
         </div>
         <div className="bg-card p-6 rounded-lg shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-foreground">
-                    {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Appeals ({filteredAppeals.length})
-                </h3>
-                <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="relative lg:col-span-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search by faculty, title..." 
+                        className="pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <Select value={collegeFilter} onValueChange={setCollegeFilter}>
+                    <SelectTrigger><SelectValue placeholder="Select College" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Colleges</SelectItem>
+                        {Object.keys(colleges).map(college => (<SelectItem key={college} value={college}>{college}</SelectItem>))}
+                    </SelectContent>
+                </Select>
+                <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled={Object.keys(filteredDepartments).length === 0}>
+                    <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {Object.entries(filteredDepartments).map(([group, courses]) => (
+                            <SelectGroup key={group}>
+                                <SelectLabel>{group}</SelectLabel>
+                                {courses.map(course => (
+                                    <SelectItem key={course} value={course}>{course}</SelectItem>
+                                ))}
+                            </SelectGroup>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 justify-end lg:col-span-1">
                     <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('pending')}>Pending</Button>
                     <Button variant={statusFilter === 'accepted' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('accepted')}>Accepted</Button>
                     <Button variant={statusFilter === 'rejected' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('rejected')}>Rejected</Button>
-                    <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>All</Button>
                 </div>
             </div>
+            <p className="text-sm text-muted-foreground mb-4">
+                Displaying {filteredAppeals.length} of {allAppeals.length} appeals.
+            </p>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -211,7 +277,7 @@ export default function AppealReviewPage() {
                     </TableRow>
                     ))
                 ) : (
-                    <TableRow><TableCell colSpan={5} className="text-center h-24">No appeals found for this filter.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">No appeals found for the selected filters.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
