@@ -40,13 +40,14 @@ type Appeal = {
 
 export default function AppealReviewPage() {
   const { toast } = useToast();
-  const [appeals, setAppeals] = useState<Appeal[]>([]);
+  const [allAppeals, setAllAppeals] = useState<Appeal[]>([]);
+  const [filteredAppeals, setFilteredAppeals] = useState<Appeal[]>([]);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'pending' | 'accepted' | 'rejected' | 'all'>('pending');
   const [comments, setComments] = useState("");
 
-  const fetchAppeals = async (status: string) => {
+  const fetchAppeals = async () => {
     setIsLoading(true);
     const token = localStorage.getItem("token");
     if (!token) {
@@ -56,14 +57,7 @@ export default function AppealReviewPage() {
     }
 
     try {
-      const params = new URLSearchParams({
-        sort: '-appeal.createdAt',
-        limit: '100' // Fetch more to demonstrate filtering
-      });
-      if (status !== 'all') {
-        params.append('status', status);
-      }
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative/appeals?${params.toString()}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative/appeals/all`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -73,28 +67,38 @@ export default function AppealReviewPage() {
       }
 
       const data = await response.json();
-      if (data.success) {
-        setAppeals(data.items);
-        if (data.items.length > 0) {
-          const currentSelection = data.items.find((a: Appeal) => a._id === selectedAppeal?._id);
-          setSelectedAppeal(currentSelection || data.items[0]);
-        } else {
-          setSelectedAppeal(null);
-        }
+      if (data.negativeAppeals) {
+        const sortedAppeals = data.negativeAppeals.sort((a: Appeal, b: Appeal) => new Date(b.appeal.createdAt).getTime() - new Date(a.appeal.createdAt).getTime());
+        setAllAppeals(sortedAppeals);
       } else {
-        throw new Error(data.message || 'Failed to fetch appeals');
+        throw new Error('Failed to fetch appeals, unexpected response structure.');
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error fetching appeals', description: err.message });
-      setAppeals([]);
+      setAllAppeals([]);
     } finally {
         setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    fetchAppeals(statusFilter);
-  }, [statusFilter, toast]);
+    fetchAppeals();
+  }, [toast]);
+
+  useEffect(() => {
+    let newFilteredAppeals = allAppeals;
+    if (statusFilter !== 'all') {
+      newFilteredAppeals = allAppeals.filter(appeal => appeal.appeal.status === statusFilter);
+    }
+    setFilteredAppeals(newFilteredAppeals);
+
+    if (newFilteredAppeals.length > 0) {
+      const currentSelection = newFilteredAppeals.find((a: Appeal) => a._id === selectedAppeal?._id);
+      setSelectedAppeal(currentSelection || newFilteredAppeals[0]);
+    } else {
+      setSelectedAppeal(null);
+    }
+  }, [allAppeals, statusFilter, selectedAppeal?._id]);
   
   const handleDecision = async (decision: 'accepted' | 'rejected') => {
     if (!selectedAppeal) return;
@@ -122,7 +126,7 @@ export default function AppealReviewPage() {
         toast({ title: "Decision Submitted", description: `The appeal has been marked as ${decision}.`});
         
         // Refetch to get the latest state
-        fetchAppeals(statusFilter);
+        fetchAppeals();
         setComments("");
 
     } catch (error: any) {
@@ -152,7 +156,7 @@ export default function AppealReviewPage() {
         <div className="bg-card p-6 rounded-lg shadow-sm">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-foreground">
-                    {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Appeals ({appeals.length})
+                    {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Appeals ({filteredAppeals.length})
                 </h3>
                 <div className="flex items-center gap-2">
                     <Button variant={statusFilter === 'pending' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('pending')}>Pending</Button>
@@ -177,8 +181,8 @@ export default function AppealReviewPage() {
               <TableBody>
                 {isLoading ? (
                     <TableRow><TableCell colSpan={5} className="text-center h-24">Loading appeals...</TableCell></TableRow>
-                ) : appeals.length > 0 ? (
-                    appeals.map((appeal) => (
+                ) : filteredAppeals.length > 0 ? (
+                    filteredAppeals.map((appeal) => (
                     <TableRow 
                         key={appeal._id} 
                         className={`cursor-pointer ${selectedAppeal?._id === appeal._id ? "bg-primary/10" : ""}`}
