@@ -17,7 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ConversationThread } from "@/components/conversation-thread"
 import { useSearchParams } from "next/navigation"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -39,11 +38,6 @@ type Submission = {
   createdAt: string;
   points: number;
 };
-
-type Conversation = {
-  _id: string;
-  // other fields as needed
-}
 
 const getCurrentAcademicYear = () => {
     const today = new Date();
@@ -84,7 +78,6 @@ export default function ReviewSubmissionsPage() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
     const [isStartingConversation, setIsStartingConversation] = useState(false);
 
     const adminId = searchParams.get('uid');
@@ -151,10 +144,6 @@ export default function ReviewSubmissionsPage() {
         return () => clearTimeout(debounceTimer);
     }, [statusFilter, academicYear, page, searchTerm, toast]);
 
-    useEffect(() => {
-      setActiveConversation(null);
-    }, [selectedSubmission]);
-
     const handleUpdateStatus = async (newStatus: "approved" | "rejected") => {
         if (!selectedSubmission) return;
 
@@ -191,48 +180,6 @@ export default function ReviewSubmissionsPage() {
             setIsSubmitting(false);
         }
     };
-    
-    const handleStartConversation = async () => {
-        if (!selectedSubmission || !adminId) return;
-        setIsStartingConversation(true);
-        const token = localStorage.getItem("token");
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    creditId: selectedSubmission._id,
-                    participantIds: [selectedSubmission.faculty._id, adminId],
-                 }),
-            });
-            
-            if (!response.ok) {
-                 const errorText = await response.text();
-                 try {
-                     const errorJson = JSON.parse(errorText);
-                     throw new Error(errorJson.message || "Server returned an error");
-                 } catch (e) {
-                    throw new Error("Could not start conversation. Invalid response from server.");
-                 }
-            }
-
-            const data = await response.json();
-            if (data.conversation) {
-                setActiveConversation(data.conversation);
-            } else {
-                throw new Error(data.message || "Failed to start conversation.");
-            }
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Conversation Error", description: error.message });
-        } finally {
-            setIsStartingConversation(false);
-        }
-    };
-
 
     const handleViewDocument = () => {
       if (!selectedSubmission?.proofUrl) return;
@@ -422,42 +369,28 @@ export default function ReviewSubmissionsPage() {
                 </div>
               </CardContent>
             </Card>
-
-            {activeConversation ? (
-                <ConversationThread conversationId={activeConversation._id} />
-            ) : (
-                selectedSubmission.status === 'pending' && (
-                    <CardFooter className="flex flex-col gap-3">
-                        <div className="flex gap-3 w-full">
-                            <Button 
-                                className="flex-1"
-                                onClick={() => handleUpdateStatus('approved')}
-                                disabled={isSubmitting}
-                            >
-                                <span className="material-symbols-outlined mr-2">check_circle</span>
-                                Approve
-                            </Button>
-                            <Button 
-                                variant="destructive" 
-                                className="flex-1"
-                                onClick={() => handleUpdateStatus('rejected')}
-                                disabled={isSubmitting}
-                            >
-                                <span className="material-symbols-outlined mr-2">cancel</span>
-                                Not Satisfied
-                            </Button>
-                        </div>
-                         <Button
-                            variant="secondary"
-                            className="w-full"
-                            onClick={handleStartConversation}
-                            disabled={isStartingConversation}
-                        >
-                           <span className="material-symbols-outlined mr-2">forum</span>
-                            {isStartingConversation ? "Starting..." : "Start Conversation"}
-                        </Button>
-                    </CardFooter>
-                )
+            {selectedSubmission.status === 'pending' && (
+              <CardFooter className="flex flex-col gap-3">
+                  <div className="flex gap-3 w-full">
+                      <Button 
+                          className="flex-1"
+                          onClick={() => handleUpdateStatus('approved')}
+                          disabled={isSubmitting}
+                      >
+                          <span className="material-symbols-outlined mr-2">check_circle</span>
+                          Approve
+                      </Button>
+                      <Button 
+                          variant="destructive" 
+                          className="flex-1"
+                          onClick={() => handleUpdateStatus('rejected')}
+                          disabled={isSubmitting}
+                      >
+                          <span className="material-symbols-outlined mr-2">cancel</span>
+                          Not Satisfied
+                      </Button>
+                  </div>
+              </CardFooter>
             )}
           </div>
         ) : (

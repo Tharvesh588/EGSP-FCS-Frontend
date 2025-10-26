@@ -38,7 +38,6 @@ import {
 } from "@/components/ui/dialog"
 import { PlusCircle, Eye, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { io, type Socket } from "socket.io-client";
 import { colleges } from "@/lib/colleges";
 
 
@@ -354,47 +353,6 @@ export default function ManageRemarksPage() {
     }
   };
   
-  const handleStartConversation = async () => {
-    if (!selectedRemark || !uid) return;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          creditId: selectedRemark._id,
-          participantIds: [selectedRemark.faculty._id, uid],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to start conversation');
-      }
-      
-      const data = await response.json();
-
-      toast({
-        title: 'Conversation Started',
-        description: 'You can now chat with the faculty member in the Conversations tab.',
-      });
-      setIsDetailsOpen(false);
-      if (data.conversation) {
-        router.push(`/u/portal/dashboard/admin/conversations?uid=${uid}`);
-      }
-
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error Starting Conversation',
-        description: error.message,
-      });
-    }
-  };
-
   const getProofUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('http')) {
@@ -608,7 +566,6 @@ export default function ManageRemarksPage() {
                                 </div>
                                 )}
                                 <DialogFooter>
-                                    <Button variant="secondary" onClick={handleStartConversation}>Start Conversation</Button>
                                     <DialogClose asChild><Button>Close</Button></DialogClose>
                                 </DialogFooter>
                             </DialogContent>

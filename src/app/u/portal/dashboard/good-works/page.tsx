@@ -166,43 +166,6 @@ export default function GoodWorksPage() {
     }
   };
 
-  const handleStartConversation = async (creditId: string) => {
-    const facultyId = searchParams.get('uid');
-    const token = localStorage.getItem("token");
-
-    if (!facultyId || !token) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not start conversation. User or token not found.' });
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                creditId,
-                participantIds: [facultyId],
-            }),
-        });
-        
-        const data = await response.json();
-
-        if (data.conversation) {
-            toast({ title: 'Success', description: 'Conversation started. You can find it in the Conversations tab.' });
-            // Potentially redirect to conversations page or open a chat modal
-            // router.push(`/u/portal/dashboard/conversations?uid=${facultyId}&convoId=${data.conversation._id}`)
-        } else {
-            throw new Error(data.message || 'Failed to start conversation.');
-        }
-
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Conversation Error', description: error.message });
-    }
-  };
-
   const filteredWorks = goodWorks.filter(work => {
     const matchesSearch = searchTerm.trim() === "" ||
       work.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -320,9 +283,6 @@ export default function GoodWorksPage() {
                               >
                                   View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleStartConversation(work._id)}>
-                                  Start Conversation
-                              </DropdownMenuItem>
                           </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -363,5 +323,3 @@ export default function GoodWorksPage() {
     </div>
   )
 }
-
-    

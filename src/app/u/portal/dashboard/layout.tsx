@@ -121,17 +121,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
   
-  const isConversationPage = pathname.includes('/conversations');
-
   return (
     <SidebarProvider>
       <SidebarNav role={user.role} />
       <SidebarInset className="flex flex-col h-screen">
         <Header user={user} />
-        <main className={cn(
-          "flex-1",
-          isConversationPage ? "flex flex-col overflow-hidden" : "overflow-y-auto p-4 md:p-6 lg:p-8"
-        )}>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </SidebarInset>
