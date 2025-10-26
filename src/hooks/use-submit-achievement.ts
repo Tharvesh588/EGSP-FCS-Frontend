@@ -49,6 +49,8 @@ export function useSubmitAchievement() {
         let errorMessage = "Submission failed due to a server error.";
         if (responseData.message) {
             errorMessage = responseData.message;
+        } else if (response.status === 404) {
+            errorMessage = "API endpoint not found. Please contact support.";
         } else if (response.status === 403) {
             errorMessage = "A security error occurred. Please refresh the page and try again.";
         }
