@@ -303,7 +303,7 @@ export default function ManageRemarksPage() {
 
       // After successful remark creation, trigger the email
       try {
-        const emailResponse = await fetch(`${API_BASE_URL}/api/v1/email/send-remark-notification`, {
+        const emailResponse = await fetch(`${API_BASE_URL}/api/v1/notifications/remark`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${adminToken}`,
@@ -311,7 +311,10 @@ export default function ManageRemarksPage() {
           },
           body: JSON.stringify({
             facultyId: facultyId,
-            remark: responseData.data, // Pass the newly created remark data
+            remark: {
+              title: title,
+              message: notes,
+            },
           }),
         });
 
