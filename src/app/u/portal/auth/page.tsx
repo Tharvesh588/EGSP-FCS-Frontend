@@ -171,7 +171,7 @@ export default function LoginPage() {
       </main>
       <footer className="w-full bg-background border-t border-border p-4">
         <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground gap-2">
-            <span>App Version: 1.0.0</span>
+            <span>App Version: 0.1.0</span>
             <span suppressHydrationWarning>Session Time: {timestamp || 'Loading...'}</span>
             {isAdminLogin ? (
               <Link href="/u/portal/auth?faculty_login" className="text-primary hover:underline font-medium">
