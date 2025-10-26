@@ -27,8 +27,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, PlusCircle } from "lucide-react";
 import { useAlert } from "@/context/alert-context";
+import Link from "next/link";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -80,6 +81,7 @@ export default function GoodWorksPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
+  const uid = searchParams.get('uid');
 
   const fetchGoodWorks = async (currentPage: number, currentYear: string, currentStatus: string) => {
     setIsLoading(true);
@@ -177,12 +179,20 @@ export default function GoodWorksPage() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">My Good Works</h1>
-        <p className="mt-1 text-muted-foreground">
-          View and manage your submitted good works. Track their status and
-          access related documents.
-        </p>
+      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 className="text-3xl font-bold text-foreground">My Good Works</h1>
+            <p className="mt-1 text-muted-foreground">
+            View and manage your submitted good works. Track their status and
+            access related documents.
+            </p>
+        </div>
+        <Link href={`/u/portal/dashboard/good-works/submit?uid=${uid}`}>
+            <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Submit New Work
+            </Button>
+        </Link>
       </div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1">

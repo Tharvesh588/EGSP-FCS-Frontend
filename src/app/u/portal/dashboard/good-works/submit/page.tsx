@@ -7,13 +7,15 @@ import { useSubmitAchievement } from "@/hooks/use-submit-achievement";
 import { useCreditTitles } from "@/hooks/use-credit-titles";
 import { AchievementForm, type AchievementFormData } from "@/components/achievement-form";
 import { useAlert } from "@/context/alert-context";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function SubmitAchievementPage() {
   const { toast } = useToast();
   const { showAlert } = useAlert();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { creditTitles, isLoading: isLoadingTitles, error: titlesError } = useCreditTitles();
   const { submitAchievement, isLoading: isSubmitting } = useSubmitAchievement();
-  const [formKey, setFormKey] = useState(Date.now());
 
   const handleSubmit = async (formData: AchievementFormData) => {
     try {
@@ -22,8 +24,8 @@ export default function SubmitAchievementPage() {
         title: "Submission Successful",
         description: "Your achievement has been submitted for review.",
       });
-      // Reset form by changing the key
-      setFormKey(Date.now());
+      const uid = searchParams.get('uid');
+      router.push(`/u/portal/dashboard/good-works?uid=${uid}`);
     } catch (error: any) {
       showAlert(
         "Submission Failed",
@@ -47,7 +49,6 @@ export default function SubmitAchievementPage() {
         </p>
       </div>
       <AchievementForm
-        key={formKey}
         creditTitles={creditTitles}
         onSubmit={handleSubmit}
         isLoading={isSubmitting || isLoadingTitles}
