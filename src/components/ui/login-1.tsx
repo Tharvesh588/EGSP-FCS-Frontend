@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Lock, Mail, Facebook, Mountain } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Mountain } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -103,17 +103,10 @@ export function LoginScreen() {
     setShowPassword(!showPassword);
   };
 
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
-    setEmail("");
-    setPassword("");
-    setShowPassword(false); // Reset password visibility when switching modes
-  };
-
   return (
     <div className="w-full min-h-screen flex">
       {/* Left side - Hero section */}
-      <div className="flex-1 bg-gradient-to-br from-slate-900 via-primary to-blue-900 flex items-center justify-center p-12 text-white">
+      <div className="hidden md:flex flex-1 bg-gradient-to-br from-slate-900 via-primary to-blue-900 items-center justify-center p-12 text-white">
         <div className="max-w-lg">
           <Mountain className="h-16 w-16 mb-8 text-white" />
           <h1 className="text-5xl font-bold mb-6 leading-tight">
@@ -138,13 +131,10 @@ export function LoginScreen() {
                   className="bg-white mx-auto mb-4"
               />
             <h2 className="text-3xl font-bold text-foreground mb-2">
-              {isLogin ? 'Welcome Back' : 'Join Us Today'}
+              Welcome Back
             </h2>
             <p className="text-muted-foreground">
-              {isLogin 
-                ? 'Welcome back to CreditWise — Continue your journey' 
-                : 'Welcome to CreditWise — Start your journey'
-              }
+              Welcome back to CreditWise — Continue your journey
             </p>
           </div>
 
@@ -171,7 +161,7 @@ export function LoginScreen() {
 
             <div>
               <Label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                {isLogin ? 'Password' : 'Create new password'}
+                Password
               </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -182,7 +172,7 @@ export function LoginScreen() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
-                  placeholder={isLogin ? "Enter your password" : "Create a secure password"}
+                  placeholder="Enter your password"
                   required
                 />
                 <Button
@@ -208,17 +198,15 @@ export function LoginScreen() {
                 </div>
             )}
 
-            {isLogin && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Checkbox id="remember-me" checked={rememberMe} onCheckedChange={(checked) => setRememberMe(checked as boolean)} />
-                  <Label htmlFor="remember-me" className="ml-2 block text-sm text-foreground">Remember me</Label>
-                </div>
-                <Link href="#" className="text-sm text-primary hover:text-primary/80 font-medium">
-                  Forgot password?
-                </Link>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Checkbox id="remember-me" checked={rememberMe} onCheckedChange={(checked) => setRememberMe(checked as boolean)} />
+                <Label htmlFor="remember-me" className="ml-2 block text-sm text-foreground">Remember me</Label>
               </div>
-            )}
+              <Link href="#" className="text-sm text-primary hover:text-primary/80 font-medium">
+                Forgot password?
+              </Link>
+            </div>
 
             <Button
               type="submit"
@@ -233,5 +221,3 @@ export function LoginScreen() {
     </div>
   );
 }
-
-    
