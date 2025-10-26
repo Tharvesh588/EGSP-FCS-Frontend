@@ -8,7 +8,6 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import Turnstile from "react-turnstile";
-import { version } from "../../../../../package.json";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,11 +28,14 @@ export default function LoginPage() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  
+  const [isClient, setIsClient] = useState(false);
+
   const isAdminLogin = searchParams.has('admin');
   const showTurnstile = email && password;
+  const appVersion = "1.0.1";
 
   useEffect(() => {
+    setIsClient(true);
     const updateTimestamp = () => {
       setTimestamp(format(new Date(), 'HH:mm:ss'));
     };
@@ -162,7 +164,7 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                {showTurnstile && (
+                {isClient && showTurnstile && (
                     <div className="flex justify-center">
                         <Turnstile
                             sitekey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY!}
@@ -194,7 +196,7 @@ export default function LoginPage() {
       </main>
       <footer className="w-full bg-background border-t border-border p-4">
         <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground gap-2">
-            <span>App Version: {version}</span>
+            <span>App Version: {appVersion}</span>
             <span suppressHydrationWarning>Session Time: {timestamp || 'Loading...'}</span>
             {isAdminLogin ? (
               <Link href="/u/portal/auth?faculty_login" className="text-primary hover:underline font-medium">
@@ -210,5 +212,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
