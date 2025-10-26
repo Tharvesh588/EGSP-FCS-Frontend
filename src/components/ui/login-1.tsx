@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
 import Turnstile from "react-turnstile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Lock, Mail, Mountain } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
@@ -19,7 +26,6 @@ const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
 export function LoginScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
 
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -30,6 +36,8 @@ export function LoginScreen() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alertContent, setAlertContent] = useState({ title: "", description: "" });
 
   useEffect(() => {
     setIsClient(true);
@@ -42,11 +50,11 @@ export function LoginScreen() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!turnstileToken) {
-        toast({
-            variant: "destructive",
+        setAlertContent({
             title: "Verification Failed",
             description: "Please complete the security check before logging in.",
         });
+        setIsAlertOpen(true);
         return;
     }
     setIsLoading(true);
@@ -89,11 +97,11 @@ export function LoginScreen() {
       router.push(redirectUrl);
 
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: error.message || "An unexpected error occurred.",
-      });
+        setAlertContent({
+            title: "Login Failed",
+            description: error.message || "An unexpected error occurred. Please check your credentials and try again.",
+        });
+        setIsAlertOpen(true);
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +112,8 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="w-full min-h-screen flex">
+    <>
+    <div className="w-full min-h-screen flex flex-col md:flex-row">
       {/* Left side - Hero section */}
       <div className="hidden md:flex flex-1 bg-gradient-to-br from-slate-900 via-primary to-blue-900 items-center justify-center p-12 text-white">
         <div className="max-w-lg">
@@ -210,7 +219,7 @@ export function LoginScreen() {
 
             <Button
               type="submit"
-              disabled={isLoading || !turnstileToken}
+              disabled={isLoading || (showTurnstile && !turnstileToken)}
               className="w-full"
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
@@ -219,5 +228,18 @@ export function LoginScreen() {
         </div>
       </div>
     </div>
+
+    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>{alertContent.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+                {alertContent.description}
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogAction onClick={() => setIsAlertOpen(false)}>OK</AlertDialogAction>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
