@@ -1,6 +1,9 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { AlertProvider } from '@/context/alert-context';
+import { GlobalAlert } from '@/components/ui/global-alert';
 
 export const metadata: Metadata = {
   title: 'CreditWise',
@@ -21,8 +24,11 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
       </head>
       <body className="font-display antialiased" suppressHydrationWarning>
-        {children}
-        <Toaster />
+        <AlertProvider>
+          {children}
+          <Toaster />
+          <GlobalAlert />
+        </AlertProvider>
       </body>
     </html>
   );

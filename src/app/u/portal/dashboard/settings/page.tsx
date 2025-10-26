@@ -15,6 +15,7 @@ import { colleges } from "@/lib/colleges";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Camera } from "lucide-react"
+import { useAlert } from "@/context/alert-context"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -33,6 +34,7 @@ type Departments = {
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { showAlert } = useAlert();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,7 +47,7 @@ export default function SettingsPage() {
     const token = localStorage.getItem("token");
     if (!token) {
       setLoading(false);
-      toast({ variant: "destructive", title: "Authentication Error" });
+      showAlert("Authentication Error", "You are not logged in.");
       return;
     }
     try {
@@ -73,7 +75,7 @@ export default function SettingsPage() {
         throw new Error(responseData.message || "Failed to fetch user data");
       }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      showAlert("Error", error.message);
     } finally {
       setLoading(false);
     }
@@ -98,7 +100,7 @@ export default function SettingsPage() {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
         if (file.size > 2 * 1024 * 1024) { // 2MB limit
-            toast({ variant: "destructive", title: "Image Too Large", description: "Profile image must be less than 2MB." });
+            showAlert("Image Too Large", "Profile image must be less than 2MB.");
             return;
         }
         setProfileImage(file);
@@ -138,7 +140,7 @@ export default function SettingsPage() {
             throw new Error(responseData.message || "Failed to update profile.");
         }
     } catch (error: any) {
-        toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        showAlert("Update Failed", error.message);
     } finally {
         setIsSaving(false);
     }

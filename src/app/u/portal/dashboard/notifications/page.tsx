@@ -1,9 +1,8 @@
-// This file is the new location for src/app/(app)/notifications/page.tsx
+
 "use client"
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { formatDistanceToNow } from 'date-fns';
+import { useAlert } from "@/context/alert-context";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const READ_NOTIFICATIONS_KEY = 'readNotificationIds';
@@ -36,7 +36,7 @@ type Notification = {
 };
 
 export default function NotificationsPage() {
-  const { toast } = useToast();
+  const { showAlert } = useAlert();
   const searchParams = useSearchParams();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,11 +49,10 @@ export default function NotificationsPage() {
       const facultyId = searchParams.get('uid');
 
       if (!token || !facultyId) {
-        toast({
-          variant: "destructive",
-          title: "Authentication Error",
-          description: "Could not retrieve user credentials.",
-        });
+        showAlert(
+          "Authentication Error",
+          "Could not retrieve user credentials.",
+        );
         setIsLoading(false);
         return;
       }
@@ -131,11 +130,10 @@ export default function NotificationsPage() {
         }
 
       } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Failed to Fetch Notifications",
-          description: error.message,
-        });
+        showAlert(
+          "Failed to Fetch Notifications",
+          error.message,
+        );
         setNotifications([]);
       } finally {
         setIsLoading(false);
@@ -146,7 +144,7 @@ export default function NotificationsPage() {
     if (uid) {
         fetchAndProcessNotifications();
     }
-  }, [searchParams, toast]);
+  }, [searchParams, showAlert]);
 
   const markAllAsRead = () => {
     const allIds = notifications.map(n => n.id);

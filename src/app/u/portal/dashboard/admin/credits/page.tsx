@@ -1,5 +1,4 @@
 
-// This file is the new location for src/app/(app)/admin/credits/page.tsx
 "use client"
 
 import { useState, useEffect, useMemo } from "react";
@@ -44,6 +43,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { ArrowUpDown, Edit, Trash2 } from "lucide-react";
+import { useAlert } from "@/context/alert-context";
 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -59,6 +59,7 @@ type CreditTitle = {
 
 export default function ManageCreditTitlesPage() {
   const { toast } = useToast();
+  const { showAlert } = useAlert();
   // Form state for creating
   const [title, setTitle] = useState("");
   const [points, setPoints] = useState("");
@@ -82,7 +83,7 @@ export default function ManageCreditTitlesPage() {
     setIsLoadingTitles(true);
     const adminToken = localStorage.getItem("token");
     if (!adminToken) {
-      toast({ variant: "destructive", title: "Authentication Error" });
+      showAlert("Authentication Error", "Admin token not found.");
       setIsLoadingTitles(false);
       return;
     }
@@ -98,7 +99,7 @@ export default function ManageCreditTitlesPage() {
         throw new Error(data.message || "Failed to fetch credit titles");
       }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      showAlert("Error", error.message);
       setCreditTitles([]);
     } finally {
       setIsLoadingTitles(false);
@@ -107,23 +108,22 @@ export default function ManageCreditTitlesPage() {
 
   useEffect(() => {
     fetchCreditTitles();
-  }, [toast]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !points || !type || !description) {
-      toast({
-        variant: "destructive",
-        title: "Incomplete Form",
-        description: "Please fill out all fields.",
-      });
+      showAlert(
+        "Incomplete Form",
+        "Please fill out all fields.",
+      );
       return;
     }
     setIsLoading(true);
 
     const adminToken = localStorage.getItem("token");
     if (!adminToken) {
-      toast({ variant: "destructive", title: "Authentication Error" });
+      showAlert("Authentication Error", "Admin token not found.");
       setIsLoading(false);
       return;
     }
@@ -161,11 +161,10 @@ export default function ManageCreditTitlesPage() {
       fetchCreditTitles();
 
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Creation Failed",
-        description: error.message,
-      });
+      showAlert(
+        "Creation Failed",
+        error.message,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -178,7 +177,7 @@ export default function ManageCreditTitlesPage() {
     setIsEditLoading(true);
     const adminToken = localStorage.getItem("token");
     if (!adminToken) {
-        toast({ variant: "destructive", title: "Authentication Error", description: "Invalid token" });
+        showAlert("Authentication Error", "Invalid token");
         setIsEditLoading(false);
         return;
     }
@@ -208,7 +207,7 @@ export default function ManageCreditTitlesPage() {
         setIsEditDialogOpen(false);
         fetchCreditTitles();
     } catch (error: any) {
-        toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        showAlert("Update Failed", error.message);
     } finally {
         setIsEditLoading(false);
     }
@@ -217,7 +216,7 @@ export default function ManageCreditTitlesPage() {
   const handleDelete = async (id: string) => {
     const adminToken = localStorage.getItem("token");
     if (!adminToken) {
-        toast({ variant: "destructive", title: "Authentication Error" });
+        showAlert("Authentication Error", "Admin token not found.");
         return;
     }
 
@@ -235,7 +234,7 @@ export default function ManageCreditTitlesPage() {
         toast({ title: "Delete Successful", description: "Credit title has been deleted." });
         fetchCreditTitles();
     } catch (error: any) {
-        toast({ variant: "destructive", title: "Delete Failed", description: error.message });
+        showAlert("Delete Failed", error.message);
     }
   };
 

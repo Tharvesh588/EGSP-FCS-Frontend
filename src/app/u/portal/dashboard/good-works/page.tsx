@@ -14,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -29,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal } from "lucide-react";
+import { useAlert } from "@/context/alert-context";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -70,7 +70,7 @@ const generateYearOptions = () => {
 };
 
 export default function GoodWorksPage() {
-  const { toast } = useToast();
+  const { showAlert } = useAlert();
   const searchParams = useSearchParams();
   const [goodWorks, setGoodWorks] = useState<GoodWork[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,11 +87,10 @@ export default function GoodWorksPage() {
     const facultyId = searchParams.get('uid');
 
     if (!token || !facultyId) {
-      toast({
-        variant: "destructive",
-        title: "Authentication Error",
-        description: "Could not retrieve user credentials.",
-      });
+      showAlert(
+        "Authentication Error",
+        "Could not retrieve user credentials.",
+      );
       setIsLoading(false);
       return;
     }
@@ -140,11 +139,10 @@ export default function GoodWorksPage() {
       setGoodWorks(positiveWorks);
       setTotal(responseData.total);
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Failed to Fetch Data",
-        description: error.message,
-      });
+      showAlert(
+        "Failed to Fetch Data",
+        error.message,
+      );
       setGoodWorks([]);
       setTotal(0);
     } finally {

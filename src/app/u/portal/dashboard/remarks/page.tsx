@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -34,6 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Eye, Badge } from "lucide-react";
+import { useAlert } from "@/context/alert-context";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -73,6 +75,7 @@ const generateYearOptions = () => {
 
 export default function NegativeRemarksPage() {
   const { toast } = useToast();
+  const { showAlert } = useAlert();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -107,9 +110,9 @@ export default function NegativeRemarksPage() {
           if (!response.ok) {
             const errorText = await response.text();
              if (errorText.includes('<!DOCTYPE')) {
-                toast({ variant: "destructive", title: "Error fetching remarks", description: "The API returned an invalid response. The endpoint might be incorrect." });
+                showAlert("Error fetching remarks", "The API returned an invalid response. The endpoint might be incorrect.");
             } else {
-                toast({ variant: "destructive", title: "Error fetching remarks", description: errorText });
+                showAlert("Error fetching remarks", errorText);
             }
             throw new Error(`Failed to fetch remarks`);
           }
@@ -123,7 +126,7 @@ export default function NegativeRemarksPage() {
       } catch (error: any) {
         // Avoid double-toasting if already handled
         if (!error.message.includes('Failed to fetch remarks')) {
-            toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
+            showAlert("Error fetching remarks", error.message);
         }
         setRemarks([]);
       } finally {
@@ -144,11 +147,10 @@ export default function NegativeRemarksPage() {
 
   const handleAppealSubmit = async () => {
     if (!selectedRemark || !appealReason.trim()) {
-        toast({
-            variant: "destructive",
-            title: "Incomplete Form",
-            description: "Please provide a reason for your appeal.",
-        });
+        showAlert(
+            "Incomplete Form",
+            "Please provide a reason for your appeal.",
+        );
         return;
     }
     setIsSubmittingAppeal(true);
@@ -182,11 +184,10 @@ export default function NegativeRemarksPage() {
         router.push(`/u/portal/dashboard/appeals?uid=${searchParams.get('uid')}`);
 
     } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Appeal Failed",
-            description: error.message,
-        });
+        showAlert(
+            "Appeal Failed",
+            error.message,
+        );
     } finally {
         setIsSubmittingAppeal(false);
     }

@@ -6,17 +6,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubmitAchievement } from "@/hooks/use-submit-achievement";
 import { useCreditTitles } from "@/hooks/use-credit-titles";
 import { AchievementForm, type AchievementFormData } from "@/components/achievement-form";
+import { useAlert } from "@/context/alert-context";
 
 export default function SubmitAchievementPage() {
   const { toast } = useToast();
-  const { creditTitles, isLoading: isLoadingTitles } = useCreditTitles();
+  const { showAlert } = useAlert();
+  const { creditTitles, isLoading: isLoadingTitles, error: titlesError } = useCreditTitles();
   const { submitAchievement, isLoading: isSubmitting } = useSubmitAchievement();
   const [formKey, setFormKey] = useState(Date.now());
 
   const handleSubmit = async (formData: AchievementFormData) => {
     try {
-      // Pass the already-fetched creditTitles to the hook
-      await submitAchievement(formData, creditTitles);
+      await submitAchievement(formData);
       toast({
         title: "Submission Successful",
         description: "Your achievement has been submitted for review.",
@@ -24,13 +25,16 @@ export default function SubmitAchievementPage() {
       // Reset form by changing the key
       setFormKey(Date.now());
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Submission Failed",
-        description: error.message || "An unexpected error occurred.",
-      });
+      showAlert(
+        "Submission Failed",
+        error.message || "An unexpected error occurred.",
+      );
     }
   };
+  
+  if (titlesError) {
+    showAlert("Error Loading Data", titlesError);
+  }
 
   return (
     <div className="mx-auto max-w-4xl">

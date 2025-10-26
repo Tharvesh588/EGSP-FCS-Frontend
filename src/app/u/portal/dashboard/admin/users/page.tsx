@@ -1,4 +1,4 @@
-// This file is the new location for src/app/(app)/admin/users/page.tsx
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react";
@@ -21,7 +21,6 @@ import {
   SelectGroup,
   SelectLabel,
 } from "@/components/ui/select"
-import { useToast } from "@/hooks/use-toast";
 import { colleges } from "@/lib/colleges";
 import { Edit, Eye } from "lucide-react";
 import {
@@ -33,6 +32,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAlert } from "@/context/alert-context";
+import { useToast } from "@/hooks/use-toast";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -53,6 +54,7 @@ type Departments = {
 
 export default function FacultyAccountsPage() {
   const { toast } = useToast();
+  const { showAlert } = useAlert();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -75,11 +77,10 @@ export default function FacultyAccountsPage() {
     setIsLoadingUsers(true);
     const adminToken = localStorage.getItem("token");
     if (!adminToken) {
-      toast({
-        variant: "destructive",
-        title: "Authentication Error",
-        description: "Admin token not found.",
-      });
+      showAlert(
+        "Authentication Error",
+        "Admin token not found.",
+      );
       setIsLoadingUsers(false);
       return;
     }
@@ -95,11 +96,10 @@ export default function FacultyAccountsPage() {
       }
       setFacultyAccounts(responseData.items);
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Failed to Fetch Users",
-        description: error.message,
-      });
+      showAlert(
+        "Failed to Fetch Users",
+        error.message,
+      );
     } finally {
       setIsLoadingUsers(false);
     }
@@ -133,11 +133,10 @@ export default function FacultyAccountsPage() {
 
     const adminToken = localStorage.getItem("token");
     if (!adminToken) {
-      toast({
-        variant: "destructive",
-        title: "Authentication Error",
-        description: "Admin token not found. Please log in again.",
-      });
+      showAlert(
+        "Authentication Error",
+        "Admin token not found. Please log in again.",
+      );
       setIsLoading(false);
       return;
     }
@@ -178,11 +177,10 @@ export default function FacultyAccountsPage() {
       setDepartment("");
       fetchUsers();
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Creation Failed",
-        description: error.message || "An unexpected error occurred.",
-      });
+      showAlert(
+        "Creation Failed",
+        error.message || "An unexpected error occurred.",
+      );
     } finally {
       setIsLoading(false);
     }

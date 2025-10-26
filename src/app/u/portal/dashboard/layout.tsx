@@ -8,6 +8,7 @@ import React, { useState, useEffect, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAlert } from "@/context/alert-context";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -25,6 +26,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -88,9 +90,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
            router.replace(`/u/portal/dashboard?uid=${userPayload.id}`);
         }
 
-      } catch (error) {
-        console.error(error);
-        // Handle error, maybe redirect to login
+      } catch (error: any) {
+        showAlert("Session Error", error.message);
         localStorage.removeItem("token");
         localStorage.removeItem("userRole");
         router.push("/u/portal/auth?faculty_login");
@@ -100,7 +101,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     };
 
     fetchUser();
-  }, [router, pathname, searchParams]);
+  }, [router, pathname, searchParams, showAlert]);
 
   if (loading || !user) {
     return (

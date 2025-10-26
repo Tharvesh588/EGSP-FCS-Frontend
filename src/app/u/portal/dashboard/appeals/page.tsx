@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useAlert } from "@/context/alert-context";
 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -53,14 +54,13 @@ type Appeal = NegativeCredit & {
 
 export default function AppealsPage() {
   const { toast } = useToast();
+  const { showAlert } = useAlert();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('all');
-  
-  const [isStartingConversation, setIsStartingConversation] = useState(false);
 
   const facultyId = searchParams.get('uid');
   const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
@@ -68,7 +68,7 @@ export default function AppealsPage() {
   const fetchAppeals = async () => {
       setIsLoading(true);
       if (!token || !facultyId) {
-        toast({ variant: "destructive", title: "Authentication Error" });
+        showAlert("Authentication Error", "You are not logged in.");
         setIsLoading(false);
         return;
       }
@@ -117,7 +117,7 @@ export default function AppealsPage() {
             throw new Error(resData.message || "Failed to fetch data.");
         }
       } catch (error: any) {
-          toast({ variant: "destructive", title: "Failed to fetch data", description: error.message });
+          showAlert("Failed to fetch data", error.message);
           setAppeals([]);
       } finally {
           setIsLoading(false);
@@ -128,7 +128,7 @@ export default function AppealsPage() {
     if (facultyId) {
         fetchAppeals();
     }
-  }, [facultyId, filter, toast]);
+  }, [facultyId, filter]);
 
   const getStatusVariant = (status: Appeal['appeal']['status']) => {
       switch (status) {

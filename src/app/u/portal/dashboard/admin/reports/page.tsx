@@ -15,6 +15,7 @@ import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAlert } from "@/context/alert-context"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -25,6 +26,7 @@ type ReportData = {
 
 export default function ReportsPage() {
   const { toast } = useToast();
+  const { showAlert } = useAlert();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reportType, setReportType] = useState("distribution");
@@ -37,7 +39,7 @@ export default function ReportsPage() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      toast({ variant: "destructive", title: "Authentication Error" });
+      showAlert("Authentication Error", "Admin token not found.");
       setIsLoading(false);
       return;
     }
@@ -63,7 +65,7 @@ export default function ReportsPage() {
       toast({ title: "Report Generated", description: "The report has been successfully generated." });
 
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error Generating Report", description: error.message });
+      showAlert("Error Generating Report", error.message);
       setReportData(null);
     } finally {
       setIsLoading(false);

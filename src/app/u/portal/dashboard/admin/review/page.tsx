@@ -1,4 +1,4 @@
-// This file is the new location for src/app/(app)/admin/review/page.tsx
+
 "use client"
 
 import {
@@ -11,13 +11,14 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import React, { useState, useEffect } from "react"
-import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useSearchParams } from "next/navigation"
+import { useAlert } from "@/context/alert-context"
+import { useToast } from "@/hooks/use-toast"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -64,6 +65,7 @@ const generateYearOptions = () => {
 
 
 export default function ReviewSubmissionsPage() {
+    const { showAlert } = useAlert();
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -78,8 +80,6 @@ export default function ReviewSubmissionsPage() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    const [isStartingConversation, setIsStartingConversation] = useState(false);
-
     const adminId = searchParams.get('uid');
 
     const yearOptions = generateYearOptions();
@@ -89,7 +89,7 @@ export default function ReviewSubmissionsPage() {
         setIsLoading(true);
         const token = localStorage.getItem("token");
         if (!token) {
-            toast({ variant: "destructive", title: "Authentication Error" });
+            showAlert("Authentication Error", "Admin token not found.");
             setIsLoading(false);
             return;
         }
@@ -129,7 +129,7 @@ export default function ReviewSubmissionsPage() {
                 throw new Error(data.message || "Failed to fetch submissions");
             }
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Error", description: error.message });
+            showAlert("Error", error.message);
             setSubmissions([]);
             setTotal(0);
         } finally {
@@ -142,7 +142,7 @@ export default function ReviewSubmissionsPage() {
             fetchSubmissions(statusFilter, academicYear, page, searchTerm);
         }, 500); // Debounce search to avoid rapid API calls
         return () => clearTimeout(debounceTimer);
-    }, [statusFilter, academicYear, page, searchTerm, toast]);
+    }, [statusFilter, academicYear, page, searchTerm]);
 
     const handleUpdateStatus = async (newStatus: "approved" | "rejected") => {
         if (!selectedSubmission) return;
@@ -175,7 +175,7 @@ export default function ReviewSubmissionsPage() {
                 throw new Error(data.message || 'Failed to update status');
             }
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+            showAlert("Update Failed", error.message);
         } finally {
             setIsSubmitting(false);
         }

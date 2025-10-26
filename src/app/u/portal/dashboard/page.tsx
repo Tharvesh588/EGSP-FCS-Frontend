@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
+import { useAlert } from "@/context/alert-context";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -64,7 +64,7 @@ const generateYearOptions = () => {
 };
 
 export default function FacultyDashboard() {
-  const { toast } = useToast();
+  const { showAlert } = useAlert();
   const searchParams = useSearchParams();
   const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -145,18 +145,17 @@ export default function FacultyDashboard() {
 
 
       } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Failed to load dashboard",
-          description: error.message,
-        });
+        showAlert(
+          "Failed to load dashboard",
+          error.message,
+        );
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [searchParams, toast]);
+  }, [searchParams, showAlert]);
 
   if (loading) {
     return (

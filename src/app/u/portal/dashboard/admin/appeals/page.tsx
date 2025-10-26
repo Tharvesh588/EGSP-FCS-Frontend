@@ -14,12 +14,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useEffect, useState, useMemo } from "react"
-import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
 import { colleges } from "@/lib/colleges"
 import { Search } from "lucide-react"
+import { useAlert } from "@/context/alert-context"
+import { useToast } from "@/hooks/use-toast"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -47,6 +48,7 @@ type Departments = {
 };
 
 export default function AppealReviewPage() {
+  const { showAlert } = useAlert();
   const { toast } = useToast();
   const [allAppeals, setAllAppeals] = useState<Appeal[]>([]);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
@@ -64,7 +66,7 @@ export default function AppealReviewPage() {
     setIsLoading(true);
     const token = localStorage.getItem("token");
     if (!token) {
-        toast({ variant: "destructive", title: "Authentication Error" });
+        showAlert("Authentication Error", "You are not logged in.");
         setIsLoading(false);
         return;
     }
@@ -87,7 +89,7 @@ export default function AppealReviewPage() {
         throw new Error('Failed to fetch appeals, unexpected response structure.');
       }
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error fetching appeals', description: err.message });
+      showAlert('Error fetching appeals', err.message);
       setAllAppeals([]);
     } finally {
         setIsLoading(false);
@@ -96,7 +98,7 @@ export default function AppealReviewPage() {
 
   useEffect(() => {
     fetchAppeals();
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (collegeFilter !== 'all' && colleges[collegeFilter as keyof typeof colleges]) {
@@ -141,7 +143,10 @@ export default function AppealReviewPage() {
   const handleDecision = async (decision: 'accepted' | 'rejected') => {
     if (!selectedAppeal) return;
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+        showAlert("Authentication Error", "You are not logged in.");
+        return;
+    }
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative/${selectedAppeal._id}/appeal`, {
@@ -167,7 +172,7 @@ export default function AppealReviewPage() {
         setComments("");
 
     } catch (error: any) {
-         toast({ variant: 'destructive', title: 'Decision Failed', description: error.message });
+         showAlert('Decision Failed', error.message);
     }
   }
   
@@ -382,5 +387,3 @@ export default function AppealReviewPage() {
     </div>
   )
 }
-
-    

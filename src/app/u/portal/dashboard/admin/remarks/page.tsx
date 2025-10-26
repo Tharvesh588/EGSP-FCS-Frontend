@@ -39,6 +39,7 @@ import {
 import { PlusCircle, Eye, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { colleges } from "@/lib/colleges";
+import { useAlert } from "@/context/alert-context";
 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
@@ -100,6 +101,7 @@ const generateYearOptions = () => {
 
 export default function ManageRemarksPage() {
   const { toast } = useToast();
+  const { showAlert } = useAlert();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -140,7 +142,7 @@ export default function ManageRemarksPage() {
 
   const fetchDropdownData = async () => {
     if (!adminToken) {
-      toast({ variant: "destructive", title: "Authentication Error" });
+      showAlert("Authentication Error", "Admin token not found.");
       return;
     }
     try {
@@ -167,7 +169,7 @@ export default function ManageRemarksPage() {
         throw new Error(creditTitlesData.message || "Failed to fetch credit titles");
       }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error fetching initial data", description: error.message });
+      showAlert("Error fetching initial data", error.message);
     }
   };
 
@@ -203,7 +205,7 @@ export default function ManageRemarksPage() {
               throw new Error(data.message || "Failed to fetch remarks");
           }
       } catch (error: any) {
-          toast({ variant: "destructive", title: "Error fetching remarks", description: error.message });
+          showAlert("Error fetching remarks", error.message);
           setRemarks([]);
           setTotal(0);
       } finally {
@@ -216,7 +218,7 @@ export default function ManageRemarksPage() {
     if (adminToken) {
       fetchDropdownData();
     }
-  }, [uid, adminToken, toast]);
+  }, [uid, adminToken]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -256,17 +258,16 @@ export default function ManageRemarksPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!facultyId || !points || !title) {
-      toast({
-        variant: "destructive",
-        title: "Incomplete Form",
-        description: "Please fill out all required fields.",
-      });
+      showAlert(
+        "Incomplete Form",
+        "Please fill out all required fields.",
+      );
       return;
     }
     setIsLoading(true);
 
     if (!adminToken) {
-      toast({ variant: "destructive", title: "Authentication Error" });
+      showAlert("Authentication Error", "Admin token not found.");
       setIsLoading(false);
       return;
     }
@@ -316,18 +317,16 @@ export default function ManageRemarksPage() {
 
         if (!emailResponse.ok) {
           // Non-blocking error for email
-          toast({
-            variant: "destructive",
-            title: "Email Notification Failed",
-            description: "The remark was saved, but the email notification could not be sent.",
-          });
+          showAlert(
+            "Email Notification Failed",
+            "The remark was saved, but the email notification could not be sent.",
+          );
         }
       } catch (emailError: any) {
-         toast({
-            variant: "destructive",
-            title: "Email Sending Error",
-            description: emailError.message || "An error occurred while trying to send the email.",
-          });
+         showAlert(
+            "Email Sending Error",
+            emailError.message || "An error occurred while trying to send the email.",
+          );
       }
 
 
@@ -343,11 +342,10 @@ export default function ManageRemarksPage() {
       setIsFormOpen(false);
 
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Submission Failed",
-        description: error.message,
-      });
+      showAlert(
+        "Submission Failed",
+        error.message,
+      );
     } finally {
       setIsLoading(false);
     }
