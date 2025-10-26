@@ -1,6 +1,7 @@
+
 {
   "name": "nextn",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
@@ -50,9 +51,8 @@
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.2",
-    "react-textarea-autosize": "^8.5.3",
+    "react-turnstile": "^1.1.2",
     "recharts": "^2.15.1",
-    "socket.io-client": "^4.7.5",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.24.2"
@@ -68,3 +68,5 @@
     "typescript": "^5"
   }
 }
+
+    

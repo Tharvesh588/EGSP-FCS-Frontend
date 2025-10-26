@@ -8,6 +8,12 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import Turnstile from "react-turnstile";
+import { version } from "../../../../../package.json";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
@@ -21,6 +27,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState('');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   
   const isAdminLogin = searchParams.has('admin');
   const showTurnstile = email && password;
@@ -110,16 +118,16 @@ export default function LoginPage() {
             <form className="mt-8 space-y-6" onSubmit={handleLogin}>
                 <div className="space-y-4">
                     <div>
-                        <label className="sr-only" htmlFor="email">Email address</label>
+                        <Label className="sr-only" htmlFor="email">Email address</Label>
                         <div className="relative">
-                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">mail</span>
-                            <input
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input
                                 id="email"
                                 name="email"
                                 type="email"
                                 autoComplete="email"
                                 required
-                                className="w-full pl-10 pr-3 py-3 border border-border bg-background rounded-lg placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                                className="pl-10"
                                 placeholder="Email address"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -127,20 +135,29 @@ export default function LoginPage() {
                         </div>
                     </div>
                     <div>
-                        <label className="sr-only" htmlFor="password">Password</label>
+                        <Label className="sr-only" htmlFor="password">Password</Label>
                         <div className="relative">
-                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">lock</span>
-                            <input
+                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input
                                 id="password"
                                 name="password"
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 autoComplete="current-password"
                                 required
-                                className="w-full pl-10 pr-3 py-3 border border-border bg-background rounded-lg placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                                className="pl-10 pr-10"
                                 placeholder="Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
+                             <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:bg-transparent"
+                                onClick={() => setShowPassword(!showPassword)}
+                              >
+                                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                              </Button>
                         </div>
                     </div>
                 </div>
@@ -156,22 +173,28 @@ export default function LoginPage() {
                     </div>
                 )}
                 
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Checkbox id="remember-me" checked={rememberMe} onCheckedChange={(checked) => setRememberMe(checked as boolean)} />
+                      <Label htmlFor="remember-me" className="ml-2 block text-sm text-foreground">
+                        Remember me
+                      </Label>
+                    </div>
                     <div className="text-sm">
-                        <a href="#" className="font-medium text-primary hover:text-primary/80">Forgot your password?</a>
+                        <Link href="#" className="font-medium text-primary hover:text-primary/80">Forgot your password?</Link>
                     </div>
                 </div>
                 <div>
-                    <button type="submit" disabled={isLoading || !turnstileToken} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-background transition-colors disabled:opacity-50">
+                    <Button type="submit" disabled={isLoading || !turnstileToken} className="w-full">
                         {isLoading ? 'Logging in...' : 'Login'}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </div>
       </main>
       <footer className="w-full bg-background border-t border-border p-4">
         <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground gap-2">
-            <span>App Version: 0.1.0</span>
+            <span>App Version: {version}</span>
             <span suppressHydrationWarning>Session Time: {timestamp || 'Loading...'}</span>
             {isAdminLogin ? (
               <Link href="/u/portal/auth?faculty_login" className="text-primary hover:underline font-medium">
@@ -187,3 +210,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
