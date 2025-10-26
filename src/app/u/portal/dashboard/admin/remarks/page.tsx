@@ -320,9 +320,10 @@ export default function ManageRemarksPage() {
 
         if (!emailResponse.ok) {
           // Non-blocking error for email
+          const errorData = await emailResponse.json();
           showAlert(
             "Email Notification Failed",
-            "The remark was saved, but the email notification could not be sent.",
+            errorData.message || "The remark was saved, but the email notification could not be sent.",
           );
         }
       } catch (emailError: any) {
