@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AlertProvider } from '@/context/alert-context';
 import { GlobalAlert } from '@/components/ui/global-alert';
+import { SmoothScroll } from '@/components/smooth-scroll';
 
 export const metadata: Metadata = {
   title: 'CreditWise',
@@ -24,11 +25,13 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
       </head>
       <body className="font-display antialiased" suppressHydrationWarning>
-        <AlertProvider>
-          {children}
-          <Toaster />
-          <GlobalAlert />
-        </AlertProvider>
+        <SmoothScroll>
+          <AlertProvider>
+            {children}
+            <Toaster />
+            <GlobalAlert />
+          </AlertProvider>
+        </SmoothScroll>
       </body>
     </html>
   );
