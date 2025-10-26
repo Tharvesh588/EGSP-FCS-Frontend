@@ -290,17 +290,13 @@ export default function FacultyDashboard() {
                         {activity.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right font-semibold">
                       {activity.status !== 'approved' ? (
                         <span className="text-muted-foreground">-</span>
                       ) : (
-                        <Badge
-                          variant={activity.points > 0 ? "default" : "destructive"}
-                          className="flex items-center gap-1 w-fit ml-auto"
-                        >
-                          {activity.points > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                          {Math.abs(activity.points)}
-                        </Badge>
+                        <span className={activity.points > 0 ? 'text-green-600' : 'text-red-600'}>
+                          {activity.points > 0 ? `+${activity.points}` : activity.points}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
