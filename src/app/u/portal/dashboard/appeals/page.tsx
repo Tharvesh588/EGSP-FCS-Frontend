@@ -277,7 +277,7 @@ export default function AppealsPage() {
                             <CardTitle className="text-base">Original Remark</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2 text-sm">
-                                <p className="font-semibold">{selectedAppeal.title} ({selectedAppeal.points} points)</p>
+                                <p className="font-semibold">{selectedAppeal.title} (<span className="text-red-600">{selectedAppeal.points}</span> points)</p>
                                 <p className="text-muted-foreground italic">"{selectedAppeal.notes}"</p>
                                 <p className="text-xs text-muted-foreground">Issued on: {new Date(selectedAppeal.createdAt).toLocaleString()}</p>
                             </CardContent>

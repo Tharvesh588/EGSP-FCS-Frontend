@@ -342,7 +342,7 @@ export default function ManageCreditTitlesPage() {
                   filteredAndSortedTitles.map((ct) => (
                     <TableRow key={ct._id}>
                       <TableCell className="font-medium text-foreground">{ct.title}</TableCell>
-                      <TableCell className="font-semibold">{ct.points}</TableCell>
+                      <TableCell className={`font-semibold ${ct.points < 0 ? 'text-red-600' : ''}`}>{ct.points}</TableCell>
                       <TableCell>
                         <Badge variant={ct.type === 'positive' ? 'default' : 'destructive'} className={ct.type === 'positive' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
                           {ct.type}
