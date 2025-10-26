@@ -48,6 +48,7 @@ type NegativeCredit = {
   proofUrl?: string;
   createdAt: string;
   academicYear: string;
+  appealCount?: number;
 };
 
 const getCurrentAcademicYear = () => {
@@ -89,6 +90,7 @@ export default function NegativeRemarksPage() {
   // Appeal state
   const [isAppealDialogOpen, setIsAppealDialogOpen] = useState(false);
   const [appealReason, setAppealReason] = useState("");
+  const [appealProof, setAppealProof] = useState<File | null>(null);
   const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
 
 
@@ -143,6 +145,8 @@ export default function NegativeRemarksPage() {
   const handleOpenAppealDialog = (remark: NegativeCredit) => {
     setSelectedRemark(remark);
     setIsAppealDialogOpen(true);
+    setAppealReason("");
+    setAppealProof(null);
   };
 
   const handleAppealSubmit = async () => {
@@ -155,17 +159,19 @@ export default function NegativeRemarksPage() {
     }
     setIsSubmittingAppeal(true);
     
+    const formData = new FormData();
+    formData.append("reason", appealReason);
+    if (appealProof) {
+      formData.append("proof", appealProof);
+    }
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/${selectedRemark._id}/appeal`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              creditId: selectedRemark._id,
-              reason: appealReason,
-            }),
+            body: formData,
         });
 
         const responseData = await response.json();
@@ -180,6 +186,7 @@ export default function NegativeRemarksPage() {
 
         setIsAppealDialogOpen(false);
         setAppealReason("");
+        setAppealProof(null);
         fetchRemarks();
         router.push(`/u/portal/dashboard/appeals?uid=${searchParams.get('uid')}`);
 
@@ -258,7 +265,7 @@ export default function NegativeRemarksPage() {
                             variant="secondary" 
                             size="sm" 
                             onClick={() => handleOpenAppealDialog(remark)}
-                            disabled={remark.status === 'appealed'}
+                            disabled={remark.status === 'appealed' || (remark.appealCount && remark.appealCount >= 2)}
                         >
                             {remark.status === 'appealed' ? 'Appealed' : 'Appeal'}
                         </Button>
@@ -279,7 +286,7 @@ export default function NegativeRemarksPage() {
           <DialogHeader>
             <DialogTitle>Create an Appeal for "{selectedRemark?.title}"</DialogTitle>
             <DialogDescription>
-              Provide a reason for your appeal. This action cannot be undone.
+              Provide a reason for your appeal. You may optionally attach a proof document. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -292,6 +299,10 @@ export default function NegativeRemarksPage() {
                     onChange={(e) => setAppealReason(e.target.value)} 
                     rows={4}
                 />
+            </div>
+            <div className="space-y-2">
+                <label htmlFor="proof" className="text-sm font-medium">Proof Document (Optional)</label>
+                <FileUpload onFileSelect={setAppealProof} />
             </div>
           </div>
           <DialogFooter>
