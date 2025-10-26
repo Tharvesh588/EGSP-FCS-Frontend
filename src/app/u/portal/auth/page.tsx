@@ -107,7 +107,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <main className="flex-grow flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-xl shadow-lg border border-border">
+        <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg border border-border">
           <div className="flex justify-center mb-4">
               <Image
                   src="https://egspgroup.in/_next/image?url=%2Fassets%2Fegspgoi___logo.webp&w=256&q=75"
