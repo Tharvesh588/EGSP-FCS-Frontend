@@ -258,10 +258,7 @@ export default function ManageRemarksPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!facultyId || !points || !title) {
-      showAlert(
-        "Incomplete Form",
-        "Please fill out all required fields.",
-      );
+      showAlert("Incomplete Form", "Please fill out all required fields.");
       return;
     }
     setIsLoading(true);
@@ -284,14 +281,11 @@ export default function ManageRemarksPage() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/admin/credits/negative`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${adminToken}`,
-        },
+        headers: { "Authorization": `Bearer ${adminToken}` },
         body: formData,
       });
 
       const responseData = await response.json();
-
       if (!response.ok || !responseData.success) {
         throw new Error(responseData.message || "Failed to issue remark.");
       }
@@ -301,55 +295,48 @@ export default function ManageRemarksPage() {
         description: "The negative remark has been successfully recorded.",
       });
 
-      // After successful remark creation, trigger the email
-      try {
-        const emailResponse = await fetch(`${API_BASE_URL}/api/v1/notifications/remark`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${adminToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            facultyId: facultyId,
-            remark: {
-              title: title,
-              message: notes,
-            },
-          }),
-        });
-
-        if (!emailResponse.ok) {
-          // Non-blocking error for email
-          const errorData = await emailResponse.json();
-          showAlert(
-            "Email Notification Failed",
-            errorData.message || "The remark was saved, but the email notification could not be sent.",
-          );
-        }
-      } catch (emailError: any) {
-         showAlert(
-            "Email Sending Error",
-            emailError.message || "An error occurred while trying to send the email.",
-          );
-      }
-
-
-      // Reset form
+      // Reset form and close dialog *before* attempting to send email
       setFacultyId("");
       setCreditTitleId("");
       setTitle("");
       setPoints("");
       setNotes("");
       setProof(null);
-      fetchRemarks(1); // refetch and go to first page
+      fetchRemarks(1);
       setPage(1);
       setIsFormOpen(false);
 
+      // Fire-and-forget the email notification
+      fetch(`${API_BASE_URL}/api/v1/notifications/remark`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          facultyId: facultyId,
+          remark: {
+            title: title,
+            message: notes,
+          },
+        }),
+      }).then(async (emailResponse) => {
+          if (!emailResponse.ok) {
+            const errorData = await emailResponse.json();
+            showAlert(
+              "Email Notification Failed",
+              errorData.message || "The remark was saved, but the email notification could not be sent."
+            );
+          }
+      }).catch((emailError: any) => {
+          showAlert(
+            "Email Sending Error",
+            emailError.message || "An error occurred while trying to send the email."
+          );
+      });
+
     } catch (error: any) {
-      showAlert(
-        "Submission Failed",
-        error.message,
-      );
+      showAlert("Submission Failed", error.message);
     } finally {
       setIsLoading(false);
     }
@@ -599,5 +586,3 @@ export default function ManageRemarksPage() {
     </div>
   )
 }
-
-    
