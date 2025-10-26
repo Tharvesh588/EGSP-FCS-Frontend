@@ -114,7 +114,8 @@ export default function NegativeRemarksPage() {
              if (errorText.includes('<!DOCTYPE')) {
                 showAlert("Error fetching remarks", "The API returned an invalid response. The endpoint might be incorrect.");
             } else {
-                showAlert("Error fetching remarks", errorText);
+                const errorJson = JSON.parse(errorText);
+                showAlert("Error fetching remarks", errorJson.message || 'An unknown error occurred.');
             }
             throw new Error(`Failed to fetch remarks`);
           }
@@ -166,7 +167,7 @@ export default function NegativeRemarksPage() {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/credits/credits/${selectedRemark._id}/appeal`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/credits/${selectedRemark._id}/appeal`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -187,7 +188,7 @@ export default function NegativeRemarksPage() {
         setIsAppealDialogOpen(false);
         setAppealReason("");
         setAppealProof(null);
-        fetchRemarks();
+        fetchRemarks(); // Refresh the list to show the 'appealed' status
         router.push(`/u/portal/dashboard/appeals?uid=${searchParams.get('uid')}`);
 
     } catch (error: any) {

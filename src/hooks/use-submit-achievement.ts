@@ -24,7 +24,9 @@ export function useSubmitAchievement() {
     submissionData.append("title", title);
     submissionData.append("points", points.toString());
     submissionData.append("academicYear", academicYear);
-    submissionData.append("proof", proof);
+    if (proof) {
+      submissionData.append("proof", proof);
+    }
     if (creditTitleId) {
       submissionData.append("categories", creditTitleId);
     }
@@ -33,7 +35,6 @@ export function useSubmitAchievement() {
     }
     
     try {
-      // The correct endpoint is /api/v1/credits/positive
       const response = await fetch(`${API_BASE_URL}/api/v1/credits/positive`, {
         method: "POST",
         headers: {
