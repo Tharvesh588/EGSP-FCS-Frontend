@@ -53,6 +53,8 @@ export function useSubmitAchievement() {
             errorMessage = "API endpoint not found. Please contact support.";
         } else if (response.status === 403) {
             errorMessage = "A security error occurred. Please refresh the page and try again.";
+        } else if (response.statusText.includes("Not Found")) {
+            errorMessage = `API endpoint not found at ${response.url}. Please check the API route.`;
         }
         throw new Error(errorMessage);
       }
