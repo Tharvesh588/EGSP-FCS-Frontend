@@ -1,7 +1,8 @@
+
 // This file is the new location for src/app/(app)/admin/dashboard/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from "recharts";
 import {
   Card,
@@ -10,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { gsap } from "gsap";
 
 const overviewData = [
     { title: "Pending Items", value: "12" },
@@ -69,9 +71,25 @@ const generateYearOptions = () => {
 export default function AdminDashboard() {
   const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const yearOptions = generateYearOptions();
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+        gsap.fromTo(
+            ".dashboard-card",
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, stagger: 0.1, duration: 0.5, ease: "power3.out" }
+        );
+         gsap.fromTo(
+            ".timeline-item",
+            { opacity: 0, x: -20 },
+            { opacity: 1, x: 0, stagger: 0.2, duration: 0.5, ease: "power3.out", delay: 0.2 }
+        );
+    }
+  }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" ref={containerRef}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-3xl font-bold text-foreground">Super Admin Dashboard</h2>
         <Select value={academicYear} onValueChange={setAcademicYear}>
@@ -90,7 +108,7 @@ export default function AdminDashboard() {
         <h3 className="text-xl font-bold text-foreground mb-4">Overview</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {overviewData.map(item => (
-            <Card key={item.title} className="bg-card p-6">
+            <Card key={item.title} className="bg-card p-6 dashboard-card">
               <p className="text-base font-medium text-muted-foreground">{item.title}</p>
               <p className="text-4xl font-bold text-foreground mt-2">{item.value}</p>
             </Card>
@@ -105,7 +123,7 @@ export default function AdminDashboard() {
             <div className="absolute left-4 top-0 h-full w-0.5 bg-border"></div>
             <div className="space-y-8">
               {recentActivity.map((activity, index) => (
-                <div key={index} className="relative">
+                <div key={index} className="relative timeline-item">
                   <div className="absolute -left-5 top-1 h-3 w-3 rounded-full bg-primary"></div>
                   <p className="font-medium text-foreground">{activity.text}</p>
                   <p className="text-sm text-muted-foreground">{activity.time}</p>
@@ -118,7 +136,7 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2">
           <h3 className="text-xl font-bold text-foreground mb-4">User Statistics</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="p-6">
+            <Card className="p-6 dashboard-card">
               <p className="text-base font-medium text-muted-foreground">Faculty Performance Distribution</p>
               <p className="text-3xl font-bold text-foreground mt-2">Average: 75%</p>
               <div className="flex items-center gap-2 mt-1">
@@ -134,7 +152,7 @@ export default function AdminDashboard() {
                 </ResponsiveContainer>
               </div>
             </Card>
-            <Card className="p-6">
+            <Card className="p-6 dashboard-card">
               <p className="text-base font-medium text-muted-foreground">User Engagement Over Time</p>
               <p className="text-3xl font-bold text-foreground mt-2">Trend: +5%</p>
               <div className="flex items-center gap-2 mt-1">

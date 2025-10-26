@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Camera } from "lucide-react"
 import { useAlert } from "@/context/alert-context"
+import { gsap } from "gsap";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -41,6 +42,7 @@ export default function SettingsPage() {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [departments, setDepartments] = useState<Departments>({});
+  const containerRef = useRef(null);
 
   const fetchUser = async () => {
     setLoading(true);
@@ -84,6 +86,16 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchUser();
   }, []);
+
+  useEffect(() => {
+    if (!loading && containerRef.current) {
+        gsap.fromTo(
+            (containerRef.current as any).children,
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, stagger: 0.1, duration: 0.5, ease: "power3.out" }
+        );
+    }
+  }, [loading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user) return;
@@ -165,7 +177,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8" ref={containerRef}>
         <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
             <p className="mt-1 text-muted-foreground">Manage your account settings and preferences.</p>

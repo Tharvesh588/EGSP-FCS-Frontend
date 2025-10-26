@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Table,
   TableBody,
@@ -34,6 +34,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAlert } from "@/context/alert-context";
 import { useToast } from "@/hooks/use-toast";
+import { gsap } from "gsap";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -72,6 +73,8 @@ export default function FacultyAccountsPage() {
   const [collegeFilter, setCollegeFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [filteredDepartments, setFilteredDepartments] = useState<Departments>({});
+  
+  const tableRef = useRef(null);
 
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
@@ -108,6 +111,16 @@ export default function FacultyAccountsPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+  
+  useEffect(() => {
+    if (!isLoadingUsers && tableRef.current) {
+        gsap.fromTo(
+            (tableRef.current as any).children,
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, stagger: 0.05, duration: 0.4, ease: "power3.out" }
+        );
+    }
+  }, [isLoadingUsers, facultyAccounts]);
 
   useEffect(() => {
     if (college && colleges[college as keyof typeof colleges]) {
@@ -278,7 +291,7 @@ export default function FacultyAccountsPage() {
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody ref={tableRef}>
               {isLoadingUsers ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">

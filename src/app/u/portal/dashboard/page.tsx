@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import {
@@ -24,6 +24,7 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAlert } from "@/context/alert-context";
+import { gsap } from "gsap";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -71,6 +72,7 @@ export default function FacultyDashboard() {
   const [recentActivities, setRecentActivities] = useState<CreditActivity[]>([]);
   const [creditHistory, setCreditHistory] = useState<{ month: string; credits: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef(null);
 
   const yearOptions = generateYearOptions();
 
@@ -157,6 +159,16 @@ export default function FacultyDashboard() {
     fetchDashboardData();
   }, [searchParams, showAlert]);
 
+  useEffect(() => {
+    if (!loading && containerRef.current) {
+        gsap.fromTo(
+            ".dashboard-card",
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, stagger: 0.15, duration: 0.6, ease: "power3.out" }
+        );
+    }
+  }, [loading]);
+
   if (loading) {
     return (
         <div className="space-y-6">
@@ -192,7 +204,7 @@ export default function FacultyDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={containerRef}>
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-3xl font-bold text-foreground">Faculty Dashboard</h2>
         <Select value={academicYear} onValueChange={setAcademicYear}>
@@ -208,7 +220,7 @@ export default function FacultyDashboard() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 dashboard-card">
           <CardHeader>
             <CardTitle className="text-lg font-medium text-muted-foreground">
               Total Credits
@@ -224,7 +236,7 @@ export default function FacultyDashboard() {
             </p> */}
           </CardContent>
         </Card>
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 dashboard-card">
           <CardHeader>
             <CardTitle>Credit History (Last 6 Months)</CardTitle>
             <CardDescription>
@@ -253,7 +265,7 @@ export default function FacultyDashboard() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <Card className="md:col-span-2 lg:col-span-3">
+        <Card className="md:col-span-2 lg:col-span-3 dashboard-card">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
