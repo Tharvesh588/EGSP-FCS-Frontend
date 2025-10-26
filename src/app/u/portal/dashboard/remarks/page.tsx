@@ -303,6 +303,9 @@ export default function NegativeRemarksPage() {
             <div className="space-y-2">
                 <label htmlFor="proof" className="text-sm font-medium">Proof Document (Optional)</label>
                 <FileUpload onFileSelect={setAppealProof} />
+                 <p className="text-xs text-muted-foreground pt-1">
+                    If more than one file, please make it a zip (below 10MB) and upload.
+                </p>
             </div>
           </div>
           <DialogFooter>
