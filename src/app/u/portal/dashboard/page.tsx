@@ -35,6 +35,9 @@ type CreditActivity = {
   status: 'approved' | 'pending' | 'rejected' | 'appealed';
   createdAt: string;
   type: 'positive' | 'negative';
+  appeal?: {
+    status: 'pending' | 'accepted' | 'rejected';
+  }
 };
 
 type UserProfile = {
@@ -63,6 +66,24 @@ const generateYearOptions = () => {
     }
     return years;
 };
+
+// Helper function to determine if points should be displayed based on rules
+const shouldShowPoints = (activity: CreditActivity): boolean => {
+  if (activity.type === 'positive') {
+    return activity.status === 'approved';
+  }
+
+  if (activity.type === 'negative') {
+    if (activity.appeal) { // An appeal exists
+      return activity.appeal.status === 'rejected';
+    } else { // No appeal
+      return activity.status === 'approved' || activity.status === 'rejected';
+    }
+  }
+
+  return false;
+};
+
 
 export default function FacultyDashboard() {
   const { showAlert } = useAlert();
@@ -120,7 +141,7 @@ export default function FacultyDashboard() {
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
             historyData.items.forEach((item: CreditActivity) => {
-                if(item.status === 'approved') {
+                if(shouldShowPoints(item)) {
                     const date = new Date(item.createdAt);
                     const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
                     if(!monthlyCredits[monthKey]) {
@@ -297,7 +318,7 @@ export default function FacultyDashboard() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                       {activity.status === 'approved' ? (
+                       {shouldShowPoints(activity) ? (
                         <span className={activity.points > 0 ? 'text-green-600' : 'text-red-600'}>
                           {activity.points > 0 ? `+${activity.points}` : activity.points}
                         </span>
@@ -318,5 +339,3 @@ export default function FacultyDashboard() {
     </div>
   );
 }
-
-    
