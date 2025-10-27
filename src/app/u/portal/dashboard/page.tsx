@@ -319,8 +319,8 @@ export default function FacultyDashboard() {
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                        {shouldShowPoints(activity) ? (
-                        <span className={activity.points > 0 ? 'text-green-600' : 'text-red-600'}>
-                          {activity.points > 0 ? `+${activity.points}` : activity.points}
+                        <span className={activity.type === 'positive' ? 'text-green-600' : 'text-red-600'}>
+                          {activity.type === 'positive' ? `+${activity.points}` : `-${activity.points}`}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
@@ -339,3 +339,5 @@ export default function FacultyDashboard() {
     </div>
   );
 }
+
+    
