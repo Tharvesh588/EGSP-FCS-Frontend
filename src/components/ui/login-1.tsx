@@ -13,6 +13,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAlert } from '@/context/alert-context';
 import { gsap } from 'gsap';
+import EgspgoiLogo from '@/app/egspgoi_logo_tr.png';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
@@ -130,11 +131,11 @@ export function LoginScreen() {
         <div className="w-full max-w-md" ref={formRef}>
           <div className="text-center mb-8">
              <Image
-                  src="https://egspgroup.in/_next/image?url=%2Fassets%2Fegspgoi___logo.webp&w=256&q=75"
+                  src={EgspgoiLogo}
                   alt="College Logo"
                   width={100}
                   height={100}
-                  className="bg-white mx-auto mb-4"
+                  className="mx-auto mb-4"
               />
             <h2 className="text-3xl font-bold text-foreground mb-2">
               Welcome Back
