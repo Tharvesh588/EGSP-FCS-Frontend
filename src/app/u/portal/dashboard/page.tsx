@@ -291,13 +291,9 @@ export default function FacultyDashboard() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {activity.status !== 'approved' ? (
-                        <span className="text-muted-foreground">-</span>
-                      ) : (
-                        <span className={activity.points > 0 ? 'text-green-600' : 'text-red-600'}>
-                          {activity.points > 0 ? `+${activity.points}` : activity.points}
-                        </span>
-                      )}
+                      <span className={activity.points > 0 ? 'text-green-600' : 'text-red-600'}>
+                        {activity.points > 0 ? `+${activity.points}` : activity.points}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {new Date(activity.createdAt).toLocaleDateString()}
