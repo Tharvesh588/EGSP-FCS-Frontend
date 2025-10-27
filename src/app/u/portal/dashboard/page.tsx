@@ -274,6 +274,7 @@ export default function FacultyDashboard() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Description</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Credits</TableHead>
                   <TableHead className="text-right">Date</TableHead>
@@ -284,6 +285,11 @@ export default function FacultyDashboard() {
                   <TableRow key={activity._id}>
                     <TableCell className="font-medium">
                       {activity.title}
+                    </TableCell>
+                    <TableCell>
+                       <Badge variant={activity.type === 'positive' ? 'default' : 'destructive'} className={activity.type === 'positive' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          {activity.type}
+                        </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={activity.status === 'approved' ? 'default' : activity.status === 'pending' ? 'secondary' : 'destructive'}>
@@ -312,3 +318,5 @@ export default function FacultyDashboard() {
     </div>
   );
 }
+
+    
