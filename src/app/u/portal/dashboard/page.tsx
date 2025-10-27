@@ -32,7 +32,7 @@ type CreditActivity = {
   _id: string;
   title: string;
   points: number;
-  status: 'approved' | 'pending' | 'rejected';
+  status: 'approved' | 'pending' | 'rejected' | 'appealed';
   createdAt: string;
   type: 'positive' | 'negative';
 };
@@ -291,9 +291,13 @@ export default function FacultyDashboard() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      <span className={activity.points > 0 ? 'text-green-600' : 'text-red-600'}>
-                        {activity.points > 0 ? `+${activity.points}` : activity.points}
-                      </span>
+                       {activity.status === 'approved' ? (
+                        <span className={activity.points > 0 ? 'text-green-600' : 'text-red-600'}>
+                          {activity.points > 0 ? `+${activity.points}` : activity.points}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {new Date(activity.createdAt).toLocaleDateString()}
