@@ -94,7 +94,7 @@ export function Header({ user }: { user: User }) {
             }
 
             try {
-                const url = `${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}/negative`;
+                const url = `${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?type=negative`;
                 const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
                 
                 if (response.status === 401) {
@@ -118,7 +118,7 @@ export function Header({ user }: { user: User }) {
                     setHasUnread(false);
                 }
             } catch (error: any) {
-                console.error("Failed to check notifications", error);
+                console.error("Failed to check notifications:", error.message);
                 setHasUnread(false);
             }
         };
