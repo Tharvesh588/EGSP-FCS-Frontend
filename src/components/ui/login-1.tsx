@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Lock, Mail, Mountain } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAlert } from '@/context/alert-context';
 import { gsap } from 'gsap';
 import EgspgoiLogo from '@/app/egspgoi_logo_tr.png';
+import EngineeringCollegeImage from '@/app/engineering_college.webp';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
@@ -115,17 +116,18 @@ export function LoginScreen() {
   return (
     <>
     <div className="w-full min-h-screen flex flex-col md:flex-row">
-      <div className="hidden md:flex flex-1 bg-gradient-to-br from-slate-900 via-primary to-blue-900 items-center justify-center p-12 text-white">
-        <div className="max-w-lg">
-          <Mountain className="h-16 w-16 mb-8 text-white" />
-          <h1 className="text-5xl font-bold mb-6 leading-tight">
-            Unlock Your Potential with CreditWise.
-          </h1>
-          <p className="text-lg text-white/80">
-            A comprehensive faculty performance management system for EGS Pillay Engineering College.
-          </p>
-        </div>
+       <div className="hidden md:flex flex-1 relative">
+          <Image
+            src={EngineeringCollegeImage}
+            alt="EGS Pillay Engineering College"
+            layout="fill"
+            objectFit="cover"
+            quality={90}
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent"></div>
       </div>
+
 
       <div className="flex-1 bg-background flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md" ref={formRef}>
