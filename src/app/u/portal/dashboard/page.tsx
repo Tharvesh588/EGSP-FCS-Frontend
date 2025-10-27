@@ -20,11 +20,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAlert } from "@/context/alert-context";
 import { gsap } from "gsap";
+import { Progress } from "@/components/ui/progress";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
 
@@ -40,9 +41,21 @@ type CreditActivity = {
   }
 };
 
-type UserProfile = {
-  currentCredit: number;
+type UserProfileStats = {
+    name: string;
+    facultyID: string;
+    currentCredit: number;
+    stats: {
+        totalPositiveCount: number;
+        totalNegativeCount: number;
+        currentYearStats: {
+            academicYear: string;
+            totalPositive: number;
+            totalNegative: number;
+        };
+    };
 };
+
 
 const getCurrentAcademicYear = () => {
     const today = new Date();
@@ -74,11 +87,12 @@ const shouldShowPoints = (activity: CreditActivity): boolean => {
   }
 
   if (activity.type === 'negative') {
-    if (activity.appeal) { // An appeal exists
+    // If an appeal exists, points are deducted only if the appeal is rejected.
+    if (activity.appeal) {
       return activity.appeal.status === 'rejected';
-    } else { // No appeal
-      return activity.status === 'approved' || activity.status === 'rejected';
     }
+    // If no appeal, points are deducted regardless of status, as it's a final remark.
+    return true; 
   }
 
   return false;
@@ -89,7 +103,7 @@ export default function FacultyDashboard() {
   const { showAlert } = useAlert();
   const searchParams = useSearchParams();
   const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfileStats, setUserProfileStats] = useState<UserProfileStats | null>(null);
   const [recentActivities, setRecentActivities] = useState<CreditActivity[]>([]);
   const [creditHistory, setCreditHistory] = useState<{ month: string; credits: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,21 +123,22 @@ export default function FacultyDashboard() {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // Fetch user profile for credit balance
-        const profileResponse = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const profileData = await profileResponse.json();
-        if (profileData.success) {
-          setUserProfile(profileData.data);
+        const [statsResponse, activitiesResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/v1/credits/${facultyId}/credits?recalc=true`, { 
+              headers: { "Authorization": `Bearer ${token}` } 
+          }),
+          fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?limit=5`, { 
+              headers: { "Authorization": `Bearer ${token}` } 
+          })
+        ]);
+
+        const statsData = await statsResponse.json();
+        if (statsData.success) {
+          setUserProfileStats(statsData.data);
         } else {
-           throw new Error(profileData.message || "Failed to fetch user profile.");
+           throw new Error(statsData.message || "Failed to fetch user stats.");
         }
 
-        // Fetch recent activities
-        const activitiesResponse = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?limit=5`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
         const activitiesData = await activitiesResponse.json();
         if (activitiesData.success) {
           setRecentActivities(activitiesData.items);
@@ -131,39 +146,35 @@ export default function FacultyDashboard() {
             throw new Error(activitiesData.message || "Failed to fetch recent activities.");
         }
         
-        // Fetch and process credit history
-        const historyResponse = await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?limit=100`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        const historyData = await historyResponse.json();
-        if(historyData.success) {
+        // Process credit history from full activities list for chart
+        const allActivitiesData = await (await fetch(`${API_BASE_URL}/api/v1/credits/credits/faculty/${facultyId}?limit=100`, { headers: { "Authorization": `Bearer ${token}` }})).json();
+        if(allActivitiesData.success) {
             const monthlyCredits: { [key: string]: number } = {};
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-            historyData.items.forEach((item: CreditActivity) => {
+            allActivitiesData.items.forEach((item: CreditActivity) => {
                 if(shouldShowPoints(item)) {
                     const date = new Date(item.createdAt);
                     const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
                     if(!monthlyCredits[monthKey]) {
                         monthlyCredits[monthKey] = 0;
                     }
-                    monthlyCredits[monthKey] += item.points;
+                    monthlyCredits[monthKey] += item.type === 'positive' ? item.points : -item.points;
                 }
             });
 
-            // Get last 6 months
             const last6Months = [];
             let currentDate = new Date();
             for (let i = 0; i < 6; i++) {
                 const monthKey = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-                 const shortMonthKey = monthNames[currentDate.getMonth()];
+                const shortMonthKey = monthNames[currentDate.getMonth()];
                 last6Months.unshift({ month: shortMonthKey, credits: monthlyCredits[monthKey] || 0 });
                 currentDate.setMonth(currentDate.getMonth() - 1);
             }
             setCreditHistory(last6Months);
 
         } else {
-            throw new Error(historyData.message || "Failed to fetch credit history.");
+            throw new Error(allActivitiesData.message || "Failed to fetch credit history.");
         }
 
 
@@ -198,28 +209,27 @@ export default function FacultyDashboard() {
                 <Skeleton className="h-10 w-48" />
             </div>
              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="lg:col-span-1">
-                    <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
-                    <CardContent><Skeleton className="h-12 w-20" /></CardContent>
-                </Card>
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <Skeleton className="h-5 w-48" />
-                        <Skeleton className="h-4 w-64" />
-                    </CardHeader>
-                    <CardContent className="pl-2">
-                        <Skeleton className="h-[150px] w-full" />
-                    </CardContent>
-                </Card>
-                <Card className="md:col-span-2 lg:col-span-3">
-                    <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
-                    <CardContent className="space-y-2">
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                    </CardContent>
-                </Card>
+                <Card className="dashboard-card"><CardHeader><Skeleton className="h-5 w-24" /></CardHeader><CardContent><Skeleton className="h-12 w-20" /></CardContent></Card>
+                <Card className="dashboard-card"><CardHeader><Skeleton className="h-5 w-32" /></CardHeader><CardContent><Skeleton className="h-12 w-16" /></CardContent></Card>
+                <Card className="dashboard-card"><CardHeader><Skeleton className="h-5 w-32" /></CardHeader><CardContent><Skeleton className="h-12 w-16" /></CardContent></Card>
              </div>
+             <Card className="dashboard-card">
+                  <CardHeader>
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-64" />
+                  </CardHeader>
+                  <CardContent className="pl-2">
+                      <Skeleton className="h-[150px] w-full" />
+                  </CardContent>
+              </Card>
+             <Card className="md:col-span-2 lg:col-span-3 dashboard-card">
+                 <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
+                 <CardContent className="space-y-2">
+                     <Skeleton className="h-10 w-full" />
+                     <Skeleton className="h-10 w-full" />
+                     <Skeleton className="h-10 w-full" />
+                 </CardContent>
+             </Card>
         </div>
     )
   }
@@ -249,19 +259,47 @@ export default function FacultyDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-5xl font-bold text-primary">
-              {userProfile?.currentCredit ?? 0}
+              {userProfileStats?.currentCredit ?? 0}
             </div>
-            {/* Logic for percentage change can be added here if historical data is available */}
-            {/* <p className="text-xs text-muted-foreground mt-2">
-              +20.1% from last month
-            </p> */}
+             <p className="text-xs text-muted-foreground mt-2">
+              Overall credit balance
+            </p>
           </CardContent>
         </Card>
-        <Card className="lg:col-span-2 dashboard-card">
+        <Card className="dashboard-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Positive Credits (This Year)</CardTitle>
+                <Plus className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-green-600">+{userProfileStats?.stats.currentYearStats.totalPositive ?? 0}</div>
+            </CardContent>
+        </Card>
+        <Card className="dashboard-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Negative Credits (This Year)</CardTitle>
+                <Minus className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-red-600">-{userProfileStats?.stats.currentYearStats.totalNegative ?? 0}</div>
+            </CardContent>
+        </Card>
+        <Card className="md:col-span-2 lg:col-span-3 dashboard-card">
+          <CardHeader>
+            <CardTitle>Credit Progress</CardTitle>
+             <CardDescription>
+              Your progress towards the next credit milestone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+              <Progress value={userProfileStats?.currentCredit || 0} className="w-full" />
+          </CardContent>
+        </Card>
+        <Card className="md:col-span-2 lg:col-span-3 dashboard-card">
           <CardHeader>
             <CardTitle>Credit History (Last 6 Months)</CardTitle>
             <CardDescription>
-              Overview of credits earned over time.
+              Overview of credits earned or deducted over time.
             </CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
@@ -314,7 +352,7 @@ export default function FacultyDashboard() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={activity.status === 'approved' ? 'default' : activity.status === 'pending' ? 'secondary' : 'destructive'}>
-                        {activity.status}
+                        {activity.status === 'appealed' && activity.appeal ? activity.appeal.status : activity.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-semibold">
