@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 const READ_NOTIFICATIONS_KEY = 'readNotificationIds';
 const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
 const TIMEOUT_WARNING_SECONDS = 60; // 1 minute
@@ -185,6 +185,3 @@ export function Header({ user }: { user: User }) {
     </>
   );
 }
-
-    
-    

@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://fcs.egspgroup.in:81/api/:path*"
+    }
+  ]
+}

@@ -31,7 +31,7 @@ import { MoreHorizontal, PlusCircle } from "lucide-react";
 import { useAlert } from "@/context/alert-context";
 import Link from "next/link";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 type GoodWork = {
   _id: string;
@@ -323,7 +323,7 @@ export default function GoodWorksPage() {
                 }
 
                 <Button variant="outline" size="icon" className="rounded-l-none h-8 w-8" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
-                    <span className="material-symbols-outlined h-5 w-5"> chevron_right </span>
+                    <span className="material-symbols-outlined h-5 w-5"> chevron_right.</span>
                 </Button>
             </nav>
         </div>
@@ -331,6 +331,3 @@ export default function GoodWorksPage() {
     </div>
   )
 }
-
-    
-    
