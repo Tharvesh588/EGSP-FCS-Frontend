@@ -17,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAlert } from "@/context/alert-context"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
 
 type ReportData = {
   distribution?: { name: string; value: number }[];
@@ -207,3 +207,5 @@ export default function ReportsPage() {
     </div>
   )
 }
+
+    

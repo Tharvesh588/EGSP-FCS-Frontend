@@ -18,7 +18,7 @@ import { Camera } from "lucide-react"
 import { useAlert } from "@/context/alert-context"
 import { gsap } from "gsap";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
 
 type UserProfile = {
   name: string;
@@ -312,3 +312,5 @@ export default function SettingsPage() {
     </div>
   )
 }
+
+    

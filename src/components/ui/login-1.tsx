@@ -16,7 +16,7 @@ import { gsap } from 'gsap';
 import EgspgoiLogo from '@/app/egspgoi_logo_tr.png';
 import EngineeringCollegeImage from '@/app/engineering_college.webp';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
 const SESSION_DURATION_SECONDS = 10 * 60; // 10 minutes
 
 export function LoginScreen() {
@@ -230,3 +230,5 @@ export function LoginScreen() {
     </>
   );
 }
+
+    

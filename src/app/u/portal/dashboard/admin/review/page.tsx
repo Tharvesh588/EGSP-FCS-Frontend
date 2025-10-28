@@ -20,7 +20,7 @@ import { useSearchParams } from "next/navigation"
 import { useAlert } from "@/context/alert-context"
 import { useToast } from "@/hooks/use-toast"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
 
 type Submission = {
   _id: string;
@@ -404,3 +404,5 @@ export default function ReviewSubmissionsPage() {
     </div>
   )
 }
+
+    

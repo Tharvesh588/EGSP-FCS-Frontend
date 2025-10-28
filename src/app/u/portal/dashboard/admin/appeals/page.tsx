@@ -22,7 +22,7 @@ import { Search } from "lucide-react"
 import { useAlert } from "@/context/alert-context"
 import { useToast } from "@/hooks/use-toast"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
 
 type Appeal = {
   _id: string; // This is the credit ID
@@ -387,3 +387,5 @@ export default function AppealReviewPage() {
     </div>
   )
 }
+
+    

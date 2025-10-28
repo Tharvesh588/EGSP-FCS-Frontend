@@ -4,7 +4,7 @@
 import { useState } from "react";
 import type { AchievementFormData } from "@/components/achievement-form";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://faculty-credit-system.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
 
 export function useSubmitAchievement() {
   const [isLoading, setIsLoading] = useState(false);
@@ -72,3 +72,5 @@ export function useSubmitAchievement() {
 
   return { submitAchievement, isLoading };
 }
+
+    
