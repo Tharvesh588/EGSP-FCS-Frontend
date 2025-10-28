@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { useAlert } from "@/context/alert-context";
 
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
 
 type NegativeCredit = {
   _id: string;

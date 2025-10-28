@@ -36,7 +36,7 @@ import { useAlert } from "@/context/alert-context";
 import { useToast } from "@/hooks/use-toast";
 import { gsap } from "gsap";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fcs.egspgroup.in:81';
 
 type FacultyAccount = {
   _id: string;
