@@ -1,11 +1,6 @@
-"use client";
 
-import { LoginScreen } from "@/components/ui/login-1";
 import { Suspense } from "react";
-
-function LoginPageContent() {
-  return <LoginScreen />;
-}
+import LoginPageContent from "./login-page-content";
 
 export default function LoginPage() {
   return (
